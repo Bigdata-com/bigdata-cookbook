@@ -143,3 +143,57 @@ docker rmi regulatory-issues
 ## Project Structure
 
 ```
+Report_Generator_Regulatory_Issues_in_Tech/
+├── README.md                                    # Project documentation
+├── Report Generator_ Regulatory Issues.ipynb    # Main Jupyter notebook
+├── Report Generator_ Regulatory Issues.html     # Exported HTML version
+├── requirements.txt                             # Python dependencies
+├── Dockerfile                                  # Docker configuration
+├── .dockerignore                               # Docker ignore file
+├── .env.example                                # Example environment variables
+├── src/
+│   ├── tool.py                                 # Main analysis tool
+│   ├── report_generator.py                     # Report generation logic
+│   ├── html_report.py                          # HTML report formatting
+│   ├── summary/
+│   │   ├── summary.py                          # Summary generation
+│   │   ├── summary_prompts.py                  # AI prompts for summaries
+│   │   └── token_manager.py                    # Token management utilities
+│   └── response/
+│       ├── company_response.py                 # Company response analysis
+│       └── response_prompts.py                 # Response analysis prompts
+└── .venv/                                      # Virtual environment (created during setup)
+```
+
+## Key Components
+
+- **Report Generator_ Regulatory Issues.ipynb**: Main analysis notebook for regulatory risk assessment
+- **src/tool.py**: Core analysis functionality for regulatory issue evaluation
+- **src/report_generator.py**: Automated report generation and formatting
+- **src/html_report.py**: HTML report creation and styling
+- **src/summary/**: AI-powered summary generation modules
+- **src/response/**: Company response and mitigation strategy analysis
+
+## Analysis Features
+
+The regulatory issues analysis provides:
+- **Sector Mapping**: Comprehensive regulatory coverage across technology domains
+- **Risk Quantification**: Media attention, financial impact, and uncertainty metrics
+- **Mitigation Analysis**: Company response and compliance strategy extraction
+- **Structured Reporting**: Ranked regulatory issues by intensity and business impact
+
+## Technology Domains Covered
+
+- **AI & Machine Learning**: AI regulation, data privacy, algorithmic bias
+- **Social Media**: Content moderation, user privacy, platform responsibility
+- **Hardware & Chips**: Export controls, supply chain security, intellectual property
+- **E-commerce**: Antitrust, consumer protection, data security
+- **Advertising**: Privacy regulations, targeting restrictions, transparency
+
+## Usage Notes
+
+- Ensure all credentials are properly configured in the `.env` file before running
+- The notebook should be run sequentially from top to bottom
+- Analysis generates both inline results and structured HTML reports
+- Custom company watchlists can be modified in the notebook configuration
+- Graphviz installation is required for visualization features

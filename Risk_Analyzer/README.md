@@ -144,3 +144,46 @@ docker rmi risk-analyzer
 ## Project Structure
 
 ```
+Risk_Analyzer/
+├── README.md                 # Project documentation
+├── Risk_Analyzer.ipynb       # Main Jupyter notebook for risk analysis
+├── Risk_Analyzer.html        # Exported HTML version of the notebook
+├── requirements.txt          # Python dependencies
+├── Dockerfile               # Docker configuration
+├── .dockerignore            # Docker ignore file
+├── .env.example             # Example environment variables
+├── src/
+│   └── tool.py              # Core risk analysis functionality
+├── risk-analyzer/           # Additional risk analysis modules
+└── .venv/                   # Virtual environment (created during setup)
+```
+
+## Key Components
+
+- **Risk_Analyzer.ipynb**: Main analysis notebook containing the risk assessment workflow
+- **src/tool.py**: Core Python module with risk analysis and modeling functions
+- **risk-analyzer/**: Additional risk analysis modules and utilities
+
+## Analysis Features
+
+The risk analyzer provides:
+- **Multi-dimensional Risk Assessment**: Evaluates various risk types across different dimensions
+- **Quantitative Modeling**: Statistical analysis and risk quantification
+- **Visualization**: Risk charts, graphs, and reporting capabilities
+- **Automated Scoring**: Risk ranking and scoring systems
+
+## Risk Dimensions Covered
+
+- **Market Risk**: Price volatility, correlation analysis, beta calculations
+- **Credit Risk**: Default probability, credit spreads, rating analysis
+- **Operational Risk**: Business continuity, process failures, system risks
+- **Liquidity Risk**: Trading volume, bid-ask spreads, market depth
+- **Regulatory Risk**: Compliance requirements, policy changes, legal exposure
+
+## Usage Notes
+
+- Ensure all credentials are properly configured in the `.env` file before running
+- The notebook should be run sequentially from top to bottom
+- Analysis results are displayed inline in the notebook
+- Custom risk parameters can be modified in the notebook configuration
+- Graphviz installation is required for visualization features

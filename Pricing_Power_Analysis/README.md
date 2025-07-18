@@ -131,3 +131,35 @@ docker rmi pricing-power
 ## Project Structure
 
 ```
+Pricing_Power_Analysis/
+├── README.md                 # Project documentation
+├── Pricing Power.ipynb       # Main Jupyter notebook for pricing power analysis
+├── Pricing Power.html        # Exported HTML version of the notebook
+├── requirements.txt          # Python dependencies
+├── Dockerfile               # Docker configuration
+├── .dockerignore            # Docker ignore file
+├── .env.example             # Example environment variables
+├── src/
+│   └── tool.py              # Core pricing power analysis functionality
+└── .venv/                   # Virtual environment (created during setup)
+```
+
+## Key Components
+
+- **Pricing Power.ipynb**: Main analysis notebook containing the pricing power assessment workflow
+- **src/tool.py**: Core Python module with pricing power analysis and scoring functions
+
+## Analysis Features
+
+The pricing power analysis provides:
+- **Positive vs. Negative Scoring**: Quantifies both pricing strength and competitive pressure
+- **Sector Comparison**: Enables cross-industry competitive positioning analysis
+- **Temporal Tracking**: Monitors how pricing narratives evolve over time
+- **Confidence Metrics**: Balances positive and negative signals for robust assessment
+
+## Usage Notes
+
+- Ensure all credentials are properly configured in the `.env` file before running
+- The notebook should be run sequentially from top to bottom
+- Analysis results are displayed inline in the notebook
+- Custom company watchlists can be modified in the notebook configuration

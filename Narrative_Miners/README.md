@@ -131,3 +131,41 @@ docker rmi narrative-miner
 ## Project Structure
 
 ```
+Narrative_Miners/
+├── README.md                 # Project documentation
+├── NarrativeMiner.ipynb      # Main Jupyter notebook for narrative analysis
+├── NarrativeMiner.html       # Exported HTML version of the notebook
+├── requirements.txt          # Python dependencies
+├── Dockerfile               # Docker configuration
+├── .dockerignore            # Docker ignore file
+├── .env.example             # Example environment variables
+├── src/
+│   └── tool.py              # Core narrative mining functionality
+├── output/                  # Generated analysis outputs
+│   ├── ai_bubble_narrative_analysis.xlsx
+│   ├── ai_bubble_filings.xlsx
+│   ├── ai_bubble_transcripts.xlsx
+│   └── ai_bubble_news.xlsx
+└── .venv/                   # Virtual environment (created during setup)
+```
+
+## Key Components
+
+- **NarrativeMiner.ipynb**: Main analysis notebook containing the narrative mining workflow
+- **src/tool.py**: Core Python module with narrative extraction and analysis functions
+- **output/**: Directory containing Excel files with analysis results across different data sources
+
+## Output Files
+
+The analysis generates several Excel files in the `output/` directory:
+- **ai_bubble_narrative_analysis.xlsx**: Comprehensive narrative analysis results
+- **ai_bubble_filings.xlsx**: Narrative patterns extracted from SEC filings
+- **ai_bubble_transcripts.xlsx**: Narrative analysis from earnings call transcripts
+- **ai_bubble_news.xlsx**: Narrative patterns from news articles
+
+## Usage Notes
+
+- Ensure all credentials are properly configured in the `.env` file before running
+- The notebook should be run sequentially from top to bottom
+- Large datasets may require significant processing time
+- Results are automatically saved to the `output/` directory

@@ -131,3 +131,44 @@ docker rmi ai-disruption-risk
 ## Project Structure
 
 ```
+Report_Generator_AI_Threats/
+├── README.md                                    # Project documentation
+├── Report Generator_ AI Disruption Risk.ipynb   # Main Jupyter notebook
+├── Report Generator_ AI Disruption Risk.html    # Exported HTML version
+├── requirements.txt                             # Python dependencies
+├── Dockerfile                                  # Docker configuration
+├── .dockerignore                               # Docker ignore file
+├── .env.example                                # Example environment variables
+├── src/
+│   ├── tool.py                                 # Main analysis tool
+│   ├── report_generator.py                     # Report generation logic
+│   ├── html_report.py                          # HTML report formatting
+│   └── summary/
+│       ├── summary.py                          # Summary generation
+│       ├── summary_prompts.py                  # AI prompts for summaries
+│       └── token_manager.py                    # Token management utilities
+└── .venv/                                      # Virtual environment (created during setup)
+```
+
+## Key Components
+
+- **Report Generator_ AI Disruption Risk.ipynb**: Main analysis notebook for AI disruption risk assessment
+- **src/tool.py**: Core analysis functionality for AI threat evaluation
+- **src/report_generator.py**: Automated report generation and formatting
+- **src/html_report.py**: HTML report creation and styling
+- **src/summary/**: AI-powered summary generation modules
+
+## Analysis Features
+
+The AI disruption risk analysis provides:
+- **Risk Assessment**: Evaluates AI disruption vulnerability across companies
+- **Proactivity Scoring**: Measures strategic AI adoption initiatives
+- **Comparative Analysis**: Enables cross-company AI positioning comparison
+- **Structured Reporting**: Generates ranked lists by AI resilience and positioning
+
+## Usage Notes
+
+- Ensure all credentials are properly configured in the `.env` file before running
+- The notebook should be run sequentially from top to bottom
+- Analysis generates both inline results and structured HTML reports
+- Custom company watchlists can be modified in the notebook configuration
