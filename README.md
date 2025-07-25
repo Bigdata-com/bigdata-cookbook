@@ -52,6 +52,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Narrative evolution and temporal analysis
 - Automated narrative scoring and ranking systems
 
+### 👥 [Board Management Monitoring](./Board_Management_Monitoring/)
+**Automated Analysis of Board Member and Management Activity Exposure**
+
+- Comprehensive person tracking across multiple name variations and contexts
+- Company-specific filtering ensuring relevance to monitored organizations
+- Multi-mode search precision from strict entity matching to broader coverage
+- Temporal analysis showing how coverage patterns evolve over time
+- Entity-specific monitoring using bigdata's entity tracking capabilities
+
 ## Quick Start
 
 ### Prerequisites
@@ -96,6 +105,11 @@ bigdata-cookbook/
 │   └── README.md
 ├── Narrative_Miners/                                 # Narrative analysis tool
 │   ├── NarrativeMiner.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── Board_Management_Monitoring/                      # Board monitoring tool
+│   ├── Board_Management_Monitoring.ipynb
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md

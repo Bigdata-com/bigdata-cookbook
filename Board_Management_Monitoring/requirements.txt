@@ -1,0 +1,10 @@
+pandas>=1.5.0
+numpy>=1.24.0
+plotly>=5.0.0
+matplotlib>=3.5.0
+bigdata-client>=2.18.0
+bigdata-research-tools==0.17.2
+requests>=2.31.0
+jupyter>=1.0.0
+ipython>=8.0.0
+jupyterlab>=3.0.0 
