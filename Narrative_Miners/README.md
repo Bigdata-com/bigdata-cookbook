@@ -61,72 +61,7 @@ This project provides comprehensive narrative analysis and mining capabilities f
    - Follow the setup instructions in the notebook
    - Run cells sequentially to perform the analysis
 
-## Docker Installation and Usage
 
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine
-
-### Setup and Run
-
-1. **Clone and navigate to the project**:
-   ```bash
-   cd "Narrative_Miners"
-   ```
-
-2. **Set up credentials**:
-   - Copy the example environment file:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit the `.env` file and add your credentials:
-     ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
-     OPENAI_API_KEY=your_openai_api_key
-     ```
-
-3. **Build the Docker image**:
-   ```bash
-   docker build -t narrative-miner .
-   ```
-
-4. **Run the container**:
-   ```bash
-   docker run -p 8888:8888 narrative-miner
-   ```
-
-5. **Access JupyterLab**:
-   - When the server starts, it will display one or more access URLs in the terminal
-   - Click on one of the provided URLs (or copy and paste it into your browser) to open JupyterLab
-   - Open `NarrativeMiner.ipynb` and start analyzing
-
-### Docker Commands
-
-```bash
-# Build the Docker image
-docker build -t narrative-miner .
-
-# Run the container with port mapping
-docker run -p 8888:8888 narrative-miner
-
-# Run in background
-docker run -d -p 8888:8888 --name narrative-miner-container narrative-miner
-
-# Stop the container
-docker stop narrative-miner-container
-
-# Remove the container
-docker rm narrative-miner-container
-
-# View logs
-docker logs narrative-miner-container
-
-# Access container shell
-docker exec -it narrative-miner-container bash
-
-# Remove the image
-docker rmi narrative-miner
-```
 
 ## Project Structure
 
@@ -136,8 +71,6 @@ Narrative_Miners/
 ├── NarrativeMiner.ipynb      # Main Jupyter notebook for narrative analysis
 ├── NarrativeMiner.html       # Exported HTML version of the notebook
 ├── requirements.txt          # Python dependencies
-├── Dockerfile               # Docker configuration
-├── .dockerignore            # Docker ignore file
 ├── .env.example             # Example environment variables
 ├── src/
 │   └── tool.py              # Core narrative mining functionality

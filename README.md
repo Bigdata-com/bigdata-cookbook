@@ -61,10 +61,7 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Bigdata API access
 - OpenAI API key (for advanced features)
 
-### Deployment Options
-
-- **Local Installation**: Each project has its own detailed README with specific installation and usage instructions
-- **Docker Deployment**: All projects include Docker support for easy containerized deployment
+### Installation
 
 Each project has its own detailed README with specific installation and usage instructions.
 
@@ -108,7 +105,7 @@ bigdata-cookbook/
 ## Features
 
 - **Client-Ready**: Each project is self-contained with its own dependencies and documentation
-- **Easy Setup**: Uses uv for fast, reliable dependency management and Docker for containerized deployment
+- **Easy Setup**: Uses uv for fast, reliable dependency management
 - **Comprehensive Analysis**: Combines multiple data sources for robust insights
 - **Professional Output**: Generates Excel reports, HTML visualizations, and structured data
 - **Modular Design**: Each project can be run independently

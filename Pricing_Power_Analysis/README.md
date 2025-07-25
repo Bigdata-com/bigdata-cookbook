@@ -61,72 +61,7 @@ This project provides comprehensive pricing power analysis tools that assess com
    - Follow the setup instructions in the notebook
    - Run cells sequentially to perform the analysis
 
-## Docker Installation and Usage
 
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine
-
-### Setup and Run
-
-1. **Clone and navigate to the project**:
-   ```bash
-   cd "Pricing_Power_Analysis"
-   ```
-
-2. **Set up credentials**:
-   - Copy the example environment file:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit the `.env` file and add your credentials:
-     ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
-     OPENAI_API_KEY=your_openai_api_key
-     ```
-
-3. **Build the Docker image**:
-   ```bash
-   docker build -t pricing-power .
-   ```
-
-4. **Run the container**:
-   ```bash
-   docker run -p 8888:8888 pricing-power
-   ```
-
-5. **Access JupyterLab**:
-   - When the server starts, it will display one or more access URLs in the terminal
-   - Click on one of the provided URLs (or copy and paste it into your browser) to open JupyterLab
-   - Open `Pricing Power.ipynb` and start analyzing
-
-### Docker Commands
-
-```bash
-# Build the Docker image
-docker build -t pricing-power .
-
-# Run the container with port mapping
-docker run -p 8888:8888 pricing-power
-
-# Run in background
-docker run -d -p 8888:8888 --name pricing-power-container pricing-power
-
-# Stop the container
-docker stop pricing-power-container
-
-# Remove the container
-docker rm pricing-power-container
-
-# View logs
-docker logs pricing-power-container
-
-# Access container shell
-docker exec -it pricing-power-container bash
-
-# Remove the image
-docker rmi pricing-power
-```
 
 ## Project Structure
 
@@ -136,8 +71,6 @@ Pricing_Power_Analysis/
 ├── Pricing Power.ipynb       # Main Jupyter notebook for pricing power analysis
 ├── Pricing Power.html        # Exported HTML version of the notebook
 ├── requirements.txt          # Python dependencies
-├── Dockerfile               # Docker configuration
-├── .dockerignore            # Docker ignore file
 ├── .env.example             # Example environment variables
 ├── src/
 │   └── tool.py              # Core pricing power analysis functionality

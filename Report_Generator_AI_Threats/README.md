@@ -61,73 +61,6 @@ This project systematically evaluates both AI disruption risks and proactive AI 
    - Follow the setup instructions in the notebook
    - Run cells sequentially to generate the AI disruption risk report
 
-## Docker Installation and Usage
-
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine
-
-### Setup and Run
-
-1. **Clone and navigate to the project**:
-   ```bash
-   cd "Report_Generator_AI_Threats"
-   ```
-
-2. **Set up credentials**:
-   - Copy the example environment file:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit the `.env` file and add your credentials:
-     ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
-     OPENAI_API_KEY=your_openai_api_key
-     ```
-
-3. **Build the Docker image**:
-   ```bash
-   docker build -t ai-disruption-risk .
-   ```
-
-4. **Run the container**:
-   ```bash
-   docker run -p 8888:8888 ai-disruption-risk
-   ```
-
-5. **Access JupyterLab**:
-   - When the server starts, it will display one or more access URLs in the terminal
-   - Click on one of the provided URLs (or copy and paste it into your browser) to open JupyterLab
-   - Open `Report Generator_ AI Disruption Risk.ipynb` and start analyzing
-
-### Docker Commands
-
-```bash
-# Build the Docker image
-docker build -t ai-disruption-risk .
-
-# Run the container with port mapping
-docker run -p 8888:8888 ai-disruption-risk
-
-# Run in background
-docker run -d -p 8888:8888 --name ai-disruption-risk-container ai-disruption-risk
-
-# Stop the container
-docker stop ai-disruption-risk-container
-
-# Remove the container
-docker rm ai-disruption-risk-container
-
-# View logs
-docker logs ai-disruption-risk-container
-
-# Access container shell
-docker exec -it ai-disruption-risk-container bash
-
-# Remove the image
-docker rmi ai-disruption-risk
-```
-
 ## Project Structure
 
 ```
@@ -136,8 +69,6 @@ Report_Generator_AI_Threats/
 ├── Report Generator_ AI Disruption Risk.ipynb   # Main Jupyter notebook
 ├── Report Generator_ AI Disruption Risk.html    # Exported HTML version
 ├── requirements.txt                             # Python dependencies
-├── Dockerfile                                  # Docker configuration
-├── .dockerignore                               # Docker ignore file
 ├── .env.example                                # Example environment variables
 ├── src/
 │   ├── tool.py                                 # Main analysis tool

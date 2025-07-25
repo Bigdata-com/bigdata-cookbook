@@ -74,73 +74,6 @@ This project provides comprehensive thematic analysis and screening capabilities
    - Follow the setup instructions in the notebook
    - Run cells sequentially to perform the analysis
 
-## Docker Installation and Usage
-
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine
-
-### Setup and Run
-
-1. **Clone and navigate to the project**:
-   ```bash
-   cd "Thematic_Screener"
-   ```
-
-2. **Set up credentials**:
-   - Copy the example environment file:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit the `.env` file and add your credentials:
-     ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
-     OPENAI_API_KEY=your_openai_api_key
-     ```
-
-3. **Build the Docker image**:
-   ```bash
-   docker build -t thematic-screener .
-   ```
-
-4. **Run the container**:
-   ```bash
-   docker run -p 8888:8888 thematic-screener
-   ```
-
-5. **Access JupyterLab**:
-   - When the server starts, it will display one or more access URLs in the terminal
-   - Click on one of the provided URLs (or copy and paste it into your browser) to open JupyterLab
-   - Open `ThematicScreener.ipynb` and start analyzing
-
-### Docker Commands
-
-```bash
-# Build the Docker image
-docker build -t thematic-screener .
-
-# Run the container with port mapping
-docker run -p 8888:8888 thematic-screener
-
-# Run in background
-docker run -d -p 8888:8888 --name thematic-screener-container thematic-screener
-
-# Stop the container
-docker stop thematic-screener-container
-
-# Remove the container
-docker rm thematic-screener-container
-
-# View logs
-docker logs thematic-screener-container
-
-# Access container shell
-docker exec -it thematic-screener-container bash
-
-# Remove the image
-docker rmi thematic-screener
-```
-
 ## Project Structure
 
 ```
@@ -149,8 +82,6 @@ Thematic_Screener/
 ├── ThematicScreener.ipynb    # Main Jupyter notebook for thematic analysis
 ├── ThematicScreener.html     # Exported HTML version of the notebook
 ├── requirements.txt          # Python dependencies
-├── Dockerfile               # Docker configuration
-├── .dockerignore            # Docker ignore file
 ├── .env.example             # Example environment variables
 ├── src/
 │   └── tool.py              # Core thematic screening functionality

@@ -73,73 +73,6 @@ This project systematically analyzes regulatory exposure across company watchlis
    - Follow the setup instructions in the notebook
    - Run cells sequentially to generate the regulatory risk report
 
-## Docker Installation and Usage
-
-### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) or Docker Engine
-
-### Setup and Run
-
-1. **Clone and navigate to the project**:
-   ```bash
-   cd "Report_Generator_Regulatory_Issues_in_Tech"
-   ```
-
-2. **Set up credentials**:
-   - Copy the example environment file:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit the `.env` file and add your credentials:
-     ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
-     OPENAI_API_KEY=your_openai_api_key
-     ```
-
-3. **Build the Docker image**:
-   ```bash
-   docker build -t regulatory-issues .
-   ```
-
-4. **Run the container**:
-   ```bash
-   docker run -p 8888:8888 regulatory-issues
-   ```
-
-5. **Access JupyterLab**:
-   - When the server starts, it will display one or more access URLs in the terminal
-   - Click on one of the provided URLs (or copy and paste it into your browser) to open JupyterLab
-   - Open `Report Generator_ Regulatory Issues.ipynb` and start analyzing
-
-### Docker Commands
-
-```bash
-# Build the Docker image
-docker build -t regulatory-issues .
-
-# Run the container with port mapping
-docker run -p 8888:8888 regulatory-issues
-
-# Run in background
-docker run -d -p 8888:8888 --name regulatory-issues-container regulatory-issues
-
-# Stop the container
-docker stop regulatory-issues-container
-
-# Remove the container
-docker rm regulatory-issues-container
-
-# View logs
-docker logs regulatory-issues-container
-
-# Access container shell
-docker exec -it regulatory-issues-container bash
-
-# Remove the image
-docker rmi regulatory-issues
-```
-
 ## Project Structure
 
 ```
@@ -148,8 +81,6 @@ Report_Generator_Regulatory_Issues_in_Tech/
 ├── Report Generator_ Regulatory Issues.ipynb    # Main Jupyter notebook
 ├── Report Generator_ Regulatory Issues.html     # Exported HTML version
 ├── requirements.txt                             # Python dependencies
-├── Dockerfile                                  # Docker configuration
-├── .dockerignore                               # Docker ignore file
 ├── .env.example                                # Example environment variables
 ├── src/
 │   ├── tool.py                                 # Main analysis tool
