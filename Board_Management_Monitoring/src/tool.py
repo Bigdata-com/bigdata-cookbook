@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Essential Board Management Monitoring Tools
-
-This module contains only the core utility functions needed for the board management 
-monitoring workflow, extracted from the Colab notebook.
-"""
-
 import os
 import time
 import pandas as pd
@@ -115,16 +107,15 @@ def build_queries_for_monitoring(
     else:
         print("Using all available news sources (no source filtering)")
 
-    # Build date ranges list directly from tuples
+    # Build date ranges list directly from tuples as ISO strings for JSON compatibility
     date_ranges_list = []
     for start, end in date_periods:
         start_date = parse_date(start)
         end_date = parse_date(end)
-        abs_date_range = AbsoluteDateRange(
-            datetime.combine(start_date, datetime.min.time()),
-            datetime.combine(end_date, datetime.min.time())
-        )
-        date_ranges_list.append(abs_date_range)
+        # Convert to ISO string tuples to avoid JSON serialization issues in tracing
+        start_iso = datetime.combine(start_date, datetime.min.time()).isoformat()
+        end_iso = datetime.combine(end_date, datetime.min.time()).isoformat()
+        date_ranges_list.append((start_iso, end_iso))
 
     # Build base queries
     for person_name, data in persons.items():
@@ -674,69 +665,6 @@ def run_monitoring_workflow(
         df_results = process_results_to_dataframe(deduplicated_results)
 
     return df_results
-
-
-def run_complete_monitoring_workflow_legacy(
-    dates: Dict[str, Dict[int, Any]],
-    persons: Dict[str, Dict[str, Any]],
-    company: Dict[str, str],
-    company_name: str,
-    news_search_mapping: List[str],
-    board_themes: List[str],
-    search_mode: str = "strict",
-    limit: int = 100,
-    sources: Optional[Dict[str, str]] = None,
-    use_source_filter: bool = True,
-    run_search_function=None,
-    **search_kwargs
-) -> pd.DataFrame:
-    """
-    Legacy version that accepts the old date format for backward compatibility.
-    """
-    # 1. Build queries
-    with timer("Building queries"):
-        queries, date_ranges, query_details = build_queries_for_monitoring(
-            dates=dates,
-            persons=persons,
-            company=company,
-            news_search_mapping=news_search_mapping,
-            board_themes=board_themes,
-            search_mode=search_mode,
-            sources=sources,
-            use_source_filter=use_source_filter
-        )
-
-    # 2. Execute search
-    with timer("Executing search"):
-        if run_search_function:
-            search_results = run_search_function(
-                queries=queries,
-                date_ranges=date_ranges,
-                limit=limit,
-                **search_kwargs
-            )
-        else:
-            raise ValueError("run_search_function must be provided")
-
-    # 3. Filter results
-    with timer("Filtering results"):
-        filtered_results = filter_documents_by_company(
-            search_results=search_results,
-            query_details_template=query_details,
-            company_name=company_name,
-            search_mode=search_mode
-        )
-
-    # 4. Deduplicate
-    with timer("Deduplicating results"):
-        deduplicated_results = deduplicate_results(filtered_results)
-
-    # 5. Convert to DataFrame
-    with timer("Converting to DataFrame"):
-        df_results = process_results_to_dataframe(deduplicated_results)
-
-    return df_results
-
 
 
 def plot_top_sources(df, person_name="Person", top_n=5, interactive=True):
