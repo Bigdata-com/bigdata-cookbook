@@ -2,6 +2,14 @@
 
 A comprehensive collection of financial analysis tools and report generators built on the Bigdata API and research tools. This repository contains ready-to-use notebooks for thematic screening, narrative mining, and various sector-specific analyses including pricing power, AI disruption risks, and regulatory issues in the technology sector.
 
+## Features
+
+- **Client-Ready**: Each project is self-contained with its own dependencies and documentation
+- **Easy Setup**: Uses Docker for containerized deployment or uv for fast, reliable dependency management
+- **Comprehensive Analysis**: Combines multiple data sources for robust insights
+- **Professional Output**: Generates Excel reports, HTML visualizations, and structured data
+- **Modular Design**: Each project can be run independently
+
 ## Projects
 
 ### 🔍 [Thematic Screener](./Thematic_Screener/)
@@ -126,14 +134,6 @@ bigdata-cookbook/
 │   └── README.md
 └── README.md                                        # This file
 ```
-
-## Features
-
-- **Client-Ready**: Each project is self-contained with its own dependencies and documentation
-- **Easy Setup**: Uses Docker for containerized deployment or uv for fast, reliable dependency management
-- **Comprehensive Analysis**: Combines multiple data sources for robust insights
-- **Professional Output**: Generates Excel reports, HTML visualizations, and structured data
-- **Modular Design**: Each project can be run independently
 
 ## Requirements
 
