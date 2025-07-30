@@ -65,6 +65,12 @@ A comprehensive collection of financial analysis tools and report generators bui
 
 ### Prerequisites
 
+#### For Docker Installation
+- Docker installed on your system
+- Bigdata API access
+- OpenAI API key (for advanced features)
+
+#### For Local Installation
 - Python 3.8 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
 - Bigdata API access
@@ -72,7 +78,12 @@ A comprehensive collection of financial analysis tools and report generators bui
 
 ### Installation
 
-Each project has its own detailed README with specific installation and usage instructions.
+Each project supports both Docker and local installation methods:
+
+- **Docker Installation**: Each project includes a Dockerfile for containerized deployment
+- **Local Installation**: Traditional installation using Python and uv package manager
+
+Each project has its own detailed README with specific installation and usage instructions for both methods.
 
 ## Project Structure
 
@@ -119,7 +130,7 @@ bigdata-cookbook/
 ## Features
 
 - **Client-Ready**: Each project is self-contained with its own dependencies and documentation
-- **Easy Setup**: Uses uv for fast, reliable dependency management
+- **Easy Setup**: Uses Docker for containerized deployment or uv for fast, reliable dependency management
 - **Comprehensive Analysis**: Combines multiple data sources for robust insights
 - **Professional Output**: Generates Excel reports, HTML visualizations, and structured data
 - **Modular Design**: Each project can be run independently
