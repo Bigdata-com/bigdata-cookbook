@@ -11,14 +11,55 @@ This project systematically analyzes regulatory exposure across company watchlis
 - **Mitigation strategy extraction** from corporate communications to identify compliance approaches
 - **Structured output for reporting** ranking regulatory issues by intensity and business impact
 
-## Local Installation and Usage
+## Installation and Usage
 
-### Prerequisites
+### Option 1: Docker Installation
+
+#### Prerequisites
+- Docker installed on your system
+
+#### Setup and Run with Docker
+
+1. **Clone and navigate to the project**:
+   ```bash
+   cd "Report_Generator_Regulatory_Issues_in_Tech"
+   ```
+
+2. **Set up credentials**:
+   - Copy the example environment file:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edit the `.env` file and add your credentials:
+     ```
+     BIGDATA_USERNAME=your_username
+     BIGDATA_PASSWORD=your_password
+     OPENAI_API_KEY=your_openai_api_key
+     ```
+
+3. **Build and run the Docker container**:
+   ```bash
+   # Build the Docker image
+   docker build -t regulatory-issues-report-generator .
+   
+   # Run the container
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app regulatory-issues-report-generator
+   ```
+
+4. **Access JupyterLab**:
+   - Open your browser and navigate to `http://localhost:8888`
+   - Open `Report Generator_ Regulatory Issues.ipynb`
+   - Follow the setup instructions in the notebook
+   - Run cells sequentially to generate the regulatory risk report
+
+### Option 2: Local Installation
+
+#### Prerequisites
 - Python 3.8 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
 - [Graphviz](https://pypi.org/project/graphviz/) - Required for graph visualization features
 
-### Setup and Run
+#### Setup and Run
 
 1. **Install uv** (if not already installed):
    ```bash
@@ -36,6 +77,7 @@ This project systematically analyzes regulatory exposure across company watchlis
    # On Windows
    # Download from https://graphviz.org/download/
    ```
+
 3. **Clone and navigate to the project**:
    ```bash
    cd "Report_Generator_Regulatory_Issues_in_Tech"

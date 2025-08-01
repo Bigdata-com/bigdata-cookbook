@@ -11,13 +11,54 @@ This project provides comprehensive narrative analysis and mining capabilities f
 - **Narrative evolution** and temporal analysis
 - **Automated narrative scoring** and ranking systems
 
-## Local Installation and Usage
+## Installation and Usage
 
-### Prerequisites
+### Option 1: Docker Installation
+
+#### Prerequisites
+- Docker installed on your system
+
+#### Setup and Run with Docker
+
+1. **Clone and navigate to the project**:
+   ```bash
+   cd "Narrative_Miners"
+   ```
+
+2. **Set up credentials**:
+   - Copy the example environment file:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edit the `.env` file and add your credentials:
+     ```
+     BIGDATA_USERNAME=your_username
+     BIGDATA_PASSWORD=your_password
+     OPENAI_API_KEY=your_openai_api_key
+     ```
+
+3. **Build and run the Docker container**:
+   ```bash
+   # Build the Docker image
+   docker build -t narrative-miners .
+   
+   # Run the container
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app narrative-miners
+   ```
+
+4. **Access JupyterLab**:
+   - Open your browser and navigate to `http://localhost:8888`
+   - Open `NarrativeMiner.ipynb`
+   - Follow the setup instructions in the notebook
+   - Run cells sequentially to perform the analysis
+
+### Option 2: Local Installation
+
+#### Prerequisites
 - Python 3.8 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
 
-### Setup and Run
+#### Setup and Run
 
 1. **Install uv** (if not already installed):
    ```bash

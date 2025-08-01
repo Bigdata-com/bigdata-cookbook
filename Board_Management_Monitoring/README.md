@@ -1,25 +1,64 @@
 # Board Management Monitoring
 
-## Automated Analysis of Board Member and Management Activity Exposure
+## Automated Board Management and Monitoring Analysis Tool
 
-This project provides comprehensive board management monitoring capabilities for investment research and governance analysis. It's designed for analysts, portfolio managers, and investment professionals to systematically track specific individuals across news coverage, providing insights into management activity and board dynamics.
+This project provides comprehensive board management and monitoring capabilities for corporate governance analysis. It's designed for governance professionals, board members, and investment analysts to systematically assess board effectiveness, composition, and governance practices.
 
 ## Features
 
-- **Comprehensive person tracking** across multiple name variations and contexts
-- **Company-specific filtering** ensuring relevance to the monitored organization
-- **Multi-mode search precision** from strict entity matching to broader coverage with post-filtering
-- **Source filtering** enabling focused analysis across trusted news sources
-- **Temporal analysis** showing how coverage patterns evolve over time
-- **Entity-specific monitoring** using bigdata's entity tracking capabilities
+- **Board composition analysis** and diversity assessment
+- **Governance practice monitoring** and compliance tracking
+- **Board effectiveness evaluation** and performance metrics
+- **Automated governance reporting** and risk assessment
 
-## Local Installation and Usage
+## Installation and Usage
 
-### Prerequisites
+### Option 1: Docker Installation
+
+#### Prerequisites
+- Docker installed on your system
+
+#### Setup and Run with Docker
+
+1. **Clone and navigate to the project**:
+   ```bash
+   cd "Board_Management_Monitoring"
+   ```
+
+2. **Set up credentials**:
+   - Copy the example environment file:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edit the `.env` file and add your credentials:
+     ```
+     BIGDATA_USERNAME=your_username
+     BIGDATA_PASSWORD=your_password
+     OPENAI_API_KEY=your_openai_api_key
+     ```
+
+3. **Build and run the Docker container**:
+   ```bash
+   # Build the Docker image
+   docker build -t board-management-monitoring .
+   
+   # Run the container
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app board-management-monitoring
+   ```
+
+4. **Access JupyterLab**:
+   - Open your browser and navigate to `http://localhost:8888`
+   - Open `Board_Management_Monitoring.ipynb`
+   - Follow the setup instructions in the notebook
+   - Run cells sequentially to perform the analysis
+
+### Option 2: Local Installation
+
+#### Prerequisites
 - Python 3.8 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
 
-### Setup and Run
+#### Setup and Run
 
 1. **Install uv** (if not already installed):
    ```bash
@@ -40,9 +79,9 @@ This project provides comprehensive board management monitoring capabilities for
    ```
 
 4. **Set up credentials**:
-   - Create a `.env` file in the project directory:
+   - Copy the example environment file:
      ```bash
-     touch .env
+     cp .env.example .env
      ```
    - Edit the `.env` file and add your credentials:
      ```
@@ -68,55 +107,41 @@ This project provides comprehensive board management monitoring capabilities for
 ```
 Board_Management_Monitoring/
 ├── README.md                           # Project documentation
-├── Board_Management_Monitoring.ipynb   # Main Jupyter notebook for board monitoring
-├── Board_Management_Monitoring.html    # Exported HTML version of the notebook
+├── Board_Management_Monitoring.ipynb    # Main Jupyter notebook for board analysis
+├── Board_Management_Monitoring.html     # Exported HTML version of the notebook
 ├── requirements.txt                    # Python dependencies
+├── .env.example                       # Example environment variables
 ├── src/
 │   └── tool.py                        # Core board monitoring functionality
+├── output/                            # Generated analysis outputs
 └── .venv/                             # Virtual environment (created during setup)
 ```
 
 ## Key Components
 
 - **Board_Management_Monitoring.ipynb**: Main analysis notebook containing the board monitoring workflow
-- **src/tool.py**: Core Python module with entity tracking and monitoring functions
+- **src/tool.py**: Core Python module with board analysis and monitoring functions
+- **output/**: Directory containing analysis results and reports
 
 ## Analysis Features
 
 The board management monitoring provides:
-- **Entity Tracking**: Systematic monitoring of specific individuals across news coverage
-- **Multi-Mode Search**: Strict entity matching to broader coverage with post-filtering
-- **Company Filtering**: Ensures relevance to the monitored organization
-- **Temporal Analysis**: Shows how coverage patterns evolve over time
-- **Source Filtering**: Focused analysis across trusted news sources
+- **Board Composition Analysis**: Diversity, expertise, and independence assessment
+- **Governance Practice Monitoring**: Compliance and best practice tracking
+- **Effectiveness Evaluation**: Performance metrics and board dynamics analysis
+- **Risk Assessment**: Governance risk identification and mitigation strategies
 
-## Search Modes
+## Governance Areas Covered
 
-- **Strict Mode**: Precise entity matching for high-confidence results
-- **Relaxed Mode**: Broader coverage with post-filtering for comprehensive analysis
-- **Relaxed Post Mode**: Extended coverage with additional filtering criteria
-
-## Monitoring Capabilities
-
-- **Person Tracking**: Monitor specific individuals across multiple name variations
-- **Management Themes**: Track mentions related to management integrity and governance
-- **Board Governance**: Analyze board-related activities and decisions
-- **Media Exposure**: Quantify and analyze media coverage patterns
-- **Risk Assessment**: Identify potential governance and management risks
+- **Board Composition**: Director diversity, independence, expertise alignment
+- **Committee Structure**: Audit, compensation, nominating committee effectiveness
+- **Governance Policies**: Corporate governance guidelines and compliance
+- **Board Dynamics**: Meeting frequency, director engagement, succession planning
+- **Risk Oversight**: Risk management framework and board oversight practices
 
 ## Usage Notes
 
 - Ensure all credentials are properly configured in the `.env` file before running
 - The notebook should be run sequentially from top to bottom
-- Customize person configurations and company settings in the notebook
-- Analysis results are displayed inline with interactive visualizations
-- Large datasets may require significant processing time
-
-## Real-World Applications
-
-This workflow is particularly useful for:
-- **Governance Analysis**: Monitoring board member activities and decisions
-- **Management Tracking**: Following executive mentions and activities
-- **Risk Assessment**: Identifying potential governance or management issues
-- **Investment Research**: Understanding management dynamics and reputation signals
-- **Compliance Monitoring**: Tracking regulatory and compliance-related mentions 
+- Analysis results are automatically saved to the `output/` directory
+- Custom board assessment criteria can be modified in the notebook configuration 

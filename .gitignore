@@ -3,3 +3,9 @@
 **/__pycache__/
 **/output/
 .DS_Store
+
+.jupyter/
+.local/
+.cache/
+.config/
+.ipython/
