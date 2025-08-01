@@ -61,6 +61,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Temporal analysis showing how coverage patterns evolve over time
 - Entity-specific monitoring using bigdata's entity tracking capabilities
 
+### 🌊 [Liquid Cooling Market Watch](./Liquid_Cooling_Market_Watch/)
+**Automated Analysis of Liquid Cooling Technology Providers and Adopters**
+
+- Dual-role classification distinguishing technology providers from adopters
+- Network analysis mapping provider-customer relationships in the cooling ecosystem
+- Temporal tracking of adoption patterns and market evolution
+- Market positioning analysis with confidence scoring for investment decisions
+- Comprehensive ecosystem mapping for infrastructure investment intelligence
+
 ## Quick Start
 
 ### Prerequisites
@@ -110,6 +119,11 @@ bigdata-cookbook/
 │   └── README.md
 ├── Board_Management_Monitoring/                      # Board monitoring tool
 │   ├── Board_Management_Monitoring.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── Liquid_Cooling_Market_Watch/                      # Liquid cooling analysis
+│   ├── Liquid_Cooling_Market_Watch.ipynb
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md

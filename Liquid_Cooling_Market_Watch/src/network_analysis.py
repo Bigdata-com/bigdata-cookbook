@@ -297,12 +297,13 @@ def provider_adopter_net(df_filtered_adopters,
         fig = go.Figure(
             data=[edge_trace, node_trace, legend_adopter, legend_provider],
             layout=go.Layout(
-                title="Provider-Adopter Network",
-                titlefont_size=16,
+                title={
+                    'text': "Provider-Adopter Network",
+                    'font': {'size': 16}
+                },
                 showlegend=True,
                 hovermode='closest',
-                margin=dict(b=20, l=20, r=20,
-                            t=40),  # Reduced left and right margins
+                margin=dict(b=20, l=20, r=20, t=40),  # Reduced left and right margins
                 scene=dict(
                     xaxis=dict(showgrid=True,
                                zeroline=True,
@@ -316,9 +317,12 @@ def provider_adopter_net(df_filtered_adopters,
                                zeroline=True,
                                backgroundcolor='#D3D3D3',
                                gridcolor='rgba(255, 255, 255, 0.1)'),
-                ),height=800,  # Increase height
+                ),
+                height=800,  # Increase height
                 width=1000   # Increase width
-            ))
+            )
+        )
+
 
         if dash:
             return fig
