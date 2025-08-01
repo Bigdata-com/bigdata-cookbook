@@ -43,7 +43,7 @@ This project provides comprehensive board management and monitoring capabilities
    docker build -t board-management-monitoring .
    
    # Run the container
-   docker run -p 8888:8888 --env-file .env -v $(pwd):/app board-management-monitoring
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app board-management-monitoring
    ```
 
 4. **Access JupyterLab**:

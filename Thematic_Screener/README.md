@@ -43,7 +43,7 @@ This project provides comprehensive thematic analysis and screening capabilities
    docker build -t thematic-screener .
    
    # Run the container
-   docker run -p 8888:8888 --env-file .env -v $(pwd):/app thematic-screener
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app thematic-screener
    ```
 
 4. **Access JupyterLab**:

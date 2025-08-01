@@ -43,7 +43,7 @@ This project systematically analyzes regulatory exposure across company watchlis
    docker build -t regulatory-issues-report-generator .
    
    # Run the container
-   docker run -p 8888:8888 --env-file .env -v $(pwd):/app regulatory-issues-report-generator
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app regulatory-issues-report-generator
    ```
 
 4. **Access JupyterLab**:

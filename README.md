@@ -84,6 +84,16 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Bigdata API access
 - OpenAI API key (for advanced features)
 
+#### Clone repository
+
+Clone the repository to your local computer. Please follow the below steps:
+
+- Navigate your local computer to the folder where you want to clone the repo and run the following command:
+```bash
+git clone https://github.com/Bigdata-com/bigdata-cookbook.git
+```
+
+
 ### Installation
 
 Each project supports both Docker and local installation methods:

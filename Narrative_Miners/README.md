@@ -43,7 +43,7 @@ This project provides comprehensive narrative analysis and mining capabilities f
    docker build -t narrative-miners .
    
    # Run the container
-   docker run -p 8888:8888 --env-file .env -v $(pwd):/app narrative-miners
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app narrative-miners
    ```
 
 4. **Access JupyterLab**:

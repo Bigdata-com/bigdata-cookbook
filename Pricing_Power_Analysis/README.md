@@ -43,7 +43,7 @@ This project provides comprehensive pricing power analysis tools that assess com
    docker build -t pricing-power-analysis .
    
    # Run the container
-   docker run -p 8888:8888 --env-file .env -v $(pwd):/app pricing-power-analysis
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app pricing-power-analysis
    ```
 
 4. **Access JupyterLab**:

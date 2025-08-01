@@ -43,7 +43,7 @@ This project systematically evaluates both AI disruption risks and proactive AI 
    docker build -t ai-threats-report-generator .
    
    # Run the container
-   docker run -p 8888:8888 --env-file .env -v $(pwd):/app ai-threats-report-generator
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app ai-threats-report-generator
    ```
 
 4. **Access JupyterLab**:

@@ -16,32 +16,23 @@ RUN apk update && apk add --no-cache \
     git
 
 # Create non-root user 'bigdata' and necessary directories
-RUN adduser -D bigdata && \
-    mkdir /app /data && \
-    chown bigdata:bigdata /app /data
+RUN adduser --disabled-password bigdata 
 
 # Remove setuid and setgid permissions for extra security
 RUN find / -perm +6000 -type f -exec chmod a-s {} \; || true
 
-# Switch to non-root user
-USER bigdata
-WORKDIR /app
-
 # Copy requirements file before installing dependencies
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+# Install Python dependencies && Install JupyterLab
+ENV PIP_ROOT_USER_ACTION=ignore
+RUN python -m pip install --upgrade pip \
+  && python -m pip install --no-cache-dir -r requirements.txt \
+  && python -m pip install --no-cache-dir jupyterlab
 
-# Install JupyterLab
-RUN pip install jupyterlab python-dotenv
-
-# Copy project files
-COPY . .
-
-# Ensure JupyterLab is in the PATH (just in case)
-ENV PATH="/home/bigdata/.local/bin:$PATH"
+# Switch to non-root user
+USER bigdata
+WORKDIR /app
 
 # Expose JupyterLab port
 EXPOSE 8888

@@ -43,7 +43,7 @@ This project provides comprehensive risk analysis capabilities for financial and
    docker build -t risk-analyzer .
    
    # Run the container
-   docker run -p 8888:8888 --env-file .env -v $(pwd):/app risk-analyzer
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app risk-analyzer
    ```
 
 4. **Access JupyterLab**:
