@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ main_theme }} - {{ date }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #E0E0E0;
+            margin: 20px;
+            padding: 0;
+            line-height: 1.6;
+        }
+        h1, h2, h3 {
+            color: #0080BF; /* Darker blue color for headings */
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1E1E1E;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.4);
+            position: relative;  /* For positioning the logo */
+        }
+        .title {
+            text-align: center;
+            font-size: 2em;
+            margin-bottom: 20px;
+            color: #00BFFF; /* Dynamic blue color for the title */
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+        .logo {
+            position: absolute;
+            top: 20px;
+            left: 20px; /* Positioned to the left */
+            width: 180px;  /* Adjust the size as needed */
+            height: auto;
+        }
+        .content {
+            display: flex;
+        }
+        .left-column {
+            flex: 1;
+            max-width: 300px;
+            margin-right: 20px;
+        }
+        .right-column {
+            flex: 3;
+        }
+        .separator {
+            width: 2px;
+            background-color: #00BFFF; /* Dynamic blue color for the separator */
+            margin-right: 20px;
+        }
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            color: #0080BF; /* Darker blue color for section titles */
+            text-transform: uppercase;
+        }
+        .bullet-points {
+            list-style-type: disc;
+            margin-left: 20px;
+            color: #E0E0E0; /* White color for bullet points */
+        }
+        .topic-section {
+            margin-bottom: 40px;  /* Increased space between updates */
+            padding: 20px;
+            background-color: #2A2A2A;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.3);
+            position: relative;  /* To position the counters */
+        }
+        .topic-title {
+            font-size: 1.7em;
+            padding-top: 40px; /* Increase space above the title */
+            color: #0080BF; /* Darker blue color for topic titles */
+            text-transform: uppercase;
+        }
+        .counter-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start; /* Align content to the left */
+            gap: 20px; /* Space between each counter */
+            margin-bottom: 60px; /* Increased space between the title and counters */
+        }
+        .news-counter, .novelty-counter, .impact-counter, .magnitude-counter {
+            background-color: #00BFFF; /* Dynamic blue color for counters */
+            color: #121212; /* Black text color for counters */
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 1em;
+            box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;  /* Align text and icon vertically */
+        }
+        .novelty-counter {
+            background-color: transparent;
+            color: #FFA500;  /* Orange color for the flame icon and text */
+        }
+        .flame-icon {
+            vertical-align: middle;
+            margin-right: 5px;
+            width: 24px;  /* Adjusted width of the flame icon */
+            height: 24px; /* Adjusted height of the flame icon */
+        }
+        .impact-counter {
+            color: #121212; /* Black text color for impact */
+        }
+        .impact-counter.positive {
+            background-color: #4CAF50; /* Green for positive impact */
+        }
+        .impact-counter.negative {
+            background-color: #F44336; /* Red for negative impact */
+        }
+        .impact-counter.neutral {
+            background-color: transparent; /* Transparent for neutral impact */
+            color: #00BFFF; /* Dynamic blue for neutral impact text */
+        }
+        .magnitude-counter {
+            background-color: transparent; /* Transparent for the magnitude box */
+            color: #00BFFF; /* Dynamic blue for magnitude text */
+        }
+        .magnitude-counter.high {
+            color: #F44336; /* Red for high magnitude */
+        }
+        .magnitude-counter.medium {
+            color: #FFD700; /* Yellow for medium magnitude */
+        }
+        .magnitude-counter.low {
+            color: #FFFFFF; /* White for low magnitude */
+        }
+        .impact-icon, .intensity-arrow {
+            vertical-align: middle;
+            margin-right: 5px;
+            width: 24px;  /* Adjusted width of the icons */
+            height: 24px; /* Adjusted height of the icons */
+        }
+        .counter-label {
+            font-size: 0.8em;
+            color: #E0E0E0; /* White color for the counter labels */
+            margin-right: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .description {
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            color: #E0E0E0; /* White color for description */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Logo Section -->
+        <img src="bigdata-logo-white.svg" alt="Big Data Logo" class="logo">
+        
+        <!-- Title Section -->
+        <div class="title">{{ main_theme }} - {{ date }}</div>
+        
+        <!-- Content Section -->
+        <div class="content">
+            <!-- Left Column -->
+            <div class="left-column">
+                <h2 class="section-title">The Day in Review</h2>
+                <ul class="bullet-points">
+                    {% for point in day_in_review %}
+                    <li>{{ point }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <!-- Separator -->
+            <div class="separator"></div>
+
+            <!-- Right Column -->
+            <div class="right-column">
+                {% for topic in topics %}
+                <div class="topic-section">
+                    <div class="counter-container">
+                        <div class="news-counter">
+                            <span class="counter-label">Volume Score</span>
+                            {{ topic.number_of_news }} News
+                        </div>
+                        <div class="novelty-counter">
+                            <span class="counter-label">Novelty Score</span>
+                            <img src="flame-icon.png" alt="Flame Icon" class="flame-icon">
+                            {{ topic.novelty_score }}
+                        </div>
+                        <div class="impact-counter {{ topic.impact | lower }}">
+                            <span class="counter-label">Price Impact</span>
+                            {{ topic.impact }}
+                        </div>
+                        <div class="magnitude-counter {{ topic.magnitude | lower }}">
+                            <span class="counter-label">Intensity</span>
+                            <img src="{% if topic.magnitude == 'High' %}arrow_up.png{% elif topic.magnitude == 'Medium' %}arrow_mid.png{% elif topic.magnitude == 'Neutral' %}arrow_mid.png{% else %}arrow_down.png{% endif %}" alt="Intensity Arrow" class="intensity-arrow">
+                            {{ topic.magnitude }}
+                        </div>
+                    </div>
+                    <h2 class="topic-title">{{ topic.topic }}</h2>
+                    <p class="description">{{ topic.summary }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
