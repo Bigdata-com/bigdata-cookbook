@@ -1,22 +1,16 @@
 
 from datetime import datetime
 from typing import List, Optional, Dict
-
 from bigdata_client.query import Keyword, Source, Any
-
 import pandas as pd
-
 from bigdata_client import Bigdata
 from bigdata_client.query import Similarity, Entity, Source, Document, Keyword, Any
 from bigdata_client.models.search import DocumentType, SortBy
 from bigdata_client.daterange import RollingDateRange, AbsoluteDateRange
 from bigdata_research_tools.search.query_builder import create_date_ranges, _expand_queries
 from bigdata_research_tools.search import run_search
-
 from collections import defaultdict
-
 from tqdm.notebook import tqdm
-
 from pqdm.threads import pqdm
 from operator import itemgetter
 

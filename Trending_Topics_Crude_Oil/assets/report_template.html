@@ -161,7 +161,7 @@
 <body>
     <div class="container">
         <!-- Logo Section -->
-        <img src="bigdata-logo-white.svg" alt="Big Data Logo" class="logo">
+        <img src="assets/bigdata-logo-white.svg" alt="Big Data Logo" class="logo">
         
         <!-- Title Section -->
         <div class="title">{{ main_theme }} - {{ date }}</div>
@@ -192,7 +192,7 @@
                         </div>
                         <div class="novelty-counter">
                             <span class="counter-label">Novelty Score</span>
-                            <img src="flame-icon.png" alt="Flame Icon" class="flame-icon">
+                            <img src="assets/flame-icon.png" alt="Flame Icon" class="flame-icon">
                             {{ topic.novelty_score }}
                         </div>
                         <div class="impact-counter {{ topic.impact | lower }}">
@@ -201,7 +201,7 @@
                         </div>
                         <div class="magnitude-counter {{ topic.magnitude | lower }}">
                             <span class="counter-label">Intensity</span>
-                            <img src="{% if topic.magnitude == 'High' %}arrow_up.png{% elif topic.magnitude == 'Medium' %}arrow_mid.png{% elif topic.magnitude == 'Neutral' %}arrow_mid.png{% else %}arrow_down.png{% endif %}" alt="Intensity Arrow" class="intensity-arrow">
+                            <img src="{% if topic.magnitude == 'High' %}assets/arrow_up.png{% elif topic.magnitude == 'Medium' %}assets/arrow_mid.png{% elif topic.magnitude == 'Neutral' %}assets/arrow_mid.png{% else %}assets/arrow_down.png{% endif %}" alt="Intensity Arrow" class="intensity-arrow">
                             {{ topic.magnitude }}
                         </div>
                     </div>

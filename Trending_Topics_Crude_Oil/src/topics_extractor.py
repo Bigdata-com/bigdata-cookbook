@@ -1,49 +1,22 @@
-from openai import OpenAI, OpenAIError
 from datetime import datetime
-import calendar
-from bigdata_client.query import Keyword, Source, Any, Document
 import re
 import pandas as pd
 import asyncio
 import os
-from bigdata_client import Bigdata
-from bigdata_client.query import Similarity, All, Entity, Source, Document, Keyword, Any
-from bigdata_client.models.search import DocumentType, SortBy
-from bigdata_client.daterange import RollingDateRange, AbsoluteDateRange
-import matplotlib.pyplot as plt
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import seaborn as sns
-from collections import defaultdict
-import configparser
 from tqdm.notebook import tqdm
-import json
-from pqdm.threads import pqdm
-from operator import itemgetter
-
-import time
-from datetime import datetime
 import json
 import openai
 import os
 import jinja2
-from IPython.core.display import display, HTML
+from IPython.core.display import HTML
 import pandas as pd
 import unicodedata
 import re
 from typing import Optional
-from . import *
-from . import keywords_functions
 import numpy as np
-import aiohttp
 from tqdm.notebook import tqdm
 from tqdm.asyncio import tqdm as tqdm_asyncio
-from aiolimiter import AsyncLimiter
-from concurrent.futures import ThreadPoolExecutor
-from openai import AsyncOpenAI
 
-from bigdata_research_tools.search.query_builder import create_date_ranges
 
 def extract_summary(text_to_summarize, system_prompt, model, yearmonth, number_of_reports, api_key):
     # Initialize OpenAI client
@@ -383,10 +356,10 @@ def clean_text(text):
 # Function to generate a report for a single date
 def generate_html_report(date, day_in_review, topics, main_theme, template_path="./report_template.html"):
     # Load the Jinja2 template
-    template_loader = jinja2.FileSystemLoader(searchpath="./")
+    template_loader = jinja2.FileSystemLoader(searchpath=f"{os.getcwd()}/assets/")
     template_env = jinja2.Environment(loader=template_loader)
     template = template_env.get_template(template_path)
-    
+
     # Generate the title based on the main theme
     title = f"{main_theme}"
     
@@ -413,6 +386,12 @@ def number_of_news_value(number_of_news):
     return number_of_news  # Use directly for sorting
 
 def prepare_data_for_report(df, ranking_criteria, report_date: Optional[str] = None, impact_filter: Optional[str] = None):
+    # Applying the cleaning function to the text in your DataFrame before rendering
+    df['Summary'] = df['Summary'].apply(clean_text)
+    df['Day_in_Review'] = df['Day_in_Review'].apply(clean_text)
+    df['Text_Summary'] = df['Text_Summary'].apply(clean_text)
+    df['Topic'] = df['Topic'].apply(clean_text)
+    
     # Define the mapping for novelty scores
     novelty_mapping = {
         'New': 'Novel',
@@ -460,16 +439,44 @@ def prepare_data_for_report(df, ranking_criteria, report_date: Optional[str] = N
             'Impact_Score': 'first'
         }).reset_index()
         
-        # Extract "Day in Review" for the report from the first topic (assuming it is consistent across topics)
-        day_in_review_text = top_topics['Day_in_Review'].iloc[0] if 'Day_in_Review' in top_topics.columns else ''
+        # def parse_day_in_review(day_in_review_text):
+        #     # Remove leading/trailing whitespace (but keep leading asterisks for later bolding)
+        #     text = day_in_review_text.strip(" \n\r\t")
+        #     # Regex: split on any dash or bullet at the start or after whitespace, with optional asterisks and spaces
+        #     points = re.split(r'(?:^|\s)[\-•][\s\*]*', text)
+        #     result = []
+        #     for point in points:
+        #         stripped = point.rstrip(' *').lstrip().replace('\n', ' ')
+        #         if not stripped:
+        #             continue
+        #         # If starts with ** or *, treat as bold
+        #         m = re.match(r'^(\*{1,2})([^\*]+)\*{0,2}(.*)', stripped)
+        #         if m:
+        #             # m.group(1): leading asterisks, m.group(2): bold text, m.group(3): rest
+        #             bold = m.group(2).strip()
+        #             rest = m.group(3).strip()
+        #             if rest:
+        #                 result.append(f"<b>{bold}</b> {rest}")
+        #             else:
+        #                 result.append(f"<b>{bold}</b>")
+        #         else:
+        #             result.append(stripped)
+        #     return result
 
-        # Split by hyphen but only keep sections that start with "- **"
-        day_in_review = [point.strip() for point in day_in_review_text.split('- **') if point.strip()]
-
-        # Remove the "**" markers from the start of each title (since they are already split by "- **")
-        day_in_review = [point.replace("**", "").strip() for point in day_in_review]
-
+        def parse_day_in_review(text):
+            bullets = re.split(r'\s*-\s+', text)
+            parsed = []
+            for bullet in bullets:
+                bullet = bullet.strip()
+                if not bullet:
+                    continue
+                # Wrap leading **...**: in <b>...</b> if present
+                bullet = re.sub(r'^\*\*(.+?)\*\*:', r'<b>\1</b>:', bullet)
+                parsed.append(bullet.replace(r'\$', '$'))
+            return parsed
         
+        day_in_review = parse_day_in_review(top_topics['Day_in_Review'].iloc[0]) if 'Day_in_Review' in top_topics.columns else []
+
         for _, topic_row in top_topics.iterrows():
             topic = topic_row['Topic']
             summary = topic_row['Summary']
@@ -642,7 +649,7 @@ async def consolidate_trending_topics(batch_results, model, api_key, main_theme)
     # consolidated_topics = eval(summary['choices'][0]['message']['content'])['consolidated_topics']
     
     try:
-        content = summary['choices'][0]['message']['content']
+        content = json.loads(summary['choices'][0]['message']['content'])
         consolidated_topics = content['consolidated_topics']
     except Exception as e:
         print("JSON decode error:", e)
@@ -1018,7 +1025,7 @@ async def process_all_trending_topics(unique_reports, start_query, end_query, ma
     # **Step 3**: Flatten the DataFrame based on raw extracted topics
     flattened_raw_topics_df = flatten_trending_topics(trending_topics_df, unique_reports)
     
-    print("Consolidating topics...")
+    #print("Consolidating topics...")
     CONSOLIDATION_BATCH_SIZE = 50
     MAX_CONSOLIDATION_ROUNDS = 5  # Prevent infinite loops
 
@@ -1077,7 +1084,7 @@ async def process_all_trending_topics(unique_reports, start_query, end_query, ma
                 consolidated_batches[k] = resolved_ids
                 ## need to resolve the items: if topic name, get it, otherwise keep id
 
-    print(consolidated_batches)
+    #print(consolidated_batches)
     
     # consolidate again across batches
     current_dict = consolidated_batches
@@ -1102,11 +1109,14 @@ async def process_all_trending_topics(unique_reports, start_query, end_query, ma
         # Run another consolidation round
         next_consolidation_result = await consolidate_trending_topics(final_consolidation_input, model, api_key, main_theme)
         # the result is {new_consolidated_topic_1: [consolidated_topic_num_1, consolidated_topic_num_2], new_consolidated_topic_2: [consolidated_topic_num_3]}
+        #print(next_consolidation_result)
         # Expand to original topic_nums
         merged = {}
-        for k, v in next_consolidation_result:
+        for k, v in next_consolidation_result.items():
+            #print(k, v)
             ids = []
             for item in v:
+                #print(item)
                 ## need to resolve the item: if topic name, get it, otherwise keep id
                 # if LLM returned a topic id, find the name in the current mapping
                 if item in consolidated_topic_num_to_string_mapping:
@@ -1166,7 +1176,7 @@ async def process_all_trending_topics(unique_reports, start_query, end_query, ma
     # Run function to add additional text summaries
     flattened_raw_topics_df = await add_text_summaries_to_df(flattened_raw_topics_df, api_key=api_key)
     
-    flattened_raw_topics_df = flattened_raw_topics_df.dropna()
+    flattened_raw_topics_df = flattened_raw_topics_df.dropna().reset_index(drop=True)
 
     return flattened_raw_topics_df
 
