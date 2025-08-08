@@ -12,9 +12,54 @@ This project provides comprehensive tools for analyzing corporate sentiment towa
 - **Corporate-political topic networks** identifying key policy themes and company concerns through relationship analysis
 - **Confidence scoring system** quantifying the balance between positive and negative Trump impact mentions
 
-## Local Installation and Usage
 
-### Prerequisites
+## Installation and Usage
+
+### Option 1: Docker Installation
+
+#### Prerequisites
+- Docker installed on your system
+
+
+#### Setup and Run with Docker
+
+1. **Clone and navigate to the project**:
+   ```bash
+   cd "Trump_Reelections"
+   ```
+
+2. **Set up credentials**:
+   - Copy the example environment file:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edit the `.env` file and add your credentials:
+     ```
+     BIGDATA_USERNAME=your_username
+     BIGDATA_PASSWORD=your_password
+     OPENAI_API_KEY=your_openai_api_key
+     ```
+
+3. **Build and run the Docker container**:
+   ```bash
+   # Build the Docker image
+   docker build -t trump-reelections-impact-analysis .
+   
+   # Run the container
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app trump-reelections-impact-analysis
+   ```
+
+
+4. **Access JupyterLab**:
+   - Open your browser and navigate to `http://localhost:8888`
+   - Open `Trump_Reelection_Impact_Analisys.ipynb`
+   - Follow the setup instructions in the notebook
+   - Run cells sequentially to perform the analysis
+
+
+### Option 2: Local Installation
+
+#### Prerequisites
 - Python 3.8 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
 
