@@ -78,6 +78,14 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Market positioning analysis with confidence scoring for investment decisions
 - Comprehensive ecosystem mapping for infrastructure investment intelligence
 
+### 🗳️ [Election Monitor: Trump Reelection](./Trump_Reelections/)
+**Automated Analysis of Corporate Perspectives on Trump's Presidential Re-election**
+
+- Positive vs. negative impact assessment distinguishing companies that expect benefits from those anticipating challenges under Trump policies
+- Sector-wide political exposure mapping revealing industry patterns in Trump administration sentiment
+- Temporal sentiment tracking showing how political expectations evolve over time
+- Corporate-political topic networks identifying key policy themes and company concerns through relationship analysis
+
 ## Quick Start
 
 ### Prerequisites
@@ -153,6 +161,11 @@ bigdata-cookbook/
 │   └── README.md
 ├── Liquid_Cooling_Market_Watch/                      # Liquid cooling analysis
 │   ├── Liquid_Cooling_Market_Watch.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── Trump_Reelections/                               # Trump reelection impact analysis
+│   ├── Trump_Reelection_Impact_Analisys.ipynb
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
