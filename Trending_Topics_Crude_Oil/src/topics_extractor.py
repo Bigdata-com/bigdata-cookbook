@@ -1025,7 +1025,7 @@ async def process_all_trending_topics(unique_reports, start_query, end_query, ma
     # **Step 3**: Flatten the DataFrame based on raw extracted topics
     flattened_raw_topics_df = flatten_trending_topics(trending_topics_df, unique_reports)
     
-    #print("Consolidating topics...")
+    print("Consolidating topics...")
     CONSOLIDATION_BATCH_SIZE = 50
     MAX_CONSOLIDATION_ROUNDS = 5  # Prevent infinite loops
 

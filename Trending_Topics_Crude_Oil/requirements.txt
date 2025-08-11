@@ -1,0 +1,13 @@
+python_dotenv
+bigdata_client
+bigdata_research_tools
+pandas
+numpy
+asyncio
+openai
+tqdm
+pqdm
+IPython
+jinja2
+IProgress
+ipywidgets
