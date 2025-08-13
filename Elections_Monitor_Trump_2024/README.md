@@ -72,7 +72,7 @@ This project provides comprehensive tools for analyzing corporate positioning to
 
 2. **Clone and navigate to the project**:
    ```bash
-   cd "Trump_Reelections"
+   cd "Elections_Monitor_Trump_2024"
    ```
 
 3. **Create a virtual environment and install dependencies**:
@@ -112,7 +112,7 @@ This project provides comprehensive tools for analyzing corporate positioning to
 ## Project Structure
 
 ```
-Trump_Reelections/
+Elections_Monitor_Trump_2024/
 ├── README.md                      # Project documentation
 ├── Trump_Reelection_Impact_Analysis.ipynb  # Main Jupyter notebook for Trump impact analysis
 ├── Trump_Reelection_Impact_Analysis.html   # Exported HTML version of the notebook
