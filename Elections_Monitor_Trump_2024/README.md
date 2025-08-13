@@ -25,7 +25,7 @@ This project provides comprehensive tools for analyzing corporate positioning to
 
 1. **Clone and navigate to the project**:
    ```bash
-   cd "Trump_Reelections"
+   cd "Elections_Monitor_Trump_2024"
    ```
 
 2. **Set up credentials**:
