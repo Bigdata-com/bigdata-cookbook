@@ -164,7 +164,7 @@ bigdata-cookbook/
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
-├── Trump_Reelections/                               # Trump reelection impact analysis
+├── Elections_Monitor_Trump_2024/                               # Trump reelection impact analysis
 │   ├── Trump_Reelection_Impact_Analisys.ipynb
 │   ├── src/
 │   ├── requirements.txt
