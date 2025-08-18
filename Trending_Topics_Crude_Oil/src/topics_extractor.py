@@ -6,6 +6,7 @@ import os
 from tqdm.notebook import tqdm
 import json
 import openai
+from openai import OpenAIError
 import os
 import jinja2
 from IPython.core.display import HTML
@@ -17,37 +18,6 @@ import numpy as np
 from tqdm.notebook import tqdm
 from tqdm.asyncio import tqdm as tqdm_asyncio
 
-
-def extract_summary(text_to_summarize, system_prompt, model, yearmonth, number_of_reports, api_key):
-    # Initialize OpenAI client
-    client = OpenAI(api_key= api_key)
-    # Because of the way we construct the prompt, the keywords may be split into multiple concepts
-    # For example "fraud in healthcare" may be split into "fraud" and "healthcare", each with 
-    # different keywords suggestions.
-    system_prompt_1 = system_prompt.replace('[DATE]', yearmonth)
-    system_prompt_1 = system_prompt_1.replace('[N]', str(number_of_reports))
-    #print(system_prompt_1)
-    
-    response = client.chat.completions.create(
-        model = model, #"gpt-4o-2024-05-13", #"gpt-4-1106-preview", #"gpt-3.5-turbo-1106", #"gpt-3.5-turbo-1106", "gpt-3.5-turbo-0125", "gpt-4-1106-preview", "gpt-4-0125-preview"
-        messages = [
-                {
-                  "role": "system",
-                  "content": system_prompt_1
-                },
-            {"role":"user",
-             "content":text_to_summarize}
-        ],
-        temperature = 0,
-        response_format={ "type":"json_object"}
-            )
-    ##hash the results!!
-    summary=response.model_dump()
-    final_summary = eval(summary['choices'][0]['message']['content'])[f'{yearmonth}']
-    table = eval(summary['choices'][0]['message']['content'])['table']
-    df = pd.DataFrame(index = table[0], data=table[1], columns=['Performance'])
-
-    return final_summary, df
 
 def flatten_trending_topics(df, original_df):
     flattened_data = []
@@ -157,10 +127,6 @@ async def add_text_summaries_to_df(df, api_key, model='gpt-4o-mini-2024-07-18'):
     df['Text_Summary'] = df['Text'].map(text_to_summary)
 
     return df
-
-# Running the function to process the dataframe
-def run_add_text_summaries(df, api_key):
-    return asyncio.run(add_text_summaries_to_df(df, api_key))
 
 
 async def generate_advanced_novelty_score(client, topic, previous_topics_dict, main_theme, model='gpt-4o-mini-2024-07-18'):

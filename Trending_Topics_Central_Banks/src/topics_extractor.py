@@ -6,6 +6,7 @@ import os
 from tqdm.notebook import tqdm
 import json
 import openai
+from openai import OpenAIError
 import os
 import jinja2
 from IPython.core.display import HTML
@@ -17,37 +18,6 @@ import numpy as np
 from tqdm.notebook import tqdm
 from tqdm.asyncio import tqdm as tqdm_asyncio
 
-
-def extract_summary(text_to_summarize, system_prompt, model, yearmonth, number_of_reports, api_key):
-    # Initialize OpenAI client
-    client = openai.OpenAI(api_key= api_key)
-    # Because of the way we construct the prompt, the keywords may be split into multiple concepts
-    # For example "fraud in healthcare" may be split into "fraud" and "healthcare", each with 
-    # different keywords suggestions.
-    system_prompt_1 = system_prompt.replace('[DATE]', yearmonth)
-    system_prompt_1 = system_prompt_1.replace('[N]', str(number_of_reports))
-    #print(system_prompt_1)
-    
-    response = client.chat.completions.create(
-        model = model, #"gpt-4o-2024-05-13", #"gpt-4-1106-preview", #"gpt-3.5-turbo-1106", #"gpt-3.5-turbo-1106", "gpt-3.5-turbo-0125", "gpt-4-1106-preview", "gpt-4-0125-preview"
-        messages = [
-                {
-                  "role": "system",
-                  "content": system_prompt_1
-                },
-            {"role":"user",
-             "content":text_to_summarize}
-        ],
-        temperature = 0,
-        response_format={ "type":"json_object"}
-            )
-    ##hash the results!!
-    summary=response.model_dump()
-    final_summary = eval(summary['choices'][0]['message']['content'])[f'{yearmonth}']
-    table = eval(summary['choices'][0]['message']['content'])['table']
-    df = pd.DataFrame(index = table[0], data=table[1], columns=['Performance'])
-
-    return final_summary, df
 
 def flatten_trending_topics(df, original_df):
     flattened_data = []
@@ -157,10 +127,6 @@ async def add_text_summaries_to_df(df, api_key, model='gpt-4o-mini-2024-07-18'):
     df['Text_Summary'] = df['Text'].map(text_to_summary)
 
     return df
-
-# Running the function to process the dataframe
-def run_add_text_summaries(df, api_key):
-    return asyncio.run(add_text_summaries_to_df(df, api_key))
 
 
 async def generate_advanced_novelty_score(client, topic, previous_topics_dict, main_theme, model='gpt-4o-mini-2024-07-18'):
@@ -328,10 +294,6 @@ def add_market_impact_to_df(df, api_key, main_theme, point_of_view):
     
     return df
 
-
-# Function to run the asynchronous process
-def run_add_market_impact(df, api_key, main_theme, point_of_view):
-    return asyncio.run(add_market_impact_to_df(df, api_key, main_theme, point_of_view))
 def clean_text(text):
     # Check if the text is a string, otherwise return it as-is (to handle NaN or non-string values)
     if not isinstance(text, str):
@@ -886,64 +848,6 @@ def fetch_subject_relevance(client, prompt, model):
         print(f"Error checking subject relevance: {e}")
         return {'related': 'No', 'motivation': 'Error during relevance check'}
 
-# Main function to process the reports
-def process_reports(df, model, api_key, main_theme):
-    # Extract the list of topics and text summaries
-    topics = df['Topic'].unique().tolist()
-    texts = df['Text'].tolist()
-
-    # Step 1: Detect entities from the topics (row by row)
-    topic_entities = detect_entities_in_texts(topics, api_key, model)
-
-    # Step 2: Detect entities from the text summaries (row by row)
-    text_entities = detect_entities_in_texts(texts, api_key, model)
-
-    # Step 3: Match text to topic based on shared entities
-    matched_topics = []
-    matched_entities = []
-    for text_entity_list in text_entities:
-        matched_topic = None
-        matched_entity_set = set()
-        for idx, topic_entity_list in enumerate(topic_entities):
-            # Match if text entities overlap with topic entities
-            entity_overlap = set(text_entity_list) & set(topic_entity_list)
-            if entity_overlap:
-                matched_topic = topics[idx]
-                matched_entity_set = entity_overlap
-                break
-        matched_topics.append(matched_topic)
-        matched_entities.append(matched_entity_set)
-
-    # Ensure length of matched_topics matches df
-    if len(matched_topics) < len(df):
-        matched_topics.extend([None] * (len(df) - len(matched_topics)))
-        matched_entities.extend([set()] * (len(df) - len(matched_entities)))
-
-    # Step 4: Check subject relevance between matched topics and text (row by row)
-    subject_relevance_results = check_subject_relevance(df, matched_topics, model, api_key)
-
-    # Ensure motivations and relevance lists have the correct length
-    motivations = [result['motivation'] for result in subject_relevance_results]
-    relevance = [result['related'] == 'Yes' for result in subject_relevance_results]
-
-    # Ensure the lengths match
-    if len(motivations) < len(df):
-        motivations.extend(["No motivation available"] * (len(df) - len(motivations)))
-    if len(relevance) < len(df):
-        relevance.extend([False] * (len(df) - len(relevance)))
-
-    df['Matched_Topic'] = matched_topics
-    df['Matched_Entities'] = matched_entities
-    df['Motivation'] = motivations
-    df['Relevance'] = relevance
-
-    return df
-
-# Entry point for processing the reports
-def process_matching(reports, model, api_key, main_theme):
-    matched_reports = process_reports(reports, model, api_key, main_theme)
-    return matched_reports
-
 async def process_all_trending_topics(unique_reports, start_query, end_query, main_theme, model='gpt-4o-mini', api_key=None, batches=5, freq='D'):
     # Initialize your date range
     #start_list, end_list = create_date_ranges(pd.to_datetime(start_query), pd.to_datetime(end_query), freq='D')
@@ -1180,11 +1084,9 @@ async def process_all_trending_topics(unique_reports, start_query, end_query, ma
 
     return flattened_raw_topics_df
 
-
 # Wrapper function to run async process
 def run_process_all_trending_topics(unique_reports, start_query, end_query, main_theme, model, api_key, batches = 5, freq='D'):
     return asyncio.run(process_all_trending_topics(unique_reports, start_query, end_query, main_theme, model, api_key, batches, freq=freq))
-
 
 
 async def fetch_relevance(client, text_to_analyze, current_prompt, model, semaphore):
