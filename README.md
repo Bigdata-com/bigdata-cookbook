@@ -78,11 +78,11 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Market positioning analysis with confidence scoring for investment decisions
 - Comprehensive ecosystem mapping for infrastructure investment intelligence
 
-### 🗳️ [Election Monitor: Trump Reelection](./Elections_Monitor_Trump_2024/)
-**Automated Analysis of Corporate Perspectives on Trump's Presidential Re-election**
+### 🗳️ [Election Monitor](./Election_Monitor/)
+**Automated Analysis of Corporate Perspectives on Electoral Outcomes**
 
-- Positive vs. negative impact assessment distinguishing companies that expect benefits from those anticipating challenges under Trump policies
-- Sector-wide political exposure mapping revealing industry patterns in Trump administration positioning
+- Positive vs. negative impact assessment distinguishing companies that expect benefits from those anticipating challenges under new elected officials' policies
+- Sector-wide political exposure mapping revealing industry patterns in positioning toward electoral results
 - Temporal positioning tracking showing how political expectations evolve over time
 - Corporate-political topic networks identifying key policy themes and company concerns through relationship analysis
 
@@ -164,7 +164,7 @@ bigdata-cookbook/
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
-├── Elections_Monitor_Trump_2024/                               # Trump reelection impact analysis
+├── Election_Monitor/                               # Elecion Monitoring tool
 │   ├── Trump_Reelection_Impact_Analisys.ipynb
 │   ├── src/
 │   ├── requirements.txt
