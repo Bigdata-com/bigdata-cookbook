@@ -86,6 +86,22 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Temporal positioning tracking showing how political expectations evolve over time
 - Corporate-political topic networks identifying key policy themes and company concerns through relationship analysis
 
+### 💰 [AI Cost Cutting Market Analysis](./AI_Cost_Cutting_Market_Analysis/)
+**Automated Analysis of AI Cost Cutting Providers and Users**
+
+- Dual-role classification distinguishing companies developing AI cost cutting solutions from those implementing them
+- Technology ecosystem mapping revealing relationships between solution providers and corporate users
+- Adoption timeline tracking showing how AI cost cutting implementation evolves across different sectors
+- Market positioning analysis quantifying each company's role and exposure in the AI cost cutting ecosystem
+
+### 📈 [AI Revenue Generation Market Analysis](./AI_Revenue_Generation_Market_Analysis/)
+**Automated Analysis of AI Revenue Generation Providers and Users**
+
+- Dual-role classification distinguishing companies developing AI revenue generation solutions from those implementing them
+- Technology ecosystem mapping revealing relationships between solution providers and corporate users
+- Adoption timeline tracking showing how AI revenue generation implementation evolves across different companies
+- Market positioning analysis quantifying each company's role and exposure in the AI revenue generation ecosystem
+
 ## Quick Start
 
 ### Prerequisites
@@ -166,6 +182,16 @@ bigdata-cookbook/
 │   └── README.md
 ├── Election_Monitor/                               # Elecion Monitoring tool
 │   ├── Trump_Reelection_Impact_Analisys.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── AI_Cost_Cutting_Market_Analysis/                # AI cost cutting analysis
+│   ├── AI_Cost_Cutting_Market_Analysis.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── AI_Revenue_Generation_Market_Analysis/          # AI revenue generation analysis
+│   ├── AI_Revenue_Generation_Market_Analysis.ipynb
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
