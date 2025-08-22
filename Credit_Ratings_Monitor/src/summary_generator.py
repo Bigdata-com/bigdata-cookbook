@@ -1,11 +1,41 @@
-from concurrent.futures import ThreadPoolExecutor
-from src_legacy.completion_processor import *
-import openai
-import asyncio
-from tqdm.notebook import tqdm
+import pandas as pd
 import re
 import json
-system_prompt_consolidation = ("""
+import asyncio
+from typing import List, Dict, Union, Optional, Tuple, Any
+
+from bigdata_research_tools.llm.base import AsyncLLMEngine
+from bigdata_research_tools.llm.utils import run_concurrent_prompts
+from bigdata_research_tools.labeler.labeler import Labeler, get_prompts_for_labeler, parse_labeling_response
+
+
+class SummaryGenerator(Labeler):
+    """
+    A class to generate summaries and reports from credit rating data.
+    
+    This class encapsulates the functionality for processing credit rating data,
+    generating summaries, and creating structured reports through LLM processing.
+    Uses the bigdata_research_tools.llm framework for LLM interactions with
+    specialized handling for token limits through text splitting.
+    """
+
+    def __init__(self, llm_model: str = "openai::gpt-4o-mini", temperature: float = 0, max_workers: int = 30):
+        """
+        Initialize the SummaryGenerator with LLM configuration.
+        
+        Args:
+            llm_model: LLM model to use in format "provider::model" (e.g., "openai::gpt-4o-mini")
+            temperature: Temperature for the model
+            max_workers: Maximum number of concurrent workers for batch processing
+        """
+        self.llm_model = llm_model
+        self.llm_engine = AsyncLLMEngine(model=llm_model)
+        self.temperature = temperature
+        self.max_workers = max_workers
+        self.unknown_label = "unclear"
+        
+        # Set default prompts
+        self.credit_ratings_consolidation = """
 You are an expert summarizer and assistant. Your task is to merge multiple message contents into a comprehensive timeline report regarding the credit ratings of companies. Do not alter the structure of the inputs and focus on crafting a cohesive output.
 
 Please follow these guidelines while merging:
@@ -18,10 +48,8 @@ Please follow these guidelines while merging:
 6. **Highlight Novelty**: If information from different sources confirms the same event, consolidate it into one entry, using multiple sources for added credibility only when they offer new insights.
 
 The final report should be a well-organized and accurate consolidation of the various inputs, capturing all significant changes without unnecessary repetition.
-
-""")
-
-system_prompt_summary_daily = ("""**Task: Report Credit Rating Information with Enhanced Source Tracking**
+"""
+        self.daily_credit_ratings_report="""**Task: Report Credit Rating Information with Enhanced Source Tracking**
 
 You are tasked with generating a comprehensive timeline report based on input texts regarding the credit ratings of companies, ensuring the inclusion of news source names and URLs where available. Your output should prioritize data from dates identified as having high novelty, indicating significant changes or developments in credit ratings or outlooks.
 
@@ -69,57 +97,8 @@ You are tasked with generating a comprehensive timeline report based on input te
 - **2024-03-26**: Moody's placed Boeing Co.'s Baa2 senior unsecured rating and Prime-2 short-term rating on review for a potential downgrade due to concerns over their ability to manage debt and deliver enough 737 models, highlighting production challenges ([NBC San Diego](https://example.com), [Bloomberg Government](https://example.com)).
 - **2024-04-24**: Moody's downgraded Boeing Co.'s credit rating to Baa3 from Baa2, indicating ongoing challenges and potential cash shortfalls against looming debt, marking a negative outlook ([WCVB.com ](https://example.com), [BNN Bloomberg](https://example.com)).
 - ...
-""")
-
-system_prompt_summary_daily_deprecated = ("""**Task: Report Credit Rating Information with Focus on High Novelty**
-
-You are tasked with generating a comprehensive report based on a sequence of structured input texts regarding the credit ratings of companies derived from news articles. Your output should prioritize data from dates identified as having high novelty, which indicate significant changes or updates.
-
-
-The input text follows this structure:
-
-- Ratee Entity: [the company who is the subject of the report]
-- Date1: [YYYY-MM-DD hh:mm:ss]
-- Text1: [Content]
-- Sources1: [Comma-separated list of source names and URLs]
-- Date2: [YYYY-MM-DD hh:mm:ss]
-- Text2: [Content]
-...
-      
-#### Instructions:
-- Generate entries only for those dates that have novel information regarding the ratee entity and its credit ratings or credit outlooks. Consolidate days with similar information to avoid repetition.
-- Ensure data integrity by not inventing additional dates or entries and by consolidating all data and rater inputs available for each date.
-- If a date does not contain relevant information (e.g., no ratings or outlooks available for the ratee entity), exclude it from the report.
-- Combine credit ratings and credit outlooks in the same timeline.
-- Remember that the text you summarize has to be clearly related to credit ratings or outlooks assigned to debt instruments issued by the ratee entity.
-- Ensure that there is no contradictory information: the same credit rating agency will not upgrade and downgrade the same company within the span of a few days from an announced credit rating decision.
-- Focus on the information that is discussed by more than one source, if available.
-- If one source reports contrasting information, i.e. a different credit rating from the same rater on the same day or compared to the previous day, discard this source and the text.
-
-The output should adhere to the following structure:
-
-### Credit Report
-      - For each relevant date in the dataset, generate an entry no longer than two sentences capturing the following information. 
-      - Credit rating and raters: <all pairs of credit ratings and raters related to the ratee>.
-      - Credit Outlooks, Credit Actions, and Credit watchlist. Emphasize changes or affirmations of credit ratings and credit outlooks, such as downgrades, upgrades, stable outlooks, affirmed ratings, etc.
-      - Short Term Ratings (<short term debt instruments and related credit ratings>), Long Term Ratings (<long term debt instruments and related credit ratings>) and debt instruments mentioned.
-      - Short description of the key drivers and the forward guidance provided by the rater, supporting the credit rating or outlook change.
-          - Key drivers are factors directly motivating the credit rating or credit outlook decision, and influencing the credit quality of the ratee entity. These include, but are not limited to, aspects such as cash flow generation, insider trading, capital structure changes, etc.
-      - Ensure that the description is easy to read and understandable; do not simply reorganize the original input. Do not write more than two sentences.
-      - Always quote in brackets ALL source names and URLs of every piece of information that you include in the report.. E.g. ([Seeking Alpha](url), [Nasdaq](url))
-      - Discard dates and texts that have no sources quoted.
-      - DO NOT infer URLs from outside information. DO NOT use placeholder URLs. Leave the URL blank if no URL is available.
-      - Only report Source Names that are given in the text. DO NOT infer sources from outside knowledge.
-
-- Your output should accurately reflect all substantive information per date without generating unnecessary or fabricated entries. Only include dates with available, valid credit rating or credit outlook data for the ratee entity.
-- - Generate entries only for those dates that have novel information regarding the ratee entity and its credit ratings or credit outlooks. Consolidate days with similar information to avoid repetition. For example, if the same credit rating agency and credit rating are repeated over a few days, focus on the first date in which you saw this new information.
-- Ensure that there is no contradictory information: the same credit rating agency will not upgrade and downgrade the same company within the span of a few days from an announced credit rating decision.
-- Focus on the information that is discussed by more than one source, if available.
-- If one source reports contrasting information, i.e. a different credit rating from the same rater on the same day or compared to the previous day, discard this source and the text.
-""")
-
-daily_summarization_prompt = (f"""
-    Forget all previous instructions.
+"""
+        self.daily_chunk_summarization= """Forget all previous instructions.
     You are tasked with consolidating and summarizing daily information from a sequence of news extracts related to corporate debt obligations and credit ratings.
 
     Your primary job is to consolidate information for entries that share the same date into a single cohesive string, ensuring you capture all relevant details retaining the original structure.
@@ -163,412 +142,453 @@ daily_summarization_prompt = (f"""
         - Only report Source Names that are given in the text. DO NOT infer sources from outside knowledge.
 
     4. **Output Format**:
-        - Your output should be structured as a JSON object:
+        - Return a dict containing a <daily_summary_string_generated> with all summarized and consolidated information as detailed above.
+        - Your output should be structured as a JSON object with id and the generated string as follows:
         {{
             "<id>": {{
                 "daily_summary": "<daily_summary_string_generated>"
         }}
     }}
-        - The`<daily_summary_string_generated> should be a single string that integrates all summarized and consolidated information as detailed above.
-""")
-
-
-def split_text_on_nearest_linebreak(text_string, num_splits):
-    """Splits the text string into `num_splits` parts, with each split occurring at the nearest line break.
-    Also appends the start and last part of string1 to string2 for context."""
-
-    split_texts = [text_string]
-    
-    for _ in range(num_splits - 1):  # We split num_splits - 1 times, the last one is automatic
-        new_splits = []
-        for text in split_texts:
-            mid_index = len(text) // 2
-
-            # Find the closest line break before or after the midpoint
-            before_split = text.rfind('\n', 0, mid_index)
-            after_split = text.find('\n', mid_index)
-
-            # Choose the closest split point, favoring the one before the midpoint
-            if before_split != -1:
-                split_index = before_split
-            elif after_split != -1:
-                split_index = after_split
-            else:
-                # If no line break is found, split at the midpoint
-                split_index = mid_index
-
-            # Split the string into two parts
-            string1 = text[:split_index]
-            string2 = text[split_index:]
-
-            # Take the start of string1 and append to the start of string2 (for context)
-            start_of_string1 = string1.split('\n')[:3]  # First 3 lines of string1
-            last_part_of_string1 = string1.split('\n')[-3:]  # Last 3 lines of string1
-
-            # Append both to string2 for continuity
-            string2 = '\n'.join(start_of_string1) + '\n'.join(last_part_of_string1) + '\n' + string2
-
-            new_splits.extend([string1, string2])  # Add both parts to the new_splits list
-
-        split_texts = new_splits  # Update the split_texts with the newly split texts
-    
-    return split_texts
-
-def consolidate_completions(client, system_prompt_consolidation, completions, model):
-    """Send a consolidation request to merge multiple completions."""
-    completion_text = '\n\n'.join([f"Completion {i+1}: {comp}" for i, comp in enumerate(completions)])
-    
-    consolidation_response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_prompt_consolidation},
-            {"role": "user", "content": f"Please merge and consolidate these completions into a single response:\n\n{completion_text}"}
-        ],
-        temperature=0,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
-    )
-    # Use consolidation_response instead of response
-    return consolidation_response.model_dump().get('choices', [{}])[0].get('message', {}).get('content', {})
-
-def get_chat_completion(client, model, system_prompt, text_string):
-    """Handles chat completion requests, splitting text if needed."""
-    # Attempt to generate the completion
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": text_string}
-        ],
-        temperature=0,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0
-    )
-        # Return the response
-    return response.model_dump().get('choices', [{}])[0].get('message', {}).get('content', {})
-
-def verify_information(text_string,system_prompt,
-						  OPENAI_API_KEY, model = "gpt-4o-mini-2024-07-18"):
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    i = 0
-    while i < 5:
-        try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text_string}
-                    ],
-                temperature=0,
-                top_p=1,
-                frequency_penalty=0,
-                presence_penalty=0
-                )
-            completion = completion_to_dataframe(response.model_dump())
-        # # Extracting the summary string from the response by parsing the JSON string
-            # json_string = response.model_dump()['choices'][0]['message']['content'] 
-            # json_string = re.sub('```', '', json_string)
-            # json_string = re.sub('json', '', json_string)
-            # json_string = json.loads(json_string)
-            # print(json_string)
-            # #summary_string = json_string["1"]["summary"]
-            return completion
-        except Exception as exception_message:
-            error_message = str(exception_message)
-            if 'context_length_exceeded' or 'string_above_max_length' in error_message:
-                # If the error is due to exceeding the token limit, split the text
-                print("Text is too long, splitting and retrying...")
-                num_splits = [2,4,6,8,10]
-                for num_split in num_splits:
-                    try:
-
-                        split_texts = split_text_on_nearest_linebreak(text_string, num_splits=num_split)
-
-                        # Generate completions for all parts
-                        completions = []
-                        for part in split_texts:
-                            completion = get_chat_completion(client, model, system_prompt, part)
-                            completions.append(completion)
-
-                        # Consolidate the completions into one if more than one split
-                        if len(completions) > 1 and system_prompt_consolidation:
-                            final_completion = consolidate_completions(client, system_prompt_consolidation, completions, model)
-                            return final_completion
-                    except Exception as exception_message:
-                        error_message = str(exception_message)
-#                        if 'context_length_exceeded' or 'string_above_max_length' in error_message:
-#                            split_texts = split_text_on_nearest_linebreak(text_string, num_splits=4)
-#
-#                            # Generate completions for all parts
-#                            completions = []
-#                            for part in split_texts:
-#                                completion = get_chat_completion(client, model, system_prompt, part)
-#                                completions.append(completion)
-#
-#                            # Consolidate the completions into one if more than one split
-#                            if len(completions) > 1 and system_prompt_consolidation:
-#                                final_completion = consolidate_completions(client, system_prompt_consolidation, completions, model)
-#                                return final_completion
-
-            else:
-                print(f"An error occurred on attempt {i}: {exception_message}")
-                i += 1
-    print(f"An error occurred after {i} attempts. Unable to retrieve the full summary.")
-    return None
-
-
-# Asynchronous function to gather summaries for the dataFrame
-async def verify_information_with_asynchronous_calls_to_openai(industries_labels_df,analyze_col,system_prompt, OPENAI_API_KEY, model):
-    
-    def sanitize_input(input_string):
-        # Remove invalid control characters
-        return re.sub(r'[^\x20-\x7E\r\n]', '', input_string)
-
-    industries_labels_df[analyze_col] = industries_labels_df[analyze_col].apply(sanitize_input)
-    
-    loop = asyncio.get_event_loop()
-    
-    with ThreadPoolExecutor() as executor:
-
-        tasks = []
-        for text_individual_row in tqdm(industries_labels_df[analyze_col], 
-                                        desc="Verifying", 
-                                        unit="text_individual_row"):
-            
-            tasks.append(loop.run_in_executor(executor, 
-                                              verify_information, 
-                                              text_individual_row,
-                                              system_prompt,
-											  OPENAI_API_KEY, 
-                                              model))
         
-        # Gather results while monitoring progress
-        summaries_appended = await asyncio.gather(*tasks)
-    
-    return summaries_appended
+"""
+        self.credit_ratings_data_table="""
+Forget all previous instructions.
+You are provided with a string containing a detailed credit rating report for a company. Your task is to parse this string and extract specific information to create a structured data table. Each record in this table should be formatted as a JSON object including the following fields:
+  
+1. **Ratee Entity**: The name of the company being rated, the subject of the report.
+2. **Date**: The specific date of the rating event.
+3. **Credit Rating**: The explicit credit rating mentioned in the report. Ratings are expressed in letters and numbers such as BBB, Baa1, A-, Prime-2, etc. *Note: Extract exact credit ratings discussed, assigned or placed in review.* If no credit rating is mentioned, write "No Rating Mentioned".
+4. **Key Driver**: The primary reason or rationale provided for the assignment of the credit rating.
+5. **Rater**: The rating agency that is providing the credit rating.
 
+Create a separate data record for each distinct combination of date, credit rating, rating agency, and key driver. 
 
-# Main function to execute the summarization
-def async_llm_pipeline(industries_labels_df,system_prompt,analyze_col, added_columns,replacements,
-						   OPENAI_API_KEY, model = "gpt-4o-mini-2024-07-18"):
-    
-    # if 'id' not in industries_labels_df.columns:
-    #     industries_labels_df['id'] = range(len(industries_labels_df))
-    
-    columns_to_keep = list(industries_labels_df.columns) + added_columns
-    
-    generated_prompt = generate_prompt(system_prompt, **replacements)
-    
-    # Assuming dataframe is already defined and contains the necessary data
-    summarizations = \
-        asyncio.run(verify_information_with_asynchronous_calls_to_openai(
-											industries_labels_df,analyze_col,generated_prompt,
-											OPENAI_API_KEY, model))
-    
+To achieve accuracy:
+- Parse the report string line-by-line. Lines are identified by line-breaking characters '\n'.
+- Generate AT LEAST one record for each date for each distinct combination of date, credit rating, rating agency, and key driver.
+- If a line does not explicitly mention an exact credit rating, write "No Credit Rating Mentioned. If a line does not explicitly mention a rating agency, write "No Rating Agency Mentioned".
+- Ensure that each extracted credit rating is attributed to the correct date, rating agency, and key driver from the same line.
+- Do not include actions like downgrade, upgrade, confirmation, review, or watchlist in the credit rating extracted. This field can only contain exact credit ratings.
+- Carefully read the text as credit rating agencies may use similar scales to assign credit ratings.
+- Ensure that there is a direct mention of a credit rating from a specific credit rating agency or rater.
+- Extract exact ratings related to any debt instrument, e.g. senior unsecured debt, commercial paper, etc., but do not include the credit actions or reviews in the extracted information.
+- DO NOT infer the credit rating from descriptions such as "the current rating is at the bottom of the investment-grade scale". The exact rating has to be mentioned.
 
-    responses = pd.concat(summarizations).reset_index().rename(columns={'index':'id'})
-    industries_labels_df = industries_labels_df.merge(responses, how='left', on='id')
+Input Report Example:
+"\n- **2024-01-17**: Boeing Co. senior unsecured debt has been rated Baa2 by Moody's due to concerns over the company's ability to deliver sufficient volumes of its 737 model to enhance free cash flow. S&P has confirmed its BBB- credit rating, justified by concerns over the company's cash flow during the strike.
+\n- **2024-04-24**: Boeing Co. has been downgraded BBB- by Fitch with a negative outlook motivated by ongoing cash flow issues and projected annual cash flow insufficient to cover debt obligations. Headwinds in the Commercial Airplanes segment and expectations of new debt issuance are also likely to push the credit rating to a new downgrade in the coming months.
+\n- **2024-10-21**: Boeing Co. BBB- rating by Fitch has been placed on review for a downgrade due to cash flow uncertainty, while Moody's also placed their credit rating on review."
 
-    return industries_labels_df[columns_to_keep]
+Your output should be a JSON array of objects, formatted as follows:
+[
+  {
+    "Ratee Entity": "Boeing Co.",
+    "Date": "2024-01-17",
+    "Credit Rating": "Baa2",
+    "Key Driver": "Concerns over the company's ability to deliver sufficient volumes of its 737 model to enhance free cash flow.",
+    "Rater": "Moody's"
+  },
+  {
+    "Ratee Entity": "Boeing Co.",
+    "Date": "2024-03-26",
+    "Credit Rating": "BBB-",
+    "Key Driver": "Concerns over the company's cash flow during the strike.",
+    "Rater": "S&P"
+  },
+  {
+    "Ratee Entity": "Boeing Co.",
+    "Date": "2024-04-24",
+    "Credit Rating": "BBB-",
+    "Key Driver": "Negative outlook due to ongoing cash flow issues and projected annual cash flow insufficient to cover debt obligations.",
+    "Rater": "Fitch"
+  },
+  {
+    "Ratee Entity": "Boeing Co.",
+    "Date": "2024-10-21",
+    "Credit Rating": "BBB-",
+    "Key Driver": "The rating is in review for a downgrade due to cash flow uncertainty.",
+    "Rater": "Fitch"
+  },
+  {
+    "Ratee Entity": "Boeing Co.",
+    "Date": "2024-10-21",
+    "Credit Rating": "No Rating Mentioned",
+    "Key Driver": "The rating is in review for a downgrade due to cash flow uncertainty.",
+    "Rater": "Moody's"
+  },
+  ...
+]
+
+Ensure precision by accurately assigning ratings to the date, rater, and key drivers listed in the same line of the report. Do not mix dates, ratings, or drivers across different report entries.
+"""
     
-def summarize_string(text_string, system_prompt, replacements,
-                    OPENAI_API_KEY, model="gpt-4o-mini-2024-07-18", max_retries=5, max_split_retries=5):
+    def _split_text_on_nearest_linebreak(self, text_string: str, num_splits: int) -> List[str]:
+        """
+        Split text into parts at the nearest line breaks for handling large inputs.
+        
+        Args:
+            text_string: Text to split
+            num_splits: Number of splits to create
+            
+        Returns:
+            List of text segments
+        """
+        split_texts = [text_string]
+        
+        for _ in range(num_splits - 1):
+            new_splits = []
+            for text in split_texts:
+                mid_index = len(text) // 2
+                
+                # Find nearby line breaks
+                before_split = text.rfind('\n', 0, mid_index)
+                after_split = text.find('\n', mid_index)
+                
+                # Choose split point
+                if before_split != -1:
+                    split_index = before_split
+                elif after_split != -1:
+                    split_index = after_split
+                else:
+                    split_index = mid_index
+                
+                # Split the text
+                string1 = text[:split_index]
+                string2 = text[split_index:]
+                
+                # Add context from first part to second part
+                start_of_string1 = string1.split('\n')[:3]
+                last_part_of_string1 = string1.split('\n')[-3:]
+                
+                context = '\n'.join(start_of_string1) + '\n'.join(last_part_of_string1) + '\n'
+                string2 = context + string2
+                
+                new_splits.extend([string1, string2])
+            
+            split_texts = new_splits
+        
+        return split_texts
     
-    generated_prompt = generate_prompt(system_prompt, **replacements)
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    num_splits = [2, 4, 6, 8, 10]  # Increasing split sizes
-    
-    for attempt in range(max_retries):
+    def _add_prompt_fields(self, df_sentences: pd.DataFrame, additional_prompt_fields: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+        """
+        Add additional fields from the DataFrame for the labeling prompt.
+
+        Args:
+            df_sentences (DataFrame): The DataFrame containing the search results.
+            additional_prompt_fields (Optional[List[str]]): Additional field names to be used in the labeling prompt.
+
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries with the additional fields for each row in the DataFrame.
+        """
+        if additional_prompt_fields:
+            missing = set(additional_prompt_fields) - set(df_sentences.columns)
+            if missing:
+                raise ValueError(f"Columns not found in DataFrame: {missing}")
+            else:
+                return df_sentences[additional_prompt_fields].to_dict(orient="records")
+        else:
+            return []
+
+    def prepare_daily_summary_input(self, df: pd.DataFrame,
+                                    date_col: str = 'date',
+                                    sentence_id_col: str = 'sentence_id',
+                                    text_col: str = 'text',
+                                    summary_input: List[str] = None) -> pd.DataFrame:
+        """
+        Generate summaries grouped by date from a DataFrame.
+        
+        Args:
+            df: Input DataFrame
+            date_col: Column name for dates
+            sentence_id_col: Column name for sentence IDs
+            text_col: Column name for text to summarize
+            fields_for_summary: Fields to include in summaries
+            
+        Returns:
+            DataFrame with date-grouped summaries
+        """
+        # Handle empty values
+        df = df.fillna('None').applymap(lambda x: "; ".join(x) if isinstance(x, list) else x)
+        
+        # Default fields: all columns except sentence ID
+        if summary_input is None:
+            fields_for_summary = [text_col]
+        else:
+            fields_for_summary = summary_input
+
+        if text_col not in fields_for_summary:
+            fields_for_summary.append(text_col)
+
+        # Group by date and sentence ID - Aggregate at the chunk level
+        def aggregate_sentence_fields(group):
+            """Consolidate fields for the same date and sentence ID."""
+            aggregated = {col: "; ".join(filter(None, group[col].unique())) 
+                         for col in group.columns if col not in [date_col, sentence_id_col]}
+            return pd.Series(aggregated)
+            
+        sentence_grouped = df.groupby([date_col, sentence_id_col], dropna=False).apply(aggregate_sentence_fields).reset_index()
+        
+        # Create sentence input summaries
+        def create_sentence_summary(row):
+            """Create structured summary for a sentence."""
+            summary = [f"{field.replace('_', ' ').title()}: {row[field]}" 
+                      for field in fields_for_summary if row[field]]
+            return "\n".join(summary)
+            
+        sentence_grouped['sentence_summary'] = sentence_grouped.apply(create_sentence_summary, axis=1)
+        
+        # Group by date to consolidate sentences - Aggregate all chunks from the same day
+        def aggregate_date_fields(group):
+            """Consolidate sentences for the same date."""
+            aggregated = {col: "; ".join(filter(None, group[col].unique())) 
+                         for col in group.columns if col not in [date_col, 'sentence_summary']}
+            aggregated['summary_input'] = "\n".join(group['sentence_summary'])
+            return pd.Series(aggregated)
+            
+        date_grouped = sentence_grouped.groupby(date_col, dropna=False).apply(aggregate_date_fields).reset_index()
+        # date_grouped['id'] = range(len(date_grouped))
+        # date_grouped['summary_input'] = date_grouped.apply(lambda row: 'Id: ' + str(row.id) + '\n' + row['summary_input'], axis=1) not needed if I create the prompts as in the labeler
+        
+        return date_grouped
+
+    def generate_summaries_df(self, df: pd.DataFrame, summary_input_col: str, system_prompt: Optional[str] = None, additional_prompt_fields: Optional[list] = [], max_workers: int = 30) -> pd.DataFrame:
+
+        if system_prompt is None:
+            system_prompt = self.daily_chunk_summarization
+        
+        if additional_prompt_fields:
+            textsconfig = self._add_prompt_fields(df, additional_prompt_fields=additional_prompt_fields)
+        else:
+            textsconfig = []
+
+        texts = df[summary_input_col].tolist()
+
+        prompts = get_prompts_for_labeler(texts, textsconfig=textsconfig)
+        print(prompts[0])
+
+        #these prompts should have summary input instead of text as key
+
+        responses = self._run_labeling_prompts(
+            prompts, system_prompt, max_workers=max_workers
+        )
+        responses = [parse_labeling_response(response) for response in responses]
+
+        ## add error catching, splits, retries, and consolidation to the failed ones.
+
+        parsed_responses = self._deserialize_label_responses(responses)
+        if len(parsed_responses['motivation'].unique()) == 1 and parsed_responses['motivation'].values[0]=='':
+            parsed_responses = parsed_responses.drop(columns=['motivation', 'label'])
+
+        if 'index' not in df.columns:
+            df = df.reset_index()
+        df_merged = pd.merge(
+            df,
+            parsed_responses.reset_index(),
+            on='index',
+            how='left'
+        ).drop('index', axis=1)
+
+        entity_name = df_merged['ratee_entity'].iloc[0] if 'ratee_entity' in df_merged.columns else 'Unknown Entity'
+
+        report_text_input = f'Ratee Entity: {entity_name}\n' + '\n'.join(
+            [f'Date{i}: {str(row.date)}\nText{i}: {row.daily_summary}' 
+             for i, (_, row) in enumerate(df_merged.iterrows())]
+        )
+        return df_merged, report_text_input
+
+    def summarize_string(self, text: str, system_prompt: Optional[str] = None, max_retries: int = 5,
+                      max_split_retries: int = 5) -> str:
+        """
+        Summarize a text string with retry and text splitting capabilities.
+        
+        Args:
+            text: Text to summarize
+            prompt_type: Type of prompt to use
+            replacements: Key-value pairs for prompt replacements
+            max_retries: Maximum retry attempts
+            max_split_retries: Maximum retry attempts with text splitting
+            
+        Returns:
+            Summarized text
+        """
+        if system_prompt is None:
+            system_prompt = self.daily_credit_ratings_report
+        
+        # Build chat history
+        chat_history = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text}
+        ]
+        
+        # Try to get response directly
         try:
-            response = client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": generated_prompt},
-                    {"role": "user", "content": text_string}
-                ],
-                temperature=0,
-                top_p=1,
-                frequency_penalty=0,
-                presence_penalty=0
+            return asyncio.run(self.llm_engine.get_response(chat_history, temperature=self.temperature))
+        except Exception as e:
+            if 'context_length_exceeded' in str(e) or 'string_above_max_length' in str(e):
+                print("Text too long for direct processing, attempting split-and-consolidate approach...")
+                
+                # Try splitting and processing in chunks
+                try:
+                    # Split the text
+                    splits = self._split_text_on_nearest_linebreak(text, 2)  # Start with 2 splits
+                    
+                    # Process each split
+                    results = []
+                    for split_text in splits:
+                        split_chat_history = [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": split_text}
+                        ]
+                        response = asyncio.run(self.llm_engine.get_response(
+                            split_chat_history, 
+                            temperature=self.temperature
+                        ))
+                        results.append(response)
+                    
+                    # Consolidate results
+                    if len(results) > 1:
+                        consolidation_prompt = self.credit_ratings_consolidation
+                        consolidation_text = '\n\n'.join([f"Completion {i+1}: {comp}" for i, comp in enumerate(results)])
+                        
+                        consolidation_chat_history = [
+                            {"role": "system", "content": consolidation_prompt},
+                            {"role": "user", "content": f"Please merge and consolidate these completions into a single response:\n\n{consolidation_text}"}
+                        ]
+                        
+                        return asyncio.run(self.llm_engine.get_response(
+                            consolidation_chat_history,
+                            temperature=self.temperature
+                        ))
+                    else:
+                        return results[0]
+                        
+                except Exception as nested_e:
+                    print(f"Error during split processing: {str(nested_e)}")
+                    return f"Error: Failed to process text after attempts to split. {str(nested_e)}"
+            else:
+                print(f"Error during summarization: {str(e)}")
+                return f"Error: {str(e)}"
+    
+    def create_consolidated_data_table(self, text: str, system_prompt: Optional[str] = None) -> pd.DataFrame:
+        """
+        Extract structured data from text.
+        
+        Args:
+            text: Text to process
+            prompt_type: Type of prompt to use
+            
+        Returns:
+            DataFrame with extracted structured data
+        """
+        if system_prompt is None:
+            system_prompt = self.credit_ratings_data_table
+        
+        # Build chat history
+        chat_history = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text}
+        ]
+        
+        try:
+            # Get response
+            json_string = asyncio.run(self.llm_engine.get_response(
+                chat_history,
+                temperature=self.temperature,
+                response_format={"type": "json_object"}
+            ))
+            
+            # Clean up JSON string
+            json_string = re.sub('```', '', json_string)
+            json_string = re.sub('json', '', json_string)
+            print(json_string)
+
+            # Parse JSON into DataFrame
+            try:
+                    json_string = json.loads(json_string)['data']
+                    data = pd.DataFrame(json_string)
+                    return data
+            except json.JSONDecodeError as e:
+                print(f"Error parsing JSON: {e}")
+                return pd.DataFrame()
+                
+        except Exception as e:
+            print(f"Error creating data table: {e}")
+            return pd.DataFrame()
+    
+    def generate_company_report(self, df: pd.DataFrame, entity_id: str,
+                               start_date: str = None, end_date: str = None, 
+                               fields_for_summary: List[str] = None,) -> Tuple[str, pd.DataFrame]:
+        """
+        Generate a complete report for a single company.
+        
+        Args:
+            df: Input DataFrame with credit rating data
+            entity_id: ID of the entity to report on
+            start_date: Start date for the report
+            end_date: End date for the report
+            fields_for_summary: Fields to include in summaries
+            
+        Returns:
+            Tuple of (report_text, structured_data_df)
+        """
+        # Filter for the specific entity
+        df_summary = df.loc[df.ratee_entity_rp_entity_id.eq(entity_id)].copy().reset_index(drop=True)
+        
+        # Apply date filters if provided
+        if start_date:
+            df_summary = df_summary[df_summary['date'] >= start_date]
+        if end_date:
+            df_summary = df_summary[df_summary['date'] <= end_date]
+        
+        # Generate summary by date
+        fields = fields_for_summary or ['date', 'ratee_entity', 'headline', 'source_name', 
+                                       'url', 'contextualized_chunk_text']
+        df_grouped = self.prepare_daily_summary_input(df_summary, fields_for_summary=fields)
+
+        df_summaries, report_text_input = self.generate_summaries_df(df_grouped, summary_input_col='summary_input')
+
+        # Generate final report
+        report_text = self.summarize_string(
+            report_text_input
+        )
+
+        # Extract structured data
+        structured_data = self.create_consolidated_data_table(report_text, 'data_table')
+        
+        return report_text, structured_data
+
+    def generate_report_by_entities(self, df: pd.DataFrame, entity_keys: List[str], 
+                              start_date: str = None, end_date: str = None,
+                              fields_for_summary: List[str] = None) -> Dict[str, Tuple[str, pd.DataFrame]]:
+        """
+        Process multiple entities in batch.
+        
+        Args:
+            df: Input DataFrame with credit rating data
+            entity_keys: entity IDs
+            start_date: Start date for the reports
+            end_date: End date for the reports
+            fields_for_summary: Fields to include in summaries
+            
+        Returns:
+            Dict mapping entity IDs to (report_text, structured_data_df) tuples
+        """
+        results = {}
+        
+        # Display progress bar for entity processing
+        total_entities = len(entity_keys)
+        processed = 0
+
+        for entity_id in entity_keys:
+            processed += 1
+            print(f"Processing... ({processed}/{total_entities})")
+            
+            report_text, structured_data = self.generate_company_report(
+                df, entity_id,
+                start_date, end_date,
+                fields_for_summary,
             )
             
-            # Extracting the summary string from the response
-            json_string = response.model_dump()['choices'][0]['message']['content'] 
-            return json_string  # Return summary if successful
-
-        except Exception as exception_message:
-            error_message = str(exception_message)
+            results[entity_id] = (report_text, structured_data)
             
-            # Check for length-related error
-            if 'context_length_exceeded' in error_message or 'string_above_max_length' in error_message:
-                print("Text is too long, splitting and retrying...")
-
-                # Attempt to split text and retry up to `max_split_retries`
-                for split_attempt, num_split in enumerate(num_splits[:max_split_retries]):
-                    try:
-                        split_texts = split_text_on_nearest_linebreak(text_string, num_splits=num_split)
-
-                        # Generate completions for all parts
-                        completions = []
-                        for part in split_texts:
-                            completion = get_chat_completion(client, model, system_prompt, part)
-                            completions.append(completion)
-
-                        # Consolidate completions if necessary
-                        if len(completions) > 1 and system_prompt_consolidation:
-                            final_completion = consolidate_completions(client, system_prompt_consolidation, completions, model)
-                            return final_completion
-                        
-                        # Return the completion if successful and no consolidation needed
-                        return completions[0] if completions else None
-                    
-                    except Exception as nested_exception_message:
-                        nested_error = str(nested_exception_message)
-                        # Break out if the error isn’t length-related
-                        if 'context_length_exceeded' not in nested_error and 'string_above_max_length' not in nested_error:
-                            print(f"Encountered a persistent error during split attempt {split_attempt + 1}: {nested_exception_message}")
-                            break
-            else:
-                # Handle non-length-related errors and retry if within `max_retries`
-                print(f"An error occurred on attempt {attempt + 1}: {exception_message}")
-
-    # Return None after all retries fail
-    print(f"All attempts failed after {max_retries} main retries and {max_split_retries} split retries.")
-    return None
-
-def generate_prompt(system_prompt, **replacements):
-    
-    if replacements:
-        for key, value in replacements.items():
-            placeholder = f'[{key}]'
-            system_prompt = system_prompt.replace(placeholder, value)
-        return system_prompt
-    else:
-        return system_prompt
-
-# ### Reviewed CODE
-    
-# def summarize_string_splits(text_string, system_prompt, replacements, OPENAI_API_KEY, model="gpt-4o-mini-2024-07-18",
-#                     max_retries=5, max_split_retries=5, should_split_initially=False, num_splits=2, split_char = '\n'):
-    
-#     generated_prompt = generate_prompt(system_prompt, **replacements)
-#     client = openai.OpenAI(api_key=OPENAI_API_KEY)
-#     retry_splits = [2, 4, 6, 8, 10]  # Increasing split sizes
-
-#     # Initial split if requested
-#     if should_split_initially:
-#         split_texts = split_text_on_character(text_string, num_splits, split_char)
-#     else:
-#         split_texts = [text_string]
-
-#     for attempt in range(max_retries):
-#         completions = []
-#         for part in split_texts:
-#             try:
-#                 json_string = get_chat_completion(client, model, generated_prompt, part)
-#                 completions.append(json_string)
-#             except Exception as exception_message:
-#                 error_message = str(exception_message)
-#                 # Check for length-related error and split logic if necessary
-#                 if 'context_length_exceeded' in error_message or 'string_above_max_length' in error_message:
-#                     print("Text is too long, splitting and retrying...")
-#                     # Handle split and retry with reduced text length recursively
-#                     split_result = handle_split_and_retry(client, part, system_prompt, model, max_split_retries, retry_splits)
-#                     if split_result:
-#                         return completions.append(split_result)
-
-#                 else:
-#                     # Handle non-length-related errors
-#                     print(f"An error occurred on attempt {attempt + 1}: {exception_message}")
-        
-#         if len(completions)>1:
-#             final_summary = consolidate_completions(client, system_prompt_consolidation, completions, model)
-#             return final_summary
-#         else:
-#             return completions[0]
-
-#     print(f"All attempts failed after {max_retries} main retries and {max_split_retries} split retries.")
-#     return None
-
-# def handle_split_and_retry(client, text_string, system_prompt, model, max_split_retries, retry_splits):
-#     """Handles splitting the text_string and retrying."""
-#     for split_attempt, num_split in enumerate(retry_splits[:max_split_retries]):
-#         try:
-#             split_texts = split_text_on_character(text_string, num_splits=num_split, split_char = '\n')
-#             completions = [get_chat_completion(client, model, system_prompt, part) for part in split_texts]
-#             if len(completions) > 1:  # Use consolidation logic if needed
-#                 return consolidate_completions(client, system_prompt_consolidation, completions, model)
-#             return completions[0] if completions else None
-#         except Exception as nested_exception_message:
-#             nested_error = str(nested_exception_message)
-#             if not ('context_length_exceeded' in nested_error or 'string_above_max_length' in nested_error):
-#                 print(f"Error during split attempt {split_attempt + 1}: {nested_exception_message}")
-#                 break
-#     return None
-
-# def generate_prompt(system_prompt, **replacements):
-#     """Generates a prompt with placeholders replaced by actual values."""
-#     for key, value in replacements.items():
-#         placeholder = f'[{key}]'
-#         system_prompt = system_prompt.replace(placeholder, value)
-#     return system_prompt
-
-# def split_text_on_character(text_string, num_splits, split_char='\n'):
-#     """Splits the text string into `num_splits` parts using the specified character, maintaining context."""
-    
-#     # Split the text using the specified character
-#     segments = text_string.split(split_char)
-
-#     avg_length = len(segments) // num_splits
-#     split_texts = []
-    
-#     for i in range(num_splits):
-#         start_idx = i * avg_length
-#         end_idx = (i + 1) * avg_length if i < num_splits - 1 else len(segments)
-
-#         # Extracts each segment based on calculated indices
-#         segment = segments[start_idx:end_idx]
-
-#         # Add context: previous segment and current segment
-#         if i > 0:
-#             # Add context from the previous segment for continuity
-#             previous_context = segments[max(0, start_idx - 1)]
-#             segment = [previous_context] + segment
-        
-#         final_segment = split_char.join(segment).strip()  # Assembles the final segment
-#         split_texts.append(final_segment)
-    
-#     return split_texts
-
-# def consolidate_completions(client, system_prompt_consolidation, completions, model):
-#     """Consolidates multiple completions into a single response."""
-#     consolidation_input = '\n\n'.join([f"Completion {i+1}: {comp}" for i, comp in enumerate(completions)])
-#     response = client.chat.completions.create(
-#         model=model,
-#         messages=[
-#             {"role": "system", "content": system_prompt_consolidation},
-#             {"role": "user", "content": f"Please merge and consolidate these completions into a single response:\n\n{consolidation_input}"}
-#         ],
-#         temperature=0,
-#         top_p=1,
-#         frequency_penalty=0,
-#         presence_penalty=0
-#     )
-#     return response.model_dump().get('choices', [{}])[0].get('message', {}).get('content', {})
-
-# def get_chat_completion(client, model, system_prompt, text_string):
-#     """Handles chat completion requests."""
-#     response = client.chat.completions.create(
-#         model=model,
-#         messages=[
-#             {"role": "system", "content": system_prompt},
-#             {"role": "user", "content": text_string}
-#         ],
-#         temperature=0,
-#         top_p=1,
-#         frequency_penalty=0,
-#         presence_penalty=0
-#     )
-#     return response.model_dump().get('choices', [{}])[0].get('message', {}).get('content', {})
+        return results

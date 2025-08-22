@@ -19,4 +19,4 @@ def get_entity_ids(entity_names: list[str]) -> list[str]:
             if not updated:
                 print(f'No matching entity ID found for {name} after checking all suggestions')
 
-    return list(entity_name_to_keys.values())
+    return list(entity_name_to_keys.values()), list(entity_name_to_keys.keys())

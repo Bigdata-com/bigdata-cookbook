@@ -231,7 +231,9 @@ def process_search_results(
                             e["name"] for e in other_entities
                         ),
                         "entities": chunk_entities,
-                    }
+                        'source_name': result.source.name,
+                        'source_rank': result.source.rank,
+                        'url': result.url}
                     
                     # If enhance_search is enabled, add context from previous/next chunks
                     if enhance_search and result.id in document_chunks_cache:
@@ -246,6 +248,8 @@ def process_search_results(
                     # Collect information in standard format
                     rows.append(row_data)
 
+    ## what if I am enhancing both chunk 1 and chunk 2 from the same document?
+
     if not rows:
         raise ValueError("No rows to process")
 
@@ -255,6 +259,9 @@ def process_search_results(
     df = df.drop_duplicates(
         subset=["timestamp_utc", "document_id", "text", "entity_id"]
     )
+
+    df['date'] = pd.to_datetime(df['timestamp_utc']).dt.date
+    
     return df.reset_index(drop=True)
 
 def extract_chunks_from_annotated_dict(annotated_dict):
@@ -265,7 +272,7 @@ def extract_chunks_from_annotated_dict(annotated_dict):
     """
     chunks = annotated_dict.get('content', {}).get('body', [])
     if not chunks:
-        print("Warning: No chunks found in annotated_dict")
+        print(f"Warning: No chunks found in annotated_dict {annotated_dict}")
         return pd.DataFrame(columns=['chunk_number', 'text'])
         
     # Process chunks into DataFrame rows
