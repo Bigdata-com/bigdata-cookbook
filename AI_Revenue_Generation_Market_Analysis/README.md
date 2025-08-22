@@ -11,9 +11,50 @@ This project provides comprehensive AI revenue generation ecosystem analysis too
 - **Adoption timeline tracking** showing how AI revenue generation implementation evolves across different companies
 - **Market positioning analysis** quantifying each company's role and exposure in the AI revenue generation ecosystem
 
-## Local Installation and Usage
+## Installation and Usage
 
-### Prerequisites
+### Option 1: Docker Installation
+
+#### Prerequisites
+- Docker installed on your system
+
+#### Setup and Run with Docker
+
+1. **Clone and navigate to the project**:
+   ```bash
+   cd "AI_Revenue_Generation_Market_Analysis"
+   ```
+
+2. **Set up credentials**:
+   - Copy the example environment file:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edit the `.env` file and add your credentials:
+     ```
+     BIGDATA_USERNAME=your_username
+     BIGDATA_PASSWORD=your_password
+     OPENAI_API_KEY=your_openai_api_key
+     ```
+
+3. **Build and run the Docker container**:
+   ```bash
+   # Build the Docker image
+   docker build -t ai_revenue_generation_market_analysis .
+   
+   # Run the container
+   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8888:8888 --env-file .env -v "$(pwd)":/app ai_revenue_generation_market_analysis
+   ```
+
+4. **Access JupyterLab**:
+   - Open your browser and navigate to `http://localhost:8888`
+   - Open `AI_Revenue_Generation_Market_Analysis.ipynb`
+   - Follow the setup instructions in the notebook
+   - Run cells sequentially to perform the analysis
+
+### Option 2: Local Installation
+
+#### Prerequisites
 - Python 3.8 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
 
