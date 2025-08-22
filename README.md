@@ -102,6 +102,14 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Adoption timeline tracking showing how AI revenue generation implementation evolves across different companies
 - Market positioning analysis quantifying each company's role and exposure in the AI revenue generation ecosystem
 
+### 📊 [Tracking Inflation Drivers](./Tracking_Inflation_Drivers/)
+**Automated Macroeconomic Inflation Analysis Tool**
+
+- Automated theme breakdown into specific inflation components and drivers
+- Systematic document analysis using embeddings-based search and classification
+- Economic categorization that turns narrative signals into structured insights
+- Comprehensive reporting with analytical summaries for each inflation driver covering demand-pull, cost-push, wage increases, global factors, and monetary policy impacts
+
 ## Quick Start
 
 ### Prerequisites
@@ -192,6 +200,11 @@ bigdata-cookbook/
 │   └── README.md
 ├── AI_Revenue_Generation_Market_Analysis/          # AI revenue generation analysis
 │   ├── AI_Revenue_Generation_Market_Analysis.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── Tracking_Inflation_Drivers/                     # Inflation analysis tool
+│   ├── Tracking_Inflation_Drivers.ipynb
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
