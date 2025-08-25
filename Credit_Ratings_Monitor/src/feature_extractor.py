@@ -1,17 +1,7 @@
-"""
-Module for extracting features from credit rating content.
-
-This module handles the extraction of various features from credit rating content,
-including entity role detection (rater/ratee), credit ratings, outlooks, etc.
-"""
-
 import os
 import pandas as pd
 from typing import List, Dict, Any, Optional, Union
-
 from bigdata_research_tools.labeler.labeler import Labeler, get_prompts_for_labeler, parse_labeling_response
-from bigdata_research_tools.llm.base import AsyncLLMEngine
-from bigdata_research_tools.llm.utils import run_concurrent_prompts
 
 class FeatureExtractor(Labeler):
 
@@ -372,14 +362,11 @@ These examples provide illustrations of extracting all necessary information, fo
         # Get text configs using the flexible prompt fields method
         text_configs = self._add_prompt_fields(df, additional_prompt_fields)
 
-        print(text_configs)
-
         prompts = get_prompts_for_labeler(
             texts=df[text_col].tolist(),
             textsconfig=text_configs
         )
-        print(prompts[0])
-        print(type(prompts[0]))
+
         # Run the labeling process
         responses = self._run_labeling_prompts(
             prompts=prompts,
@@ -388,14 +375,12 @@ These examples provide illustrations of extracting all necessary information, fo
         )
 
         responses = [parse_labeling_response(response) for response in responses]
-        print(responses)
         
         # Deserialize the responses
         df_labeled = self._deserialize_label_responses(responses)
         if len(df_labeled['motivation'].unique()) == 1 and df_labeled['motivation'].values[0]=='':
             df_labeled = df_labeled.drop(columns=['motivation', 'label'])
 
-        print(df_labeled)
         
         # Merge with the original dataframe #check this because it is wrong
         if 'index' not in df.columns:

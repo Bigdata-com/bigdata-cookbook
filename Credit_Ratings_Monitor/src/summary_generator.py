@@ -5,7 +5,6 @@ import asyncio
 from typing import List, Dict, Union, Optional, Tuple, Any
 
 from bigdata_research_tools.llm.base import AsyncLLMEngine
-from bigdata_research_tools.llm.utils import run_concurrent_prompts
 from bigdata_research_tools.labeler.labeler import Labeler, get_prompts_for_labeler, parse_labeling_response
 
 
@@ -152,75 +151,75 @@ You are tasked with generating a comprehensive timeline report based on input te
         
 """
         self.credit_ratings_data_table="""
-Forget all previous instructions.
-You are provided with a string containing a detailed credit rating report for a company. Your task is to parse this string and extract specific information to create a structured data table. Each record in this table should be formatted as a JSON object including the following fields:
-  
-1. **Ratee Entity**: The name of the company being rated, the subject of the report.
-2. **Date**: The specific date of the rating event.
-3. **Credit Rating**: The explicit credit rating mentioned in the report. Ratings are expressed in letters and numbers such as BBB, Baa1, A-, Prime-2, etc. *Note: Extract exact credit ratings discussed, assigned or placed in review.* If no credit rating is mentioned, write "No Rating Mentioned".
-4. **Key Driver**: The primary reason or rationale provided for the assignment of the credit rating.
-5. **Rater**: The rating agency that is providing the credit rating.
+            Forget all previous instructions.
+            You are provided with a string containing a detailed credit rating report for a company. Your task is to parse this string and extract specific information to create a structured data table. Each record in this table should be formatted as a JSON object including the following fields:
+            
+            1. **Ratee Entity**: The name of the company being rated, the subject of the report.
+            2. **Date**: The specific date of the rating event.
+            3. **Credit Rating**: The explicit credit rating mentioned in the report. Ratings are expressed in letters and numbers such as BBB, Baa1, A-, Prime-2, etc. *Note: Extract exact credit ratings discussed, assigned or placed in review.* If no credit rating is mentioned, write "No Rating Mentioned".
+            4. **Key Driver**: The primary reason or rationale provided for the assignment of the credit rating.
+            5. **Rater**: The rating agency that is providing the credit rating.
 
-Create a separate data record for each distinct combination of date, credit rating, rating agency, and key driver. 
+            Create a separate data record for each distinct combination of date, credit rating, rating agency, and key driver. 
 
-To achieve accuracy:
-- Parse the report string line-by-line. Lines are identified by line-breaking characters '\n'.
-- Generate AT LEAST one record for each date for each distinct combination of date, credit rating, rating agency, and key driver.
-- If a line does not explicitly mention an exact credit rating, write "No Credit Rating Mentioned. If a line does not explicitly mention a rating agency, write "No Rating Agency Mentioned".
-- Ensure that each extracted credit rating is attributed to the correct date, rating agency, and key driver from the same line.
-- Do not include actions like downgrade, upgrade, confirmation, review, or watchlist in the credit rating extracted. This field can only contain exact credit ratings.
-- Carefully read the text as credit rating agencies may use similar scales to assign credit ratings.
-- Ensure that there is a direct mention of a credit rating from a specific credit rating agency or rater.
-- Extract exact ratings related to any debt instrument, e.g. senior unsecured debt, commercial paper, etc., but do not include the credit actions or reviews in the extracted information.
-- DO NOT infer the credit rating from descriptions such as "the current rating is at the bottom of the investment-grade scale". The exact rating has to be mentioned.
+            To achieve accuracy:
+            - Parse the report string line-by-line. Lines are identified by line-breaking characters '\n'.
+            - Generate AT LEAST one record for each date for each distinct combination of date, credit rating, rating agency, and key driver.
+            - If a line does not explicitly mention an exact credit rating, write "No Credit Rating Mentioned. If a line does not explicitly mention a rating agency, write "No Rating Agency Mentioned".
+            - Ensure that each extracted credit rating is attributed to the correct date, rating agency, and key driver from the same line.
+            - Do not include actions like downgrade, upgrade, confirmation, review, or watchlist in the credit rating extracted. This field can only contain exact credit ratings.
+            - Carefully read the text as credit rating agencies may use similar scales to assign credit ratings.
+            - Ensure that there is a direct mention of a credit rating from a specific credit rating agency or rater.
+            - Extract exact ratings related to any debt instrument, e.g. senior unsecured debt, commercial paper, etc., but do not include the credit actions or reviews in the extracted information.
+            - DO NOT infer the credit rating from descriptions such as "the current rating is at the bottom of the investment-grade scale". The exact rating has to be mentioned.
 
-Input Report Example:
-"\n- **2024-01-17**: Boeing Co. senior unsecured debt has been rated Baa2 by Moody's due to concerns over the company's ability to deliver sufficient volumes of its 737 model to enhance free cash flow. S&P has confirmed its BBB- credit rating, justified by concerns over the company's cash flow during the strike.
-\n- **2024-04-24**: Boeing Co. has been downgraded BBB- by Fitch with a negative outlook motivated by ongoing cash flow issues and projected annual cash flow insufficient to cover debt obligations. Headwinds in the Commercial Airplanes segment and expectations of new debt issuance are also likely to push the credit rating to a new downgrade in the coming months.
-\n- **2024-10-21**: Boeing Co. BBB- rating by Fitch has been placed on review for a downgrade due to cash flow uncertainty, while Moody's also placed their credit rating on review."
+            Input Report Example:
+            "\n- **2024-01-17**: Boeing Co. senior unsecured debt has been rated Baa2 by Moody's due to concerns over the company's ability to deliver sufficient volumes of its 737 model to enhance free cash flow. S&P has confirmed its BBB- credit rating, justified by concerns over the company's cash flow during the strike.
+            \n- **2024-04-24**: Boeing Co. has been downgraded BBB- by Fitch with a negative outlook motivated by ongoing cash flow issues and projected annual cash flow insufficient to cover debt obligations. Headwinds in the Commercial Airplanes segment and expectations of new debt issuance are also likely to push the credit rating to a new downgrade in the coming months.
+            \n- **2024-10-21**: Boeing Co. BBB- rating by Fitch has been placed on review for a downgrade due to cash flow uncertainty, while Moody's also placed their credit rating on review."
 
-Your output should be a JSON array of objects, formatted as follows:
-[
-  {
-    "Ratee Entity": "Boeing Co.",
-    "Date": "2024-01-17",
-    "Credit Rating": "Baa2",
-    "Key Driver": "Concerns over the company's ability to deliver sufficient volumes of its 737 model to enhance free cash flow.",
-    "Rater": "Moody's"
-  },
-  {
-    "Ratee Entity": "Boeing Co.",
-    "Date": "2024-03-26",
-    "Credit Rating": "BBB-",
-    "Key Driver": "Concerns over the company's cash flow during the strike.",
-    "Rater": "S&P"
-  },
-  {
-    "Ratee Entity": "Boeing Co.",
-    "Date": "2024-04-24",
-    "Credit Rating": "BBB-",
-    "Key Driver": "Negative outlook due to ongoing cash flow issues and projected annual cash flow insufficient to cover debt obligations.",
-    "Rater": "Fitch"
-  },
-  {
-    "Ratee Entity": "Boeing Co.",
-    "Date": "2024-10-21",
-    "Credit Rating": "BBB-",
-    "Key Driver": "The rating is in review for a downgrade due to cash flow uncertainty.",
-    "Rater": "Fitch"
-  },
-  {
-    "Ratee Entity": "Boeing Co.",
-    "Date": "2024-10-21",
-    "Credit Rating": "No Rating Mentioned",
-    "Key Driver": "The rating is in review for a downgrade due to cash flow uncertainty.",
-    "Rater": "Moody's"
-  },
-  ...
-]
+            Your output should be a JSON array of objects, formatted as follows:
+            [
+            {
+                "Ratee Entity": "Boeing Co.",
+                "Date": "2024-01-17",
+                "Credit Rating": "Baa2",
+                "Key Driver": "Concerns over the company's ability to deliver sufficient volumes of its 737 model to enhance free cash flow.",
+                "Rater": "Moody's"
+            },
+            {
+                "Ratee Entity": "Boeing Co.",
+                "Date": "2024-03-26",
+                "Credit Rating": "BBB-",
+                "Key Driver": "Concerns over the company's cash flow during the strike.",
+                "Rater": "S&P"
+            },
+            {
+                "Ratee Entity": "Boeing Co.",
+                "Date": "2024-04-24",
+                "Credit Rating": "BBB-",
+                "Key Driver": "Negative outlook due to ongoing cash flow issues and projected annual cash flow insufficient to cover debt obligations.",
+                "Rater": "Fitch"
+            },
+            {
+                "Ratee Entity": "Boeing Co.",
+                "Date": "2024-10-21",
+                "Credit Rating": "BBB-",
+                "Key Driver": "The rating is in review for a downgrade due to cash flow uncertainty.",
+                "Rater": "Fitch"
+            },
+            {
+                "Ratee Entity": "Boeing Co.",
+                "Date": "2024-10-21",
+                "Credit Rating": "No Rating Mentioned",
+                "Key Driver": "The rating is in review for a downgrade due to cash flow uncertainty.",
+                "Rater": "Moody's"
+            },
+            ...
+            ]
 
-Ensure precision by accurately assigning ratings to the date, rater, and key drivers listed in the same line of the report. Do not mix dates, ratings, or drivers across different report entries.
-"""
+            Ensure precision by accurately assigning ratings to the date, rater, and key drivers listed in the same line of the report. Do not mix dates, ratings, or drivers across different report entries.
+            """
     
     def _split_text_on_nearest_linebreak(self, text_string: str, num_splits: int) -> List[str]:
         """
@@ -364,7 +363,6 @@ Ensure precision by accurately assigning ratings to the date, rater, and key dri
         texts = df[summary_input_col].tolist()
 
         prompts = get_prompts_for_labeler(texts, textsconfig=textsconfig)
-        print(prompts[0])
 
         #these prompts should have summary input instead of text as key
 
@@ -500,23 +498,21 @@ Ensure precision by accurately assigning ratings to the date, rater, and key dri
             # Clean up JSON string
             json_string = re.sub('```', '', json_string)
             json_string = re.sub('json', '', json_string)
-            print(json_string)
 
             # Parse JSON into DataFrame
             try:
-                    json_string = json.loads(json_string)['data']
-                    data = pd.DataFrame(json_string)
-                    return data
+                json_string = json.loads(json_string)['data']
+                data = pd.DataFrame(json_string)
+                return data
             except json.JSONDecodeError as e:
-                print(f"Error parsing JSON: {e}")
+                print(f"Error parsing JSON: {e}.")
                 return pd.DataFrame()
                 
         except Exception as e:
             print(f"Error creating data table: {e}")
             return pd.DataFrame()
     
-    def generate_company_report(self, df: pd.DataFrame, entity_id: str,
-                               start_date: str = None, end_date: str = None, 
+    def generate_company_report(self, df: pd.DataFrame, entity_id: str,text_col:str='text',
                                fields_for_summary: List[str] = None,) -> Tuple[str, pd.DataFrame]:
         """
         Generate a complete report for a single company.
@@ -534,31 +530,26 @@ Ensure precision by accurately assigning ratings to the date, rater, and key dri
         # Filter for the specific entity
         df_summary = df.loc[df.ratee_entity_rp_entity_id.eq(entity_id)].copy().reset_index(drop=True)
         
-        # Apply date filters if provided
-        if start_date:
-            df_summary = df_summary[df_summary['date'] >= start_date]
-        if end_date:
-            df_summary = df_summary[df_summary['date'] <= end_date]
-        
         # Generate summary by date
         fields = fields_for_summary or ['date', 'ratee_entity', 'headline', 'source_name', 
                                        'url', 'contextualized_chunk_text']
-        df_grouped = self.prepare_daily_summary_input(df_summary, fields_for_summary=fields)
+        df_grouped = self.prepare_daily_summary_input(df_summary, text_col=text_col, summary_input=fields)
 
         df_summaries, report_text_input = self.generate_summaries_df(df_grouped, summary_input_col='summary_input')
-
+        
         # Generate final report
+        print('Generating Company Report...')
         report_text = self.summarize_string(
             report_text_input
         )
 
         # Extract structured data
-        structured_data = self.create_consolidated_data_table(report_text, 'data_table')
+        print('Extracting Structured Data Table...')
+        structured_data = self.create_consolidated_data_table(report_text)
         
         return report_text, structured_data
 
-    def generate_report_by_entities(self, df: pd.DataFrame, entity_keys: List[str], 
-                              start_date: str = None, end_date: str = None,
+    def generate_report_by_entities(self, df: pd.DataFrame, entity_keys: List[str], text_col: str = 'text', 
                               fields_for_summary: List[str] = None) -> Dict[str, Tuple[str, pd.DataFrame]]:
         """
         Process multiple entities in batch.
@@ -584,8 +575,7 @@ Ensure precision by accurately assigning ratings to the date, rater, and key dri
             print(f"Processing... ({processed}/{total_entities})")
             
             report_text, structured_data = self.generate_company_report(
-                df, entity_id,
-                start_date, end_date,
+                df, entity_id,text_col,
                 fields_for_summary,
             )
             

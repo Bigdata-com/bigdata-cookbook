@@ -64,7 +64,7 @@ def search_enhanced(companies:Union[list[str], list[Company]], keywords: list[st
         scope=scope,
     )
 
-    print(f"About to run {len(batched_query)} queries")
+    print(f"About to run {len(batched_query)*len(date_ranges)} queries")
     print("Example Query:", batched_query[0], "over date range:", date_ranges[0])
 
     # Run concurrent search
