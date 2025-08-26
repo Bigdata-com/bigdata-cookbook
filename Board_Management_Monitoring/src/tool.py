@@ -877,10 +877,12 @@ def plot_management_distributions(
     tick_vals: Optional[List] = None, 
     tick_text: Optional[List] = None,
     interactive: bool = True,
-    normalize_to_percentage: bool = True
+    normalize_to_percentage: bool = True,
+    layout: str = "horizontal",
+    show_legend: bool = True
 ):
     """
-    Generates three side-by-side bar charts showing the distribution of management vs board themes by quarter
+    Generates bar charts showing the distribution of management vs board themes by quarter
     for different search modes.
     
     Parameters:
@@ -893,6 +895,8 @@ def plot_management_distributions(
         tick_text: List of labels corresponding to tick_vals
         interactive: If True, creates an interactive Plotly chart. If False, creates a static matplotlib chart
         normalize_to_percentage: If True, normalizes values to percentages (0-100%). If False, shows absolute counts.
+        layout: "horizontal" for side-by-side (1 row, 3 cols) or "vertical" for stacked (3 rows, 1 col)
+        show_legend: If True, shows the legend. If False, hides the legend.
         
     Returns:
         fig: A Plotly Figure object or matplotlib figure containing the three subplots
@@ -941,17 +945,33 @@ def plot_management_distributions(
         # Create Plotly subplots
         from plotly.subplots import make_subplots
         
-        fig = make_subplots(
-            rows=1, cols=3,
-            subplot_titles=subplot_titles,
-            shared_yaxes=True,
-            horizontal_spacing=0.08
-        )
+        if layout == "horizontal":
+            fig = make_subplots(
+                rows=1, cols=3,
+                subplot_titles=subplot_titles,
+                shared_yaxes=True,
+                horizontal_spacing=0.08
+            )
+            subplot_positions = [(1, 1), (1, 2), (1, 3)]
+            height = 500
+            legend_y = -0.2
+            margin_b = 100
+        else:  # vertical layout
+            fig = make_subplots(
+                rows=3, cols=1,
+                subplot_titles=subplot_titles,
+                shared_xaxes=True,
+                vertical_spacing=0.15  # Increased spacing to avoid ticker overlap
+            )
+            subplot_positions = [(1, 1), (2, 1), (3, 1)]
+            height = 1000  # Increased height for better spacing
+            legend_y = -0.08
+            margin_b = 80
         
         # Add stacked bars for each subplot
         datasets = [data_strict, data_relaxed, data_relaxed_post]
         
-        for i, data in enumerate(datasets, 1):
+        for i, (data, pos) in enumerate(zip(datasets, subplot_positions)):
             if len(data) > 0:
                 # Get all unique quarters for this dataset
                 quarters = sorted(data['quarter_date'].unique())
@@ -978,8 +998,8 @@ def plot_management_distributions(
                     y=mgmt_values,
                     name='Management',
                     marker_color='#636EFA',
-                    showlegend=(i == 1),  # Show legend only for first subplot
-                    row=1, col=i
+                    showlegend=(i == 0 and show_legend),  # Show legend only for first subplot and if enabled
+                    row=pos[0], col=pos[1]
                 )
                 
                 fig.add_bar(
@@ -987,12 +1007,12 @@ def plot_management_distributions(
                     y=board_values,
                     name='Board',
                     marker_color='#EF553B',
-                    showlegend=(i == 1),  # Show legend only for first subplot
-                    row=1, col=i
+                    showlegend=(i == 0 and show_legend),  # Show legend only for first subplot and if enabled
+                    row=pos[0], col=pos[1]
                 )
         
-        # Update x-axes for all subplots
-        for i in range(1, 4):
+        # Update axes for all subplots
+        for i, pos in enumerate(subplot_positions):
             if tick_vals is not None and tick_text is not None:
                 fig.update_xaxes(
                     tickmode='array',
@@ -1000,42 +1020,53 @@ def plot_management_distributions(
                     ticktext=tick_text,
                     tickangle=45,
                     showticklabels=True,
-                    row=1, col=i
+                    row=pos[0], col=pos[1]
                 )
             if x_range is not None:
                 # Add padding to the left and right of the range
                 range_start = x_range[0]
                 range_end = x_range[1]
                 padding = (range_end - range_start) * 0.03  # 3% padding
-                fig.update_xaxes(range=[range_start - padding, range_end + padding], row=1, col=i)
+                fig.update_xaxes(range=[range_start - padding, range_end + padding], row=pos[0], col=pos[1])
         
         # Update y-axes
-        for i in range(1, 4):
-            fig.update_yaxes(title_text=y_label if i == 1 else "", row=1, col=i)
+        for i, pos in enumerate(subplot_positions):
+            if layout == "horizontal":
+                fig.update_yaxes(title_text=y_label if i == 0 else "", row=pos[0], col=pos[1])
+            else:  # vertical layout
+                fig.update_yaxes(title_text=y_label, row=pos[0], col=pos[1])
+            
             if y_max is not None:
-                fig.update_yaxes(range=[0, y_max], row=1, col=i)
+                fig.update_yaxes(range=[0, y_max], row=pos[0], col=pos[1])
         
         # Update layout
         fig.update_layout(
-            title_text=title,
+            title=dict(
+                text=title,
+                x=0.5,  # Center the title
+                xanchor='center'
+            ),
             template="plotly_white",
             barmode='stack',  # Make bars stacked
             legend=dict(
                 orientation="h",
                 yanchor="top",
-                y=-0.2,  # Moved further down to avoid overlap with rotated tickers
+                y=legend_y,
                 xanchor="center",
                 x=0.5
             ),
-            height=500,
-            margin=dict(b=100)  # Add bottom margin for legend space
+            height=height,
+            margin=dict(b=margin_b, t=80)  # Add top margin for title space
         )
         
         return fig
         
     else:
         # Create matplotlib subplots
-        fig, axes = plt.subplots(1, 3, figsize=(18, 6), sharey=True)
+        if layout == "horizontal":
+            fig, axes = plt.subplots(1, 3, figsize=(20, 5), sharey=True)  # Wider and shorter
+        else:  # vertical layout
+            fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)  # Wider
         
         datasets = [data_strict, data_relaxed, data_relaxed_post]
         
@@ -1083,39 +1114,70 @@ def plot_management_distributions(
                 if y_max is not None:
                     ax.set_ylim(0, y_max)
                 
-                # Format x-axis labels
-                if tick_vals is not None and tick_text is not None:
-                    quarter_labels = []
-                    for quarter in quarters:
-                        quarter_period = quarter.to_period('Q')
-                        label_found = False
-                        for i, tick_val in enumerate(tick_vals):
-                            tick_period = pd.Timestamp(tick_val).to_period('Q')
-                            if tick_period == quarter_period and i < len(tick_text):
-                                quarter_labels.append(tick_text[i])
-                                label_found = True
-                                break
-                        if not label_found:
-                            quarter_labels.append(str(quarter_period))
-                    ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
+                # Show x-axis labels only on the last subplot
+                if layout == "horizontal":
+                    is_last_subplot = (idx == 2)  # Last subplot in horizontal layout
+                else:  # vertical layout
+                    is_last_subplot = (idx == 2)  # Last subplot in vertical layout
+                
+                if is_last_subplot:
+                    # Format x-axis labels for the last subplot
+                    if tick_vals is not None and tick_text is not None:
+                        quarter_labels = []
+                        for quarter in quarters:
+                            quarter_period = quarter.to_period('Q')
+                            label_found = False
+                            for i, tick_val in enumerate(tick_vals):
+                                tick_period = pd.Timestamp(tick_val).to_period('Q')
+                                if tick_period == quarter_period and i < len(tick_text):
+                                    quarter_labels.append(tick_text[i])
+                                    label_found = True
+                                    break
+                            if not label_found:
+                                quarter_labels.append(str(quarter_period))
+                        ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
+                    else:
+                        quarter_labels = [str(q.to_period('Q')) for q in quarters]
+                        ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
                 else:
-                    quarter_labels = [str(q.to_period('Q')) for q in quarters]
-                    ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
+                    # Remove x-axis labels for other subplots
+                    ax.set_xticklabels([])  # No labels on x-axis
+                    ax.tick_params(axis='x', which='both', length=0)  # Remove tick marks
                 
                 # Removed value labels on bars per user request
                 
                 ax.grid(True, alpha=0.3, axis='y')
         
-        # Set labels
-        axes[0].set_ylabel(y_label)
+        # Set labels based on layout
+        if layout == "horizontal":
+            axes[0].set_ylabel(y_label)
+            # Create single legend below all subplots if enabled
+            if show_legend:
+                handles, labels = axes[0].get_legend_handles_labels()
+                fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.05), ncol=2)
+        else:  # vertical layout
+            for ax in axes:
+                ax.set_ylabel(y_label)
+            # Create single legend below all subplots if enabled
+            if show_legend:
+                handles, labels = axes[0].get_legend_handles_labels()
+                fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.02), ncol=2)
+        
+        # Set title and adjust layout
         fig.suptitle(title, fontsize=16)
-        
-        # Create single legend below all subplots
-        handles, labels = axes[0].get_legend_handles_labels()
-        fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.05), ncol=2)
-        
         plt.tight_layout()
-        plt.subplots_adjust(bottom=0.15)  # Make room for legend
+        
+        # Apply final adjustments after tight_layout
+        if layout == "horizontal":
+            if show_legend:
+                plt.subplots_adjust(bottom=0.15, top=0.91)  # Make room for legend and title
+            else:
+                plt.subplots_adjust(bottom=0.05, top=0.91)  # Less bottom space without legend
+        else:  # vertical layout
+            if show_legend:
+                plt.subplots_adjust(bottom=0.08, top=0.93)  # Make room for legend and more space for title
+            else:
+                plt.subplots_adjust(bottom=0.02, top=0.93)  # Less bottom space without legend
         
         return fig
 
