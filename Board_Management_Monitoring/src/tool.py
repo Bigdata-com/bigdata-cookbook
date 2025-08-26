@@ -1050,13 +1050,13 @@ def plot_management_distributions(
             barmode='stack',  # Make bars stacked
             legend=dict(
                 orientation="h",
-                yanchor="top",
-                y=legend_y,
-                xanchor="center",
-                x=0.5
+                yanchor="bottom",
+                y=1.02,  # Position ABOVE the subplot titles, between main title and subplots
+                xanchor="right",
+                x=0.98  # Position on the right
             ),
             height=height,
-            margin=dict(b=margin_b, t=80)  # Add top margin for title space
+            margin=dict(b=margin_b, t=120)  # More top margin for title and legend space
         )
         
         return fig
@@ -1151,17 +1151,17 @@ def plot_management_distributions(
         # Set labels based on layout
         if layout == "horizontal":
             axes[0].set_ylabel(y_label)
-            # Create single legend below all subplots if enabled
+            # Create legend in the center, between title and first graph if enabled
             if show_legend:
                 handles, labels = axes[0].get_legend_handles_labels()
-                fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.05), ncol=2)
+                fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.94), ncol=2)
         else:  # vertical layout
             for ax in axes:
                 ax.set_ylabel(y_label)
-            # Create single legend below all subplots if enabled
+            # Create legend in the center, between title and first graph if enabled
             if show_legend:
                 handles, labels = axes[0].get_legend_handles_labels()
-                fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.02), ncol=2)
+                fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.94), ncol=2)
         
         # Set title and adjust layout
         fig.suptitle(title, fontsize=16)
@@ -1170,14 +1170,14 @@ def plot_management_distributions(
         # Apply final adjustments after tight_layout
         if layout == "horizontal":
             if show_legend:
-                plt.subplots_adjust(bottom=0.15, top=0.91)  # Make room for legend and title
+                plt.subplots_adjust(bottom=0.05, top=0.88)  # Reduced space between title and subplots
             else:
-                plt.subplots_adjust(bottom=0.05, top=0.91)  # Less bottom space without legend
+                plt.subplots_adjust(bottom=0.05, top=0.93)  # Less bottom space without legend
         else:  # vertical layout
             if show_legend:
-                plt.subplots_adjust(bottom=0.08, top=0.93)  # Make room for legend and more space for title
+                plt.subplots_adjust(bottom=0.02, top=0.88)  # Reduced space between title and subplots
             else:
-                plt.subplots_adjust(bottom=0.02, top=0.93)  # Less bottom space without legend
+                plt.subplots_adjust(bottom=0.02, top=0.95)  # Less bottom space without legend
         
         return fig
 
