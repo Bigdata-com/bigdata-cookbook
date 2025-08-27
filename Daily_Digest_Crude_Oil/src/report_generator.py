@@ -17,9 +17,9 @@ def clean_text(text):
     # Normalize the text to remove any weird encodings
     text = unicodedata.normalize('NFKD', text)
     
-    # Check if the dollar sign has already been replaced, and only replace if it hasn't
-    if not r'\$' in text:
-        text = text.replace('$', r'\$')
+    # # Check if the dollar sign has already been replaced, and only replace if it hasn't
+    # if not r'\$' in text:
+    #     text = text.replace('$', r'\$')
     
     # Remove any unintended italic or mathematical symbols by replacing them
     text = re.sub(r'[\u2061-\u2064\u0338-\u0339\u2212-\u2213\u200E-\u200F]', '', text)
