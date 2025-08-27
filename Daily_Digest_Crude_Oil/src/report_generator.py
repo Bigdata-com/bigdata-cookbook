@@ -1,13 +1,12 @@
 from datetime import datetime
 import os
-import os
 import jinja2
 from IPython.core.display import HTML
 import pandas as pd
 import unicodedata
 import re
 from typing import Optional
-
+from IPython.display import display, HTML
 
 def clean_text(text):
     # Check if the text is a string, otherwise return it as-is (to handle NaN or non-string values)
@@ -84,6 +83,29 @@ def save_html_report(html_output, report_date, theme, output_base_dir=None):
         f.write(html_output)
 
     print(f"Report saved to {output_file}")
+
+def load_sanitize_display_html_report(report_date, theme, report_dir='./report/' ):
+    """
+    Dynamically constructs the path to the HTML report, loads, sanitizes, and displays it.
+    - report_dir: directory where reports are saved (e.g., './report')
+    - report_date: date string, e.g., '2025-06-25'
+    - theme: theme string, e.g., 'Crude_Oil'
+    """
+    filename = f"{report_date}_{theme.replace(' ', '_')}.html"
+    html_file_path = os.path.join(report_dir, filename)
+
+    if not os.path.exists(html_file_path):
+        print(f"Report file not found: {html_file_path}")
+        return
+
+    with open(html_file_path, "r") as f:
+        html_content = f.read()
+
+    # Sanitize for notebook display
+    sanitized_html = re.sub(r'<!DOCTYPE html>', '', html_content, flags=re.IGNORECASE)
+    sanitized_html = re.sub(r'</?(html|head|body)[^>]*>', '', sanitized_html, flags=re.IGNORECASE)
+
+    display(HTML(sanitized_html))
 
 # Helper functions for sorting
 def novelty_score_value(novelty_score):
