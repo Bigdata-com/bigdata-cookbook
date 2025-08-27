@@ -17,6 +17,7 @@ from typing import Optional
 import numpy as np
 from tqdm.notebook import tqdm
 from tqdm.asyncio import tqdm as tqdm_asyncio
+import ast
 
 
 def flatten_trending_topics(df, original_df):
@@ -92,7 +93,7 @@ async def generate_text_summary(text, topic, api_key, model='gpt-4o-mini-2024-07
     summary = response.model_dump()
 
     try:
-        summary_dict = eval(summary['choices'][0]['message']['content'])['summary']
+        summary_dict = ast.literal_eval(summary['choices'][0]['message']['content'])['summary']
     except:
         summary_dict = ''
     
@@ -361,7 +362,7 @@ async def extract_trending_topics(text_to_analyze, model, yearmonth, number_of_r
         summary = response.model_dump()
 
         # Parse the content assuming it is a JSON-like structure
-        trending_topics = eval(summary['choices'][0]['message']['content'])['trending_topics']
+        trending_topics = ast.literal_eval(summary['choices'][0]['message']['content'])['trending_topics']
 
         return trending_topics
 
@@ -430,7 +431,7 @@ async def consolidate_trending_topics(batch_results, model, api_key, main_theme)
     summary = response.model_dump()
 
     # # Parse the content assuming it is a JSON-like structure
-    # consolidated_topics = eval(summary['choices'][0]['message']['content'])['consolidated_topics']
+    # consolidated_topics = ast.literal_eval(summary['choices'][0]['message']['content'])['consolidated_topics']
     
     try:
         content = json.loads(summary['choices'][0]['message']['content'])
@@ -614,7 +615,7 @@ def fetch_entities(client, prompt, model):
             temperature=0
         )
         
-        entities_result = eval(response.model_dump()['choices'][0]['message']['content'])
+        entities_result = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'])
         return entities_result['entities']
     except Exception as e:
         print(f"Error detecting entities: {e}")
@@ -664,7 +665,7 @@ def fetch_subject_relevance(client, prompt, model):
             response_format={"type": "json_object"},
             temperature=0
         )
-        relevance_result = eval(response.model_dump()['choices'][0]['message']['content'])
+        relevance_result = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'])
         return relevance_result
     except Exception as e:
         print(f"Error checking subject relevance: {e}")
@@ -983,7 +984,7 @@ async def fetch_relevance(client, text_to_analyze, current_prompt, model, semaph
                 temperature=0
             )
 
-            relevance = eval(response.model_dump()['choices'][0]['message']['content'].strip())
+            relevance = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'].strip())
             return relevance['relevance']
         except Exception as e:
             return None
