@@ -78,6 +78,24 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Market positioning analysis with confidence scoring for investment decisions
 - Comprehensive ecosystem mapping for infrastructure investment intelligence
 
+### 🏦 [Daily Digest Central Banks](./Daily_Digest_Central_Banks/)
+**Automated Central Bank Announcements Monitoring and Analysis Tool**
+
+- Lexicon generation of monetary policy and central bank-specific terminology
+- Real-time content retrieval via Bigdata API with parallelized keyword searches
+- Topic clustering and selection with AI-powered verification and ranking
+- Custom report generation with configurable ranking systems for trending topics
+- Market impact assessment scoring topics for trendiness, novelty, and magnitude
+
+### 🛢️ [Daily Digest Crude Oil](./Daily_Digest_Crude_Oil/)
+**Automated Crude Oil Market Monitoring and Analysis Tool**
+
+- Lexicon generation of crude oil industry-specific terminology and jargon
+- Real-time content retrieval via Bigdata API with parallelized keyword searches
+- Topic clustering and selection with AI-powered verification and ranking
+- Custom report generation with configurable ranking systems for trending topics
+- Market impact assessment scoring topics for trendiness, novelty, and magnitude
+
 ## Quick Start
 
 ### Prerequisites
@@ -155,6 +173,22 @@ bigdata-cookbook/
 │   ├── Liquid_Cooling_Market_Watch.ipynb
 │   ├── src/
 │   ├── requirements.txt
+│   └── README.md
+├── Daily_Digest_Central_Banks/                      # Central bank monitoring
+│   ├── Daily_Digest_Central_Banks.ipynb
+│   ├── src/
+│   ├── assets/
+│   ├── report/
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── README.md
+├── Daily_Digest_Crude_Oil/                          # Crude oil market analysis
+│   ├── Daily_Digest_Crude_Oil.ipynb
+│   ├── src/
+│   ├── assets/
+│   ├── report/
+│   ├── requirements.txt
+│   ├── Dockerfile
 │   └── README.md
 └── README.md                                        # This file
 ```
