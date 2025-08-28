@@ -74,7 +74,7 @@ def build_queries_for_monitoring(
     date_periods: List[Tuple],
     persons: Dict[str, Dict[str, Any]],
     company: Dict[str, str],
-    news_search_mapping: List[str],
+    management_themes: List[str],
     board_themes: List[str],
     search_mode: str = "strict",
     sources: Optional[Dict[str, str]] = None,
@@ -87,7 +87,7 @@ def build_queries_for_monitoring(
         date_periods: List of (start_date, end_date) tuples
         persons: Dictionary of persons with their name variations
         company: Dictionary containing company info with 'id' field
-        news_search_mapping: List of management themes
+        management_themes: List of management themes
         board_themes: List of board themes
         search_mode: "strict", "relaxed", or "relaxed_post"
         sources: Dictionary of source names to IDs (optional)
@@ -130,7 +130,7 @@ def build_queries_for_monitoring(
             combined_component = person_component
 
         # Build queries for management themes
-        for theme in news_search_mapping:
+        for theme in management_themes:
             if source_filter:
                 q = combined_component & Similarity(theme) & source_filter
             else:
@@ -434,9 +434,9 @@ def plot_combined_monitoring_activity(
         fig: A Plotly Figure object or matplotlib figure containing the grouped bar chart.
     """
     # Prepare quarterly counts for each search mode
-    df1 = prepare_quarterly_counts(df_strict, "Company and Person (chunk level)")
-    df2 = prepare_quarterly_counts(df_relaxed, "Person (chunk level)")
-    df3 = prepare_quarterly_counts(df_relaxed_post, "Person (chunk level), Company (doc level)")
+    df1 = prepare_quarterly_counts(df_strict, "Strict")
+    df2 = prepare_quarterly_counts(df_relaxed, "Relaxed")
+    df3 = prepare_quarterly_counts(df_relaxed_post, "Relaxed Post")
 
     # Combine the data for all modes
     combined_df = pd.concat([df1, df2, df3], ignore_index=True)
@@ -461,7 +461,11 @@ def plot_combined_monitoring_activity(
                 ticktext=tick_text
             )
         if x_range is not None:
-            fig.update_xaxes(range=x_range)
+            # Add padding to the left and right of the range
+            range_start = x_range[0]
+            range_end = x_range[1]
+            padding = (range_end - range_start) * 0.03  # 3% padding
+            fig.update_xaxes(range=[range_start - padding, range_end + padding])
 
         fig.update_layout(
             xaxis_title="Quarter",
@@ -575,7 +579,7 @@ def run_monitoring_workflow(
     persons: Dict[str, Dict[str, Any]],
     company: Dict[str, str],
     company_name: str,
-    news_search_mapping: List[str],
+    management_themes: List[str],
     board_themes: List[str],
     search_mode: str = "strict",
     limit: int = 100,
@@ -592,7 +596,7 @@ def run_monitoring_workflow(
         persons: Dictionary of persons with variations
         company: Dictionary containing company info
         company_name: Main company name for filtering
-        news_search_mapping: List of management themes
+        management_themes: List of management themes
         board_themes: List of board themes
         search_mode: "strict", "relaxed", or "relaxed_post"
         limit: Maximum documents per query
@@ -616,7 +620,7 @@ def run_monitoring_workflow(
             persons=persons_dict,
             company=company_dict,
             company_name="GXO Logistics Inc.",
-            news_search_mapping=management_themes,
+            management_themes=management_themes,
             board_themes=board_themes,
             search_mode="relaxed_post",
             run_search_function=run_search
@@ -628,7 +632,7 @@ def run_monitoring_workflow(
             date_periods=date_periods,
             persons=persons,
             company=company,
-            news_search_mapping=news_search_mapping,
+            management_themes=management_themes,
             board_themes=board_themes,
             search_mode=search_mode,
             sources=sources,
@@ -665,6 +669,740 @@ def run_monitoring_workflow(
         df_results = process_results_to_dataframe(deduplicated_results)
 
     return df_results
+
+
+def plot_management_single_distribution(
+    df: pd.DataFrame,
+    title: str = "Management vs Board Distribution by Quarter",
+    x_range: Optional[List] = None, 
+    tick_vals: Optional[List] = None, 
+    tick_text: Optional[List] = None,
+    interactive: bool = True,
+    normalize_to_percentage: bool = True
+):
+    """
+    Generates a bar chart showing the distribution of management vs board themes by quarter.
+    
+    Parameters:
+        df: DataFrame with 'Date' and 'QueryMeta' columns
+        title: Title of the chart
+        x_range: Two-item list with the start and end x-axis range
+        tick_vals: List of datetime values for the x-axis ticks
+        tick_text: List of labels corresponding to tick_vals
+        interactive: If True, creates an interactive Plotly chart. If False, creates a static matplotlib chart
+        normalize_to_percentage: If True, normalizes values to percentages (0-100%). If False, shows absolute counts.
+        
+    Returns:
+        fig: A Plotly Figure object or matplotlib figure containing the bar chart
+    """
+    if len(df) == 0:
+        print("No data available for analysis")
+        return None
+    
+    # Prepare the data
+    df_copy = df.copy()
+    df_copy['Date'] = pd.to_datetime(df_copy['Date'])
+    # Remove timezone info before converting to period
+    df_copy['Quarter'] = df_copy['Date'].dt.tz_localize(None).dt.to_period('Q').astype(str)
+    
+    # Extract theme type from QueryMeta (management or board)
+    df_copy['Theme_Type'] = df_copy['QueryMeta'].str.extract(r'\((management|board)\)')
+    
+    # Group by quarter and theme type, then count
+    quarterly_theme_counts = df_copy.groupby(['Quarter', 'Theme_Type']).size().reset_index(name='Count')
+    
+    if normalize_to_percentage:
+        # Calculate percentages within each quarter
+        quarterly_totals = quarterly_theme_counts.groupby('Quarter')['Count'].sum().reset_index()
+        quarterly_totals.rename(columns={'Count': 'Total'}, inplace=True)
+        
+        # Merge to get totals and calculate percentages
+        quarterly_theme_counts = quarterly_theme_counts.merge(quarterly_totals, on='Quarter')
+        quarterly_theme_counts['Value'] = (quarterly_theme_counts['Count'] / quarterly_theme_counts['Total']) * 100
+        y_label = 'Percentage (%)'
+        y_max = 100
+    else:
+        # Use absolute counts
+        quarterly_theme_counts['Value'] = quarterly_theme_counts['Count']
+        y_label = 'Count'
+        y_max = None
+    
+    # Convert quarter strings to quarter start dates
+    quarterly_theme_counts['quarter_date'] = quarterly_theme_counts['Quarter'].apply(convert_quarter_to_date)
+    
+    if interactive:
+        # Create interactive Plotly chart
+        fig = px.bar(
+            quarterly_theme_counts,
+            x='quarter_date',
+            y='Value',
+            color='Theme_Type',
+            title=title,
+            labels={'quarter_date': 'Quarter', 'Value': y_label},
+            color_discrete_map={'management': '#636EFA', 'board': '#EF553B'}
+        )
+        
+        # Update the x-axis with common tick values if provided
+        if tick_vals is not None and tick_text is not None:
+            fig.update_xaxes(
+                tickmode='array',
+                tickvals=tick_vals,
+                ticktext=tick_text,
+                tickangle=45,
+                showticklabels=True
+            )
+        if x_range is not None:
+            # Add padding to the left and right of the range
+            range_start = x_range[0]
+            range_end = x_range[1]
+            padding = (range_end - range_start) * 0.03  # 3% padding
+            fig.update_xaxes(range=[range_start - padding, range_end + padding])
+            
+        # Set y-axis properties based on normalization
+        layout_updates = {
+            "xaxis_title": "Quarter",
+            "yaxis_title": y_label,
+            "template": "plotly_white"
+        }
+        if y_max is not None:
+            layout_updates["yaxis"] = dict(range=[0, y_max])
+            
+        fig.update_layout(**layout_updates)
+        
+        return fig
+    
+    else:
+        # Create static matplotlib chart
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        # Get unique quarters - use all quarters from tick range if provided
+        if tick_vals is not None:
+            # Use the full range of quarters from tick_vals
+            all_quarters = [pd.Timestamp(tick_val) for tick_val in tick_vals]
+            # Convert to quarters and remove duplicates while preserving order
+            quarter_periods = []
+            seen = set()
+            for ts in all_quarters:
+                quarter = ts.to_period('Q').start_time
+                if quarter not in seen:
+                    quarter_periods.append(quarter)
+                    seen.add(quarter)
+            quarters = sorted(quarter_periods)
+        else:
+            # Fallback to quarters from data
+            quarters = sorted(quarterly_theme_counts['quarter_date'].unique())
+        
+        # Set up bar positions
+        x = np.arange(len(quarters))
+        width = 0.35
+        
+        # Prepare data for each theme type
+        management_values = []
+        board_values = []
+        
+        for quarter in quarters:
+            quarter_data = quarterly_theme_counts[quarterly_theme_counts['quarter_date'] == quarter]
+            
+            mgmt_data = quarter_data[quarter_data['Theme_Type'] == 'management']
+            board_data = quarter_data[quarter_data['Theme_Type'] == 'board']
+            
+            mgmt_val = mgmt_data['Value'].iloc[0] if not mgmt_data.empty else 0
+            board_val = board_data['Value'].iloc[0] if not board_data.empty else 0
+            
+            management_values.append(mgmt_val)
+            board_values.append(board_val)
+        
+        # Create bars
+        bars1 = ax.bar(x - width/2, management_values, width, label='Management', color='#636EFA')
+        bars2 = ax.bar(x + width/2, board_values, width, label='Board', color='#EF553B')
+        
+        # Customize the chart
+        ax.set_xlabel('Quarter')
+        ax.set_ylabel(y_label)
+        ax.set_title(title)
+        ax.set_xticks(x)
+        if y_max is not None:
+            ax.set_ylim(0, y_max)
+        
+        # Format x-axis labels
+        if tick_vals is not None and tick_text is not None:
+            quarter_labels = []
+            for quarter in quarters:
+                quarter_period = quarter.to_period('Q')
+                label_found = False
+                
+                for i, tick_val in enumerate(tick_vals):
+                    tick_period = pd.Timestamp(tick_val).to_period('Q')
+                    if tick_period == quarter_period and i < len(tick_text):
+                        quarter_labels.append(tick_text[i])
+                        label_found = True
+                        break
+                
+                if not label_found:
+                    quarter_labels.append(str(quarter_period))
+            
+            ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
+        else:
+            # Default quarter labels
+            quarter_labels = [str(q.to_period('Q')) for q in quarters]
+            ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
+        
+        # Add value labels on bars
+        for bars, values in [(bars1, management_values), (bars2, board_values)]:
+            for bar, val in zip(bars, values):
+                if val > 0:
+                    height = bar.get_height()
+                    if normalize_to_percentage:
+                        label_text = f'{val:.1f}%'
+                        offset = 1
+                    else:
+                        label_text = f'{val:.0f}'
+                        offset = max(management_values + board_values) * 0.02 if management_values + board_values else 1
+                    ax.text(bar.get_x() + bar.get_width()/2., height + offset,
+                           label_text, ha='center', va='bottom', fontsize=9)
+        
+        ax.legend()
+        ax.grid(True, alpha=0.3, axis='y')
+        plt.tight_layout()
+        
+        return fig
+
+
+def plot_management_distributions(
+    df_strict: pd.DataFrame,
+    df_relaxed: pd.DataFrame, 
+    df_relaxed_post: pd.DataFrame,
+    title: str = "Management vs Board Distribution",
+    x_range: Optional[List] = None, 
+    tick_vals: Optional[List] = None, 
+    tick_text: Optional[List] = None,
+    interactive: bool = True,
+    normalize_to_percentage: bool = True,
+    layout: str = "horizontal",
+    show_legend: bool = True
+):
+    """
+    Generates bar charts showing the distribution of management vs board themes by quarter
+    for different search modes.
+    
+    Parameters:
+        df_strict: DataFrame for strict mode results
+        df_relaxed: DataFrame for relaxed mode results  
+        df_relaxed_post: DataFrame for relaxed post mode results
+        title: Overall title of the chart
+        x_range: Two-item list with the start and end x-axis range
+        tick_vals: List of datetime values for the x-axis ticks
+        tick_text: List of labels corresponding to tick_vals
+        interactive: If True, creates an interactive Plotly chart. If False, creates a static matplotlib chart
+        normalize_to_percentage: If True, normalizes values to percentages (0-100%). If False, shows absolute counts.
+        layout: "horizontal" for side-by-side (1 row, 3 cols) or "vertical" for stacked (3 rows, 1 col)
+        show_legend: If True, shows the legend. If False, hides the legend.
+        
+    Returns:
+        fig: A Plotly Figure object or matplotlib figure containing the three subplots
+    """
+    
+    def prepare_data(df, mode_name):
+        """Helper function to prepare data for each DataFrame"""
+        if len(df) == 0:
+            return pd.DataFrame(), 'Count', None
+            
+        df_copy = df.copy()
+        df_copy['Date'] = pd.to_datetime(df_copy['Date'])
+        df_copy['Quarter'] = df_copy['Date'].dt.tz_localize(None).dt.to_period('Q').astype(str)
+        df_copy['Theme_Type'] = df_copy['QueryMeta'].str.extract(r'\((management|board)\)')
+        
+        quarterly_theme_counts = df_copy.groupby(['Quarter', 'Theme_Type']).size().reset_index(name='Count')
+        
+        if normalize_to_percentage:
+            quarterly_totals = quarterly_theme_counts.groupby('Quarter')['Count'].sum().reset_index()
+            quarterly_totals.rename(columns={'Count': 'Total'}, inplace=True)
+            quarterly_theme_counts = quarterly_theme_counts.merge(quarterly_totals, on='Quarter')
+            quarterly_theme_counts['Value'] = (quarterly_theme_counts['Count'] / quarterly_theme_counts['Total']) * 100
+            y_label = 'Percentage (%)'
+            y_max = 100
+        else:
+            quarterly_theme_counts['Value'] = quarterly_theme_counts['Count']
+            y_label = 'Count'
+            y_max = None
+            
+        quarterly_theme_counts['quarter_date'] = quarterly_theme_counts['Quarter'].apply(convert_quarter_to_date)
+        return quarterly_theme_counts, y_label, y_max
+    
+    # Prepare data for all three DataFrames
+    data_strict, y_label, y_max = prepare_data(df_strict, "Strict")
+    data_relaxed, _, _ = prepare_data(df_relaxed, "Relaxed") 
+    data_relaxed_post, _, _ = prepare_data(df_relaxed_post, "Relaxed Post")
+    
+    # Define subplot titles
+    subplot_titles = [
+        "Strict",
+        "Relaxed", 
+        "Relaxed Post"
+    ]
+    
+    if interactive:
+        # Create Plotly subplots
+        from plotly.subplots import make_subplots
+        
+        if layout == "horizontal":
+            fig = make_subplots(
+                rows=1, cols=3,
+                subplot_titles=subplot_titles,
+                shared_yaxes=True,
+                horizontal_spacing=0.08
+            )
+            subplot_positions = [(1, 1), (1, 2), (1, 3)]
+            height = 500
+            legend_y = -0.2
+            margin_b = 100
+        else:  # vertical layout
+            fig = make_subplots(
+                rows=3, cols=1,
+                subplot_titles=subplot_titles,
+                shared_xaxes=True,
+                vertical_spacing=0.15  # Increased spacing to avoid ticker overlap
+            )
+            subplot_positions = [(1, 1), (2, 1), (3, 1)]
+            height = 1000  # Increased height for better spacing
+            legend_y = -0.08
+            margin_b = 80
+        
+        # Add stacked bars for each subplot
+        datasets = [data_strict, data_relaxed, data_relaxed_post]
+        
+        for i, (data, pos) in enumerate(zip(datasets, subplot_positions)):
+            if len(data) > 0:
+                # Get all unique quarters for this dataset
+                quarters = sorted(data['quarter_date'].unique())
+                
+                mgmt_values = []
+                board_values = []
+                quarter_dates = []
+                
+                for quarter in quarters:
+                    quarter_data = data[data['quarter_date'] == quarter]
+                    mgmt_data = quarter_data[quarter_data['Theme_Type'] == 'management']
+                    board_data = quarter_data[quarter_data['Theme_Type'] == 'board']
+                    
+                    mgmt_val = mgmt_data['Value'].iloc[0] if not mgmt_data.empty else 0
+                    board_val = board_data['Value'].iloc[0] if not board_data.empty else 0
+                    
+                    mgmt_values.append(mgmt_val)
+                    board_values.append(board_val)
+                    quarter_dates.append(quarter)
+                
+                # Add stacked bars
+                fig.add_bar(
+                    x=quarter_dates,
+                    y=mgmt_values,
+                    name='Management',
+                    marker_color='#636EFA',
+                    showlegend=(i == 0 and show_legend),  # Show legend only for first subplot and if enabled
+                    row=pos[0], col=pos[1]
+                )
+                
+                fig.add_bar(
+                    x=quarter_dates,
+                    y=board_values,
+                    name='Board',
+                    marker_color='#EF553B',
+                    showlegend=(i == 0 and show_legend),  # Show legend only for first subplot and if enabled
+                    row=pos[0], col=pos[1]
+                )
+        
+        # Update axes for all subplots
+        for i, pos in enumerate(subplot_positions):
+            if tick_vals is not None and tick_text is not None:
+                fig.update_xaxes(
+                    tickmode='array',
+                    tickvals=tick_vals,
+                    ticktext=tick_text,
+                    tickangle=45,
+                    showticklabels=True,
+                    row=pos[0], col=pos[1]
+                )
+            if x_range is not None:
+                # Add padding to the left and right of the range
+                range_start = x_range[0]
+                range_end = x_range[1]
+                padding = (range_end - range_start) * 0.03  # 3% padding
+                fig.update_xaxes(range=[range_start - padding, range_end + padding], row=pos[0], col=pos[1])
+        
+        # Update y-axes
+        for i, pos in enumerate(subplot_positions):
+            if layout == "horizontal":
+                fig.update_yaxes(title_text=y_label if i == 0 else "", row=pos[0], col=pos[1])
+            else:  # vertical layout
+                fig.update_yaxes(title_text=y_label, row=pos[0], col=pos[1])
+            
+            if y_max is not None:
+                fig.update_yaxes(range=[0, y_max], row=pos[0], col=pos[1])
+        
+        # Update layout
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,  # Center the title
+                xanchor='center'
+            ),
+            template="plotly_white",
+            barmode='stack',  # Make bars stacked
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,  # Position ABOVE the subplot titles, between main title and subplots
+                xanchor="right",
+                x=0.98  # Position on the right
+            ),
+            height=height,
+            margin=dict(b=margin_b, t=120)  # More top margin for title and legend space
+        )
+        
+        return fig
+        
+    else:
+        # Create matplotlib subplots
+        if layout == "horizontal":
+            fig, axes = plt.subplots(1, 3, figsize=(20, 5), sharey=True)  # Wider and shorter
+        else:  # vertical layout
+            fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)  # Wider
+        
+        datasets = [data_strict, data_relaxed, data_relaxed_post]
+        
+        for idx, (ax, data, subtitle) in enumerate(zip(axes, datasets, subplot_titles)):
+            if len(data) > 0:
+                # Get unique quarters
+                if tick_vals is not None:
+                    all_quarters = [pd.Timestamp(tick_val) for tick_val in tick_vals]
+                    quarter_periods = []
+                    seen = set()
+                    for ts in all_quarters:
+                        quarter = ts.to_period('Q').start_time
+                        if quarter not in seen:
+                            quarter_periods.append(quarter)
+                            seen.add(quarter)
+                    quarters = sorted(quarter_periods)
+                else:
+                    quarters = sorted(data['quarter_date'].unique())
+                
+                # Prepare data for stacked bars
+                x = np.arange(len(quarters))
+                width = 0.6
+                
+                management_values = []
+                board_values = []
+                
+                for quarter in quarters:
+                    quarter_data = data[data['quarter_date'] == quarter]
+                    mgmt_data = quarter_data[quarter_data['Theme_Type'] == 'management']
+                    board_data = quarter_data[quarter_data['Theme_Type'] == 'board']
+                    
+                    mgmt_val = mgmt_data['Value'].iloc[0] if not mgmt_data.empty else 0
+                    board_val = board_data['Value'].iloc[0] if not board_data.empty else 0
+                    
+                    management_values.append(mgmt_val)
+                    board_values.append(board_val)
+                
+                # Create stacked bars
+                bars1 = ax.bar(x, management_values, width, label='Management', color='#636EFA')
+                bars2 = ax.bar(x, board_values, width, bottom=management_values, label='Board', color='#EF553B')
+                
+                # Customize subplot
+                ax.set_title(subtitle)
+                ax.set_xticks(x)
+                if y_max is not None:
+                    ax.set_ylim(0, y_max)
+                
+                # Show x-axis labels only on the last subplot
+                if layout == "horizontal":
+                    is_last_subplot = (idx == 2)  # Last subplot in horizontal layout
+                else:  # vertical layout
+                    is_last_subplot = (idx == 2)  # Last subplot in vertical layout
+                
+                if is_last_subplot:
+                    # Format x-axis labels for the last subplot
+                    if tick_vals is not None and tick_text is not None:
+                        quarter_labels = []
+                        for quarter in quarters:
+                            quarter_period = quarter.to_period('Q')
+                            label_found = False
+                            for i, tick_val in enumerate(tick_vals):
+                                tick_period = pd.Timestamp(tick_val).to_period('Q')
+                                if tick_period == quarter_period and i < len(tick_text):
+                                    quarter_labels.append(tick_text[i])
+                                    label_found = True
+                                    break
+                            if not label_found:
+                                quarter_labels.append(str(quarter_period))
+                        ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
+                    else:
+                        quarter_labels = [str(q.to_period('Q')) for q in quarters]
+                        ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
+                else:
+                    # Remove x-axis labels for other subplots
+                    ax.set_xticklabels([])  # No labels on x-axis
+                    ax.tick_params(axis='x', which='both', length=0)  # Remove tick marks
+                
+                # Removed value labels on bars per user request
+                
+                ax.grid(True, alpha=0.3, axis='y')
+        
+        # Set labels based on layout
+        if layout == "horizontal":
+            axes[0].set_ylabel(y_label)
+            # Create legend in the center, between title and first graph if enabled
+            if show_legend:
+                handles, labels = axes[0].get_legend_handles_labels()
+                fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.94), ncol=2)
+        else:  # vertical layout
+            for ax in axes:
+                ax.set_ylabel(y_label)
+            # Create legend in the center, between title and first graph if enabled
+            if show_legend:
+                handles, labels = axes[0].get_legend_handles_labels()
+                fig.legend(handles, labels, loc='upper center', bbox_to_anchor=(0.5, 0.94), ncol=2)
+        
+        # Set title and adjust layout
+        fig.suptitle(title, fontsize=16)
+        plt.tight_layout()
+        
+        # Apply final adjustments after tight_layout
+        if layout == "horizontal":
+            if show_legend:
+                plt.subplots_adjust(bottom=0.05, top=0.88)  # Reduced space between title and subplots
+            else:
+                plt.subplots_adjust(bottom=0.05, top=0.93)  # Less bottom space without legend
+        else:  # vertical layout
+            if show_legend:
+                plt.subplots_adjust(bottom=0.02, top=0.88)  # Reduced space between title and subplots
+            else:
+                plt.subplots_adjust(bottom=0.02, top=0.95)  # Less bottom space without legend
+        
+        return fig
+
+
+def generate_marketing_plot_distribution(
+    df_relaxed: pd.DataFrame,
+    title: str = "Management vs Board Distribution",
+    x_range: Optional[List] = None, 
+    tick_vals: Optional[List] = None, 
+    tick_text: Optional[List] = None,
+    interactive: bool = True,
+    normalize_to_percentage: bool = True,
+    show_legend: bool = True
+):
+    """
+    Generates a bar chart showing the distribution of management vs board themes by quarter
+    for a single DataFrame (relaxed mode).
+    
+    Parameters:
+        df_relaxed: DataFrame for relaxed mode results
+        title: Title of the chart
+        x_range: Two-item list with the start and end x-axis range
+        tick_vals: List of datetime values for the x-axis ticks
+        tick_text: List of labels corresponding to tick_vals
+        interactive: If True, creates an interactive Plotly chart. If False, creates a static matplotlib chart
+        normalize_to_percentage: If True, normalizes values to percentages (0-100%). If False, shows absolute counts.
+        show_legend: If True, shows the legend. If False, hides the legend.
+        
+    Returns:
+        fig: A Plotly Figure object or matplotlib figure containing the bar chart
+    """
+    
+    def prepare_data(df):
+        """Helper function to prepare data for the DataFrame"""
+        if len(df) == 0:
+            return pd.DataFrame(), 'Count', None
+            
+        df_copy = df.copy()
+        df_copy['Date'] = pd.to_datetime(df_copy['Date'])
+        df_copy['Quarter'] = df_copy['Date'].dt.tz_localize(None).dt.to_period('Q').astype(str)
+        df_copy['Theme_Type'] = df_copy['QueryMeta'].str.extract(r'\((management|board)\)')
+        
+        quarterly_theme_counts = df_copy.groupby(['Quarter', 'Theme_Type']).size().reset_index(name='Count')
+        
+        if normalize_to_percentage:
+            quarterly_totals = quarterly_theme_counts.groupby('Quarter')['Count'].sum().reset_index()
+            quarterly_totals.rename(columns={'Count': 'Total'}, inplace=True)
+            quarterly_theme_counts = quarterly_theme_counts.merge(quarterly_totals, on='Quarter')
+            quarterly_theme_counts['Value'] = (quarterly_theme_counts['Count'] / quarterly_theme_counts['Total']) * 100
+            y_label = 'Percentage (%)'
+            y_max = 100
+        else:
+            quarterly_theme_counts['Value'] = quarterly_theme_counts['Count']
+            y_label = 'Count'
+            y_max = None
+            
+        quarterly_theme_counts['quarter_date'] = quarterly_theme_counts['Quarter'].apply(convert_quarter_to_date)
+        return quarterly_theme_counts, y_label, y_max
+    
+    # Prepare data for the DataFrame
+    data_relaxed, y_label, y_max = prepare_data(df_relaxed)
+    
+    if interactive:
+        # Create Plotly chart
+        if len(data_relaxed) > 0:
+            # Get all unique quarters for this dataset
+            quarters = sorted(data_relaxed['quarter_date'].unique())
+            
+            mgmt_values = []
+            board_values = []
+            quarter_dates = []
+            
+            for quarter in quarters:
+                quarter_data = data_relaxed[data_relaxed['quarter_date'] == quarter]
+                mgmt_data = quarter_data[quarter_data['Theme_Type'] == 'management']
+                board_data = quarter_data[quarter_data['Theme_Type'] == 'board']
+                
+                mgmt_val = mgmt_data['Value'].iloc[0] if not mgmt_data.empty else 0
+                board_val = board_data['Value'].iloc[0] if not board_data.empty else 0
+                
+                mgmt_values.append(mgmt_val)
+                board_values.append(board_val)
+                quarter_dates.append(quarter)
+            
+            # Create figure manually to match the original layout
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
+            
+            fig = make_subplots(rows=1, cols=1)
+            
+            # Add stacked bars
+            fig.add_bar(
+                x=quarter_dates,
+                y=mgmt_values,
+                name='Management',
+                marker_color='#636EFA',
+                showlegend=show_legend
+            )
+            
+            fig.add_bar(
+                x=quarter_dates,
+                y=board_values,
+                name='Board',
+                marker_color='#EF553B',
+                showlegend=show_legend
+            )
+        
+        # Update axes
+        if tick_vals is not None and tick_text is not None:
+            fig.update_xaxes(
+                tickmode='array',
+                tickvals=tick_vals,
+                ticktext=tick_text,
+                tickangle=45,
+                showticklabels=True
+            )
+        if x_range is not None:
+            # Add padding to the left and right of the range
+            range_start = x_range[0]
+            range_end = x_range[1]
+            padding = (range_end - range_start) * 0.03  # 3% padding
+            fig.update_xaxes(range=[range_start - padding, range_end + padding])
+        
+        # Update y-axes
+        fig.update_yaxes(title_text=y_label)
+        if y_max is not None:
+            fig.update_yaxes(range=[0, y_max])
+        
+        # Update layout - IDENTICO alla funzione originale
+        fig.update_layout(
+            title=dict(
+                text=title,
+                x=0.5,  # Center the title
+                xanchor='center'
+            ),
+            template="plotly_white",
+            barmode='stack',  # Make bars stacked
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,  # Position ABOVE the subplot titles, between main title and subplots
+                xanchor="right",
+                x=0.98  # Position on the right
+            ),
+            height=500,
+            margin=dict(b=100, t=120)  # More top margin for title and legend space
+        )
+        
+        return fig
+        
+    else:
+        # Create matplotlib chart
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        if len(data_relaxed) > 0:
+            # Get unique quarters
+            if tick_vals is not None:
+                all_quarters = [pd.Timestamp(tick_val) for tick_val in tick_vals]
+                quarter_periods = []
+                seen = set()
+                for ts in all_quarters:
+                    quarter = ts.to_period('Q').start_time
+                    if quarter not in seen:
+                        quarter_periods.append(quarter)
+                        seen.add(quarter)
+                quarters = sorted(quarter_periods)
+            else:
+                quarters = sorted(data_relaxed['quarter_date'].unique())
+            
+            # Prepare data for stacked bars
+            x = np.arange(len(quarters))
+            width = 0.6
+            
+            management_values = []
+            board_values = []
+            
+            for quarter in quarters:
+                quarter_data = data_relaxed[data_relaxed['quarter_date'] == quarter]
+                mgmt_data = quarter_data[quarter_data['Theme_Type'] == 'management']
+                board_data = quarter_data[quarter_data['Theme_Type'] == 'board']
+                
+                mgmt_val = mgmt_data['Value'].iloc[0] if not mgmt_data.empty else 0
+                board_val = board_data['Value'].iloc[0] if not board_data.empty else 0
+                
+                management_values.append(mgmt_val)
+                board_values.append(board_val)
+            
+            # Create stacked bars
+            bars1 = ax.bar(x, management_values, width, label='Management', color='#636EFA')
+            bars2 = ax.bar(x, board_values, width, bottom=management_values, label='Board', color='#EF553B')
+            
+            # Customize chart
+            ax.set_title(title)
+            ax.set_xticks(x)
+            ax.set_ylabel(y_label)
+            if y_max is not None:
+                ax.set_ylim(0, y_max)
+            
+            # Format x-axis labels
+            if tick_vals is not None and tick_text is not None:
+                quarter_labels = []
+                for quarter in quarters:
+                    quarter_period = quarter.to_period('Q')
+                    label_found = False
+                    for i, tick_val in enumerate(tick_vals):
+                        tick_period = pd.Timestamp(tick_val).to_period('Q')
+                        if tick_period == quarter_period and i < len(tick_text):
+                            quarter_labels.append(tick_text[i])
+                            label_found = True
+                            break
+                    if not label_found:
+                        quarter_labels.append(str(quarter_period))
+                ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
+            else:
+                quarter_labels = [str(q.to_period('Q')) for q in quarters]
+                ax.set_xticklabels(quarter_labels, rotation=45, ha='right')
+            
+            ax.grid(True, alpha=0.3, axis='y')
+            
+            if show_legend:
+                ax.legend()
+        
+        plt.tight_layout()
+        
+        return fig
 
 
 def plot_top_sources(df, person_name="Person", top_n=5, interactive=True):

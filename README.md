@@ -78,6 +78,38 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Market positioning analysis with confidence scoring for investment decisions
 - Comprehensive ecosystem mapping for infrastructure investment intelligence
 
+### 🗳️ [Election Monitor](./Election_Monitor/)
+**Automated Analysis of Corporate Perspectives on Electoral Outcomes**
+
+- Positive vs. negative impact assessment distinguishing companies that expect benefits from those anticipating challenges under new elected officials' policies
+- Sector-wide political exposure mapping revealing industry patterns in positioning toward electoral results
+- Temporal positioning tracking showing how political expectations evolve over time
+- Corporate-political topic networks identifying key policy themes and company concerns through relationship analysis
+
+### 💰 [AI Cost Cutting Market Analysis](./AI_Cost_Cutting_Market_Analysis/)
+**Automated Analysis of AI Cost Cutting Providers and Users**
+
+- Dual-role classification distinguishing companies developing AI cost cutting solutions from those implementing them
+- Technology ecosystem mapping revealing relationships between solution providers and corporate users
+- Adoption timeline tracking showing how AI cost cutting implementation evolves across different sectors
+- Market positioning analysis quantifying each company's role and exposure in the AI cost cutting ecosystem
+
+### 📈 [AI Revenue Generation Market Analysis](./AI_Revenue_Generation_Market_Analysis/)
+**Automated Analysis of AI Revenue Generation Providers and Users**
+
+- Dual-role classification distinguishing companies developing AI revenue generation solutions from those implementing them
+- Technology ecosystem mapping revealing relationships between solution providers and corporate users
+- Adoption timeline tracking showing how AI revenue generation implementation evolves across different companies
+- Market positioning analysis quantifying each company's role and exposure in the AI revenue generation ecosystem
+
+### 📊 [Tracking Inflation Drivers](./Tracking_Inflation_Drivers/)
+**Automated Macroeconomic Inflation Analysis Tool**
+
+- Automated theme breakdown into specific inflation components and drivers
+- Systematic document analysis using embeddings-based search and classification
+- Economic categorization that turns narrative signals into structured insights
+- Comprehensive reporting with analytical summaries for each inflation driver covering demand-pull, cost-push, wage increases, global factors, and monetary policy impacts
+
 ### 🏦 [Daily Digest Central Banks](./Daily_Digest_Central_Banks/)
 **Automated Central Bank Announcements Monitoring and Analysis Tool**
 
@@ -174,6 +206,26 @@ bigdata-cookbook/
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
+├── Election_Monitor/                               # Elecion Monitoring tool
+│   ├── Trump_Reelection_Impact_Analisys.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── AI_Cost_Cutting_Market_Analysis/                # AI cost cutting analysis
+│   ├── AI_Cost_Cutting_Market_Analysis.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── AI_Revenue_Generation_Market_Analysis/          # AI revenue generation analysis
+│   ├── AI_Revenue_Generation_Market_Analysis.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── Tracking_Inflation_Drivers/                     # Inflation analysis tool
+│   ├── Tracking_Inflation_Drivers.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
 ├── Daily_Digest_Central_Banks/                      # Central bank monitoring
 │   ├── Daily_Digest_Central_Banks.ipynb
 │   ├── src/
@@ -189,7 +241,6 @@ bigdata-cookbook/
 │   ├── report/
 │   ├── requirements.txt
 │   ├── Dockerfile
-│   └── README.md
 └── README.md                                        # This file
 ```
 
