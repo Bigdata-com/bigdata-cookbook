@@ -1,13 +1,17 @@
 from datetime import datetime
 import os
-import os
 import jinja2
 from IPython.core.display import HTML
 import pandas as pd
 import unicodedata
 import re
 from typing import Optional
-
+from IPython.display import display, HTML, Image
+import io
+from IPython.display import Image, display
+import shutil
+import subprocess
+import sys
 
 def clean_text(text):
     # Check if the text is a string, otherwise return it as-is (to handle NaN or non-string values)
@@ -84,6 +88,93 @@ def save_html_report(html_output, report_date, theme, output_base_dir=None):
         f.write(html_output)
 
     print(f"Report saved to {output_file}")
+
+def load_sanitize_display_html_report(report_date, theme, report_dir='./report/' ):
+    """
+    Dynamically constructs the path to the HTML report, loads, sanitizes, and displays it.
+    - report_dir: directory where reports are saved (e.g., './report')
+    - report_date: date string, e.g., '2025-06-25'
+    - theme: theme string, e.g., 'Crude_Oil'
+    """
+    filename = f"{report_date}_{theme.replace(' ', '_')}.html"
+    html_file_path = os.path.join(report_dir, filename)
+
+    if not os.path.exists(html_file_path):
+        print(f"Report file not found: {html_file_path}")
+        return
+
+    with open(html_file_path, "r") as f:
+        html_content = f.read()
+
+    # Sanitize for notebook display
+    sanitized_html = re.sub(r'<!DOCTYPE html>', '', html_content, flags=re.IGNORECASE)
+    sanitized_html = re.sub(r'</?(html|head|body)[^>]*>', '', sanitized_html, flags=re.IGNORECASE)
+
+    display(HTML(sanitized_html))
+
+def silent_html2image(html_path, output_path, browser_executable='/usr/bin/chromium'):
+    """
+    Runs html2image screenshot in a subprocess, suppressing all output.
+    """
+    script = f"""
+import sys
+from html2image import Html2Image
+hti = Html2Image(browser_executable='{browser_executable}', custom_flags=['--no-sandbox', '--disable-gpu', '--disable-software-rasterizer'])
+hti.output_path = f'{output_path}'
+hti.screenshot(html_file='{html_path}', size=(1600, 3000), save_as='tmp_screenshot.png')
+"""
+    subprocess.run(
+        [sys.executable, "-c", script],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=True
+    )
+
+def display_html_report_as_image(report_date, theme, report_dir='./report/', tmp_dir='./output'):
+    """
+    Converts a saved HTML report to a PNG image and displays it in the notebook, without saving to disk.
+    Captures the full page and hides scrollbars for a clean image.
+    If Chromium is not found, falls back to displaying the HTML directly.
+    Requires 'html2image' and 'Pillow' packages.
+    """
+
+    html_filename = f"{report_date}_{theme.replace(' ', '_')}.html"
+    html_path = os.path.join(report_dir, html_filename)
+
+    # Inject CSS to hide scrollbars and set overflow
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    custom_css = """
+    <style>
+    html, body { overflow: hidden !important; }
+    ::-webkit-scrollbar { display: none; }
+    </style>
+    """
+    if "<head>" in html_content:
+        html_content = html_content.replace("<head>", f"<head>{custom_css}")
+    else:
+        html_content = custom_css + html_content
+    temp_html_path = os.path.join(tmp_dir, f"temp_{html_filename}")
+    with open(temp_html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    chromium_path = shutil.which('chromium') or shutil.which('chromium-browser') or '/usr/bin/chromium'
+    if not os.path.exists(chromium_path):
+        display(HTML(html_content))
+        os.remove(temp_html_path)
+        return
+
+    # Suppress stderr during screenshot
+    old_stderr = sys.stderr
+    sys.stderr = open(os.devnull, 'w')
+    try:
+        silent_html2image(temp_html_path, tmp_dir, browser_executable=chromium_path)
+    finally:
+        sys.stderr.close()
+        sys.stderr = old_stderr
+    img_path = os.path.join(tmp_dir, "tmp_screenshot.png")
+    display(Image(filename=img_path))
+    os.remove(temp_html_path)
 
 # Helper functions for sorting
 def novelty_score_value(novelty_score):
