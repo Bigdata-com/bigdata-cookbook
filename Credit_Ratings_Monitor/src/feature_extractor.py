@@ -535,15 +535,14 @@ These examples provide illustrations of extracting all necessary information, fo
         Returns:
             DataFrame with grouped and exploded entities by role
         """
-        # Group by specified columns and collect entities by their roles
         grouped_df = df.groupby(group_columns, dropna=False).apply(
             lambda x: pd.Series({
                 'rater_entity': list(x.loc[x[role_column] == 'rater', entity_column]),
                 'ratee_entity': list(x.loc[x[role_column] == 'ratee', entity_column]),
                 'unclear_entities': list(x.loc[x[role_column] == 'unclear', entity_column]),
-            })
+            }), include_groups=False
         ).reset_index()
-        
+
         # Explode both rater_entity and ratee_entity columns to create all combinations
         exploded_df = grouped_df.explode('rater_entity', ignore_index=True).explode('ratee_entity', ignore_index=True)
         
@@ -626,7 +625,7 @@ def clean_credit_ratings_features_dataset(df: pd.DataFrame) -> pd.DataFrame:
         cols_visualize = df_copy.columns
     
     # Clean up empty values: Convert empty strings, empty lists and 'None' strings to None
-    df_clean = df_copy.applymap(lambda x: None if x == '' or x == [] or x == 'None' else x)
+    df_clean = df_copy.map(lambda x: None if x == '' or x == [] or x == 'None' else x)
     
     # Filter to include only the selected columns and drop rows without required entity information
     filtered_cols = [col for col in cols_visualize if col in df_clean.columns]

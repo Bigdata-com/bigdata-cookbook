@@ -307,7 +307,7 @@ You are tasked with generating a comprehensive timeline report based on input te
             DataFrame with date-grouped summaries
         """
         # Handle empty values
-        df = df.fillna('None').applymap(lambda x: "; ".join(x) if isinstance(x, list) else x)
+        df = df.fillna('None').map(lambda x: "; ".join(x) if isinstance(x, list) else x)
         
         # Default fields: all columns except sentence ID
         if summary_input is None:
@@ -324,9 +324,9 @@ You are tasked with generating a comprehensive timeline report based on input te
             aggregated = {col: "; ".join(filter(None, group[col].unique())) 
                          for col in group.columns if col not in [date_col, sentence_id_col]}
             return pd.Series(aggregated)
-            
-        sentence_grouped = df.groupby([date_col, sentence_id_col], dropna=False).apply(aggregate_sentence_fields).reset_index()
-        
+
+        sentence_grouped = df.groupby([date_col, sentence_id_col], dropna=False).apply(aggregate_sentence_fields, include_groups=False).reset_index()
+
         # Create sentence input summaries
         def create_sentence_summary(row):
             """Create structured summary for a sentence."""
@@ -344,7 +344,7 @@ You are tasked with generating a comprehensive timeline report based on input te
             aggregated['summary_input'] = "\n".join(group['sentence_summary'])
             return pd.Series(aggregated)
             
-        date_grouped = sentence_grouped.groupby(date_col, dropna=False).apply(aggregate_date_fields).reset_index()
+        date_grouped = sentence_grouped.groupby(date_col, dropna=False).apply(aggregate_date_fields,include_groups=False).reset_index()
         # date_grouped['id'] = range(len(date_grouped))
         # date_grouped['summary_input'] = date_grouped.apply(lambda row: 'Id: ' + str(row.id) + '\n' + row['summary_input'], axis=1) not needed if I create the prompts as in the labeler
         

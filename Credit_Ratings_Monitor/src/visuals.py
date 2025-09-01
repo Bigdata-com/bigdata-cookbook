@@ -234,7 +234,6 @@ class ReportVisualizer():
             f.write(html_content)
             
         print(f"HTML report saved to: {file_path}")
-        return file_path
     
     def display_html_report(self, html_content):
         """
@@ -313,7 +312,7 @@ class ReportVisualizer():
 
         # Iterate through each rating agency and add its line to the plot
         for agency in unique_agencies:
-            df_agency = df[df['standardized_agency'] == agency]
+            df_agency = df[df['standardized_agency'] == agency].copy()
 
             # Apply the offset to numeric_rating to create separate ranges
             df_agency['numeric_rating_offset'] = df_agency['numeric_rating'] + agency_offsets[agency]
