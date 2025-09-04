@@ -127,7 +127,7 @@ class ReportVisualizer():
         """
         
         # Escape $ symbols to avoid LaTeX interpretation
-        text = text.replace('$', r'\$')
+        #text = text.replace('$', r'\$')
 
         # Convert main section headers
         text = re.sub(r'### (.+)', r'<h2 style="color: #00bfff; font-size: 24px; margin-top: 1.5em;">\1</h2>', text)
@@ -392,3 +392,24 @@ class ReportVisualizer():
         fig.show()
         
         return fig
+    
+    def visualize_report_and_table(self, results_dict, company_object, start_date, end_date):
+        company_report_text, company_table = results_dict[f"{company_object.id}"]
+
+        if not company_table.empty and company_report_text != f"No News Found for entity {company_object.id}":
+            # Generate and save HTML report
+            html_content = self.convert_text_to_html(
+            entity_name=company_object.name,
+            start_date=start_date,
+            end_date=end_date,
+            text=company_report_text
+        )
+
+            self.display_html_report(html_content)
+
+            self.save_html_report(html_content, company_object.name, start_date, end_date, filename="credit_ratings_report.html")
+
+            # Generate and save rating chart
+            self.plot_credit_ratings(df=company_table, save_path='credit_ratings_timeline')
+        else:
+            print(f"No data available to visualize for {company_object.name}.")

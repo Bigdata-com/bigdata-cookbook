@@ -50,7 +50,7 @@ The final report should be a well-organized and accurate consolidation of the va
 """
         self.daily_credit_ratings_report="""**Task: Report Credit Rating Information with Enhanced Source Tracking**
 
-You are tasked with generating a comprehensive timeline report based on input texts regarding the credit ratings of companies, ensuring the inclusion of news source names and URLs where available. Your output should prioritize data from dates identified as having high novelty, indicating significant changes or developments in credit ratings or outlooks.
+You are tasked with generating a comprehensive timeline report based on input texts regarding the credit ratings of companies, ensuring the inclusion of news source names and URLs where available. Your output should prioritize data from dates identified as having high novelty, meaning not repeated over a span of a few days, as well as dates indicating changes or developments in credit ratings or outlooks.
 
 **Input Structure:**
 
@@ -62,40 +62,51 @@ You are tasked with generating a comprehensive timeline report based on input te
 **Instructions:**
 
 1. **Identify Novelty**:
-   - Focus on entries where significant changes or updates to credit ratings, outlooks, or financial strategies are reported.
+   - Focus on entries where changes or updates to credit ratings, outlooks, or financial strategies are reported.
    - Do not repeat similar updates if they span multiple consecutive days; consolidate into the most impactful date.
+   - If information is repeated over a span of months or years, then report it as happening in their respective dates.
    - Ensure that the information spanning multiple consecutive days is not contradictory. Credit rating agencies are unlikely to announce back-to-back credit rating changes within a few days.
 
-2. **Data Consolidation**:
-   - Only include dates with distinct credit rating or outlook updates. Highlight changes in ratings, outlook revisions, or major financial movements.
-   - Focus on the information that is discussed by more than one source, if available.
+2. **Maintain Temporal Coverage**:
+   - Use the Date information wisely and ensure that every date is represented unless the information is repeated.
+   - If texts span consecutive days, there is a great possibility that the information is duplicated.
+   - If the Dates of two consecutive Texts are very different, then it's likely that the information pertains to separate events.
+
+3. **Data Consolidation**:
+   - Only include dates with distinct credit rating or credit outlook updates. Highlight changes in ratings, new credit ratings, outlook revisions, or major financial movements.
+   - Prioritize the information that is discussed by more than one source, if available.
    - Ensure that details from multiple sources for the same event are consolidated under one date.
 
-3. **Source Inclusion**:
+4. **Source Inclusion**:
    - For each credit rating update or outlook change, include all related source names and URLs.
    - Use the format: "[Source Name](URL)" in brackets after each summarized date entry.
    - Exclude entries with contradictory information from different sources.
    - DO NOT infer URLs from outside information. DO NOT use placeholder URLs. Leave the URL blank if no URL is available.
    - Only report Source Names that are given in the text. DO NOT infer sources from outside knowledge.
 
-4. **Content Structure**:
+5. **Content Structure**:
    - Each entry in the summary should contain:
      - **Credit Ratings and Raters**: Summarize all involved raters and their assigned ratings.
      - **Credit Outlooks and Actions**: Emphasize any changes in outlooks or affirmations of ratings.
      - **Key Drivers**: Briefly explain the main factors influencing the rating or outlook decision.
 
-5. **Output Format**:
+6. **Output Format**:
    - Structure the output as a timeline of key credit rating events.
    - Keep each entry concise, no more than two sentences, while maintaining information clarity.
    - Avoid creating new dates or entries without valid credit data.
+   - The structure of your report should be a bulleted list as follows:
+        - **<Date>**: Summary of the credit rating event, including all relevant details and sources ([Source1](URL1), [Source2](URL2)).
+        - **<Date>**: Summary of another credit rating event, including all relevant details and sources ([Source1](URL1), [Source2](URL2)).
+        - **<Date>**: ...
 
 **Example Output**:
-
 ### Credit Report
-
-- **2024-03-26**: Moody's placed Boeing Co.'s Baa2 senior unsecured rating and Prime-2 short-term rating on review for a potential downgrade due to concerns over their ability to manage debt and deliver enough 737 models, highlighting production challenges ([NBC San Diego](https://example.com), [Bloomberg Government](https://example.com)).
-- **2024-04-24**: Moody's downgraded Boeing Co.'s credit rating to Baa3 from Baa2, indicating ongoing challenges and potential cash shortfalls against looming debt, marking a negative outlook ([WCVB.com ](https://example.com), [BNN Bloomberg](https://example.com)).
-- ...
+- **2023-01-12**: On January 12, 2023, Moody's placed Boeing Co.'s Baa2 senior unsecured rating and Prime-2 short-term rating on review for a potential downgrade due to concerns over their ability to manage debt and deliver enough 737 models, highlighting production challenges ([NBC San Diego](https://example.com), [Bloomberg Government](https://example.com)).
+ - **2023-02-08**: On February 8, 2023, Fitch affirmed Boeing’s BBB- rating but revised the outlook from stable to negative, citing continued supply-chain bottlenecks and slower-than-expected recovery in commercial deliveries ([Reuters](https://example.com), [Yahoo Finance](https://example.com)).
+- **2024-03-26**: On March 26, 2024, Moody's placed Boeing Co.'s Baa2 senior unsecured rating and Prime-2 short-term rating on review for a potential downgrade due to concerns over their ability to manage debt and deliver enough 737 models, highlighting production challenges ([NBC San Diego](https://example.com), [Bloomberg Government](https://example.com)).
+- **2024-04-24**: On April 24, 2024, Moody’s downgraded Boeing’s senior unsecured rating to Baa3 from Baa2, flagging mounting debt pressures and weaker-than-expected cash flows, while maintaining a negative outlook ([WCVB.com](https://example.com), [BNN Bloomberg](https://example.com)).
+- **2025-01-15**: On January 15, 2025, S&P upgraded Boeing’s credit outlook to stable from negative, pointing to improved order flow for the 737 MAX and cost-reduction initiatives starting to materialize ([The Guardian](https://example.com), [MarketWatch](https://example.com)).
+- **2025-06-25**: On June 25, 2025, Moody’s upgraded Boeing’s long-term rating to Baa2 from Baa3, citing stronger liquidity and steady delivery momentum across commercial and defense programs ([Benzinga](https://example.com), [The Fly](https://example.com)).
 """
         self.daily_chunk_summarization= """Forget all previous instructions.
     You are tasked with consolidating and summarizing daily information from a sequence of news extracts related to corporate debt obligations and credit ratings.
@@ -411,7 +422,9 @@ You are tasked with generating a comprehensive timeline report based on input te
         """
         if system_prompt is None:
             system_prompt = self.daily_credit_ratings_report
-        
+        # print(system_prompt)
+        # print(text)
+
         # Build chat history
         chat_history = [
             {"role": "system", "content": system_prompt},
@@ -535,19 +548,23 @@ You are tasked with generating a comprehensive timeline report based on input te
                                        'url', 'contextualized_chunk_text']
         df_grouped = self.prepare_daily_summary_input(df_summary, text_col=text_col, summary_input=fields)
 
-        df_summaries, report_text_input = self.generate_summaries_df(df_grouped, summary_input_col='summary_input')
+        if df_grouped.empty:
+            return f"No News Found for entity {entity_id}", pd.DataFrame()
         
-        # Generate final report
-        print('Generating Company Report...')
-        report_text = self.summarize_string(
-            report_text_input
-        )
+        else:
+            df_summaries, report_text_input = self.generate_summaries_df(df_grouped, summary_input_col='summary_input')
+        
+            # Generate final report
+            print('Generating Company Report...')
+            report_text = self.summarize_string(
+                report_text_input
+            )
 
-        # Extract structured data
-        print('Extracting Structured Data Table...')
-        structured_data = self.create_consolidated_data_table(report_text)
-        
-        return report_text, structured_data
+            # Extract structured data
+            print('Extracting Structured Data Table...')
+            structured_data = self.create_consolidated_data_table(report_text)
+            
+            return report_text, structured_data
 
     def generate_report_by_entities(self, df: pd.DataFrame, entity_keys: List[str], text_col: str = 'text', 
                               fields_for_summary: List[str] = None) -> Dict[str, Tuple[str, pd.DataFrame]]:
