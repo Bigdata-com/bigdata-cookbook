@@ -272,7 +272,7 @@ def extract_chunks_from_annotated_dict(annotated_dict):
     """
     chunks = annotated_dict.get('content', {}).get('body', [])
     if not chunks:
-        print(f"Warning: No chunks found in annotated_dict {annotated_dict}")
+        print(f"Warning: No chunks found in annotated_dict {annotated_dict['document']}")
         return pd.DataFrame(columns=['chunk_number', 'text'])
         
     # Process chunks into DataFrame rows
