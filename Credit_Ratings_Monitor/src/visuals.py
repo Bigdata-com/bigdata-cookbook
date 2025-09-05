@@ -322,6 +322,12 @@ class ReportVisualizer():
             # Apply the offset to numeric_rating to create separate ranges
             df_agency['numeric_rating_offset'] = df_agency['numeric_rating'] + agency_offsets[agency]
 
+            # Alternate label positions to avoid overlap
+            textpositions = []
+            for i in range(len(df_agency)):
+                # Alternate between 'top center' and 'bottom center'
+                textpositions.append('top center' if i % 2 == 0 else 'bottom center')
+
             # Add a line trace for the current agency
             fig.add_trace(go.Scatter(
                 x=df_agency['Date'],
@@ -334,7 +340,7 @@ class ReportVisualizer():
                     lambda row: f"Date: {row['Date']}<br>Rater: {row['Rater']}<br>Rating: {row['Credit Rating']}<br>Key Driver: {self.add_line_breaks(row['Key Driver'])}",
                     axis=1
                 ),
-                textposition='top center',
+                textposition=textpositions,
                 marker=dict(size=10)
             ))
 
@@ -358,6 +364,7 @@ class ReportVisualizer():
             ),
             margin=dict(t=80, r=50, l=50, b=50),  # Add top margin to avoid cutting labels
             template='plotly_white',
+            width=1200,  # Adjust width for better readability
             height=600  # Adjust height for better readability
         )
 
@@ -393,17 +400,12 @@ class ReportVisualizer():
                 
             print(f"Figure saved to: {save_path}")
             
-        # Show the plot
+        # Show interactive plot in notebook
         fig.show()
         
-        # Then display a self-contained version that will show up in GitHub
-        html_str = fig.to_html(
-            include_plotlyjs=True,
-            full_html=False,
-            include_mathjax=False,
-            config={'displayModeBar': True}
-        )
-        display(HTML(html_str))
+        from IPython.display import Image, display
+        img_bytes = fig.to_image(format="png")
+        display(Image(img_bytes))
         
         return fig
     
