@@ -86,6 +86,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Temporal positioning tracking showing how political expectations evolve over time
 - Corporate-political topic networks identifying key policy themes and company concerns through relationship analysis
 
+### 📊 [Credit Ratings Monitoring](./Credit_Ratings_Monitoring/)
+**Automated Detection and Analysis of Credit Rating Events**
+
+- Event detection and classification for credit rating updates, outlook changes, and watch list events
+- Entity relationship mapping distinguishing between rating agencies and rated entities with validation workflows
+- Multi-feature extraction capturing credit ratings, outlooks, watchlist status, debt instruments, and key drivers
+- Timeline analysis generating chronological reports showing rating evolution over time
+- Interactive visualizations creating HTML reports with charts for rating timeline analysis
+
 ### 💰 [AI Cost Cutting Market Analysis](./AI_Cost_Cutting_Market_Analysis/)
 **Automated Analysis of AI Cost Cutting Providers and Users**
 
@@ -211,6 +220,11 @@ bigdata-cookbook/
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
+├── Credit_Ratings_Monitoring/                       # Credit rating event monitoring
+│   ├── Credit_Ratings_Monitoring.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
 ├── AI_Cost_Cutting_Market_Analysis/                # AI cost cutting analysis
 │   ├── AI_Cost_Cutting_Market_Analysis.ipynb
 │   ├── src/
@@ -248,7 +262,7 @@ bigdata-cookbook/
 
 ### Core Dependencies
 - `bigdata-client>=2.17.0` - Bigdata API client
-- `bigdata-research-tools==0.17.2` - Research analysis tools
+- `bigdata-research-tools>=0.17.3` - Research analysis tools
 - `nest-asyncio>=1.6.0` - Async compatibility
 - `matplotlib>=3.0.0` - Data visualization
 - `numpy>=1.20.0` - Numerical computing
