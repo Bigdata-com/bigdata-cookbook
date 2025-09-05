@@ -1,7 +1,12 @@
 import os
+import base64
+from io import BytesIO
 from IPython.display import display, HTML
 import re
 import plotly.graph_objects as go
+import plotly.io as pio
+
+
 
 class ReportVisualizer():
     def __init__(self, output_dir: str = "./output"):
@@ -390,6 +395,15 @@ class ReportVisualizer():
             
         # Show the plot
         fig.show()
+        
+        # Then display a self-contained version that will show up in GitHub
+        html_str = fig.to_html(
+            include_plotlyjs=True,
+            full_html=False,
+            include_mathjax=False,
+            config={'displayModeBar': True}
+        )
+        display(HTML(html_str))
         
         return fig
     
