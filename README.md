@@ -137,6 +137,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Custom report generation with configurable ranking systems for trending topics
 - Market impact assessment scoring topics for trendiness, novelty, and magnitude
 
+### 🪙 [Screener for Crypto](./Screener_for_Crypto/)
+**Automated Cryptocurrency Thematic Screening and Analysis Tool**
+
+- Automated theme taxonomy generation using LLM to break down complex investment themes
+- Systematic cryptocurrency screening against specific thematic criteria
+- Cross-crypto comparison enabling portfolio-level thematic assessment
+- Interactive visualizations with heatmaps, bar charts, and scatter plots
+- Structured output generating Excel reports and HTML visualizations for investment intelligence
+
 ## Quick Start
 
 ### Prerequisites
@@ -255,6 +264,14 @@ bigdata-cookbook/
 │   ├── report/
 │   ├── requirements.txt
 │   ├── Dockerfile
+│   └── README.md
+├── Screener_for_Crypto/                             # Cryptocurrency thematic screening
+│   ├── Screener_for_Crypto.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   ├── .dockerignore
+│   └── README.md
 └── README.md                                        # This file
 ```
 
