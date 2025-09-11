@@ -23,23 +23,7 @@ from bigdata_client import tracking_services
 
 _intialization_sent = False
 
-def notebook_initialized(bigdata):
-    """Call this function after creating your bigdata client to enable usage tracking."""
-    global _intialization_sent
-    if not _intialization_sent:
-        try:
-            trace = tracking_services.TraceEvent(
-                event_name="RiskReportGeneratorTariffs", 
-                properties={
-                    "bigdataResearchToolsVersion": version("bigdata_research_tools"),
-                    "bigdataClientVersion": version("bigdata-client"),
-                }
-            )
-            tracking_services.send_trace(bigdata_client=bigdata, trace=trace)
-            _intialization_sent = True
-        except Exception as e:
-            # Fail silently if tracking fails
-            _intialization_sent = True
+
 
 class Report:
     """A simple container for the generated report data."""
@@ -112,7 +96,6 @@ class GenerateReport:
         self.focus = focus
         
         # Initialize tracking automatically
-        notebook_initialized(bigdata)
         self.llm_model = llm_model
         self.api_key = api_key
         self.start_date = start_date
@@ -129,7 +112,8 @@ class GenerateReport:
         self,
         df_labeled: pd.DataFrame,
         import_from_path: Optional[str] = None,
-        export_to_path: Optional[str] = None
+        export_to_path: Optional[str] = None,
+        news_search_fallback: bool = True
     ) -> Report:
         # Fetch the watchlist and entities
         watchlist = self.bigdata.watchlists.get(self.watchlist_id)
@@ -170,7 +154,8 @@ class GenerateReport:
             df_by_company=df_by_company,
             df_labeled=df_labeled,
             import_from_path=import_from_path,
-            export_to_path=export_to_path
+            export_to_path=export_to_path,
+            news_search_fallback=news_search_fallback
         )
 
         # Construct report
@@ -183,7 +168,7 @@ class GenerateReport:
 
         return report
 
-    def extract_mitigation_plan_v2(self, df_by_company: pd.DataFrame, df_labeled: pd.DataFrame, import_from_path: Optional[str] = None, export_to_path: Optional[str] = None) -> List[pd.DataFrame]:
+    def extract_mitigation_plan_v2(self, df_by_company: pd.DataFrame, df_labeled: pd.DataFrame, import_from_path: Optional[str] = None, export_to_path: Optional[str] = None, news_search_fallback: bool = True) -> List[pd.DataFrame]:
 
         """
         In this version I don't condense the company's issue but directly query with the sentence from the tree (like with the News)
@@ -257,22 +242,57 @@ class GenerateReport:
         # Merge the companies responses to the dataframe with issue summaries and scores
         df_by_company_with_responses = pd.merge(df_by_company, df_response_by_company, on=['entity_id', 'entity_name', 'topic'], how='left')
         df_by_company_with_responses['filings_response_summary'] = df_by_company_with_responses['response_summary']
+        # Initialize origin flag for response summary
+        df_by_company_with_responses['response_from_news'] = False
 
-        # Extract the company's mitigation plan for each regulatory issue from the News documents if no relevant information was found in the Filings and Transcripts.
-        df_news_response_by_company = asyncio.run(response_processor.process_response_by_company(
-            df_labeled=df_labeled, 
-            df_by_company=df_by_company, 
-            list_entities=self.list_entities))
-        
-        df_news_response_by_company = df_news_response_by_company.rename(
-            columns={'response_summary': 'news_response_summary', 'n_response_documents': 'news_n_response_documents'})
-        df_by_company_with_responses = pd.merge(df_by_company_with_responses, df_news_response_by_company, 
-                                                on=['entity_id', 'entity_name', 'topic'], how='left')
-        df_by_company_with_responses['response_summary'] = df_by_company_with_responses['response_summary'].fillna(
-            df_by_company_with_responses['news_response_summary'])
+        # Extract the company's mitigation plan for each regulatory issue from the News documents if enabled
+        if news_search_fallback:
+            df_news_response_by_company = asyncio.run(
+                response_processor.process_response_by_company(
+                    df_labeled=df_labeled,
+                    df_by_company=df_by_company,
+                    list_entities=self.list_entities
+                )
+            )
+
+            df_news_response_by_company = df_news_response_by_company.rename(
+                columns={'response_summary': 'news_response_summary', 'n_response_documents': 'news_n_response_documents'}
+            )
+            df_by_company_with_responses = pd.merge(
+                df_by_company_with_responses,
+                df_news_response_by_company,
+                on=['entity_id', 'entity_name', 'topic'],
+                how='left'
+            )
+            # Mark rows where we will use News fallback
+            fallback_mask = df_by_company_with_responses['response_summary'].isna() & df_by_company_with_responses['news_response_summary'].notna()
+            # Apply fallback
+            df_by_company_with_responses['response_summary'] = df_by_company_with_responses['response_summary'].fillna(
+                df_by_company_with_responses['news_response_summary']
+            )
+            # Update origin flag
+            df_by_company_with_responses.loc[fallback_mask, 'response_from_news'] = True
         
         # Export to Pickle if path provided
         if export_to_path:
             df_by_company_with_responses.to_pickle(export_to_path+'/df_by_company_with_responses')
 
         return df_by_company_with_responses
+
+def notebook_initialized(bigdata):
+    """Call this function after creating your bigdata client to enable usage tracking."""
+    global _intialization_sent
+    if not _intialization_sent:
+            trace = tracking_services.TraceEvent(
+                event_name="RiskReportGeneratorTariffs", 
+                properties={
+                    "bigdataResearchToolsVersion": version("bigdata_research_tools"),
+                    "bigdataClientVersion": version("bigdata-client"),
+                }
+            )
+            tracking_services.send_trace(bigdata_client=bigdata, trace=trace)
+            _intialization_sent = True
+
+
+bigdata = Bigdata()
+notebook_initialized(bigdata)

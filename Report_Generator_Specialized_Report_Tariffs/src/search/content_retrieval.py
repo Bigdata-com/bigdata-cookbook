@@ -51,10 +51,7 @@ class DataRetriever:
                 batch_size=100,
                 scope=document_type  
             )
-            print("len(queries_sim)", len(queries_sim))
-            print("queries_sim", queries_sim)
             date_ranges = create_date_ranges(self.start_date_query, self.end_date_query, self.search_freq)
-            print("date_ranges", date_ranges)
             results_list_sim = run_search(
                 bigdata=self.bigdata, 
                 queries=queries_sim, 
@@ -103,14 +100,10 @@ class DataRetriever:
         if import_from_path and os.path.isfile(import_from_path):
             logging.info("Importing DataFrame from pickle file.")
             return pd.read_pickle(import_from_path)
-        print("test")
         list_df_sentences = []
         for spec_theme in list_specific_themes:
             for entity in list_entities:
                 list_sentences = get_most_granular_elements(themes_tree_dict[spec_theme], 'Summary')
-                print("entity", entity)
-                print("len(list_sentences)", len(list_sentences))
-                print("list_sentences", list_sentences)
 
                 df_sentences = self.retrieve_by_sentences_entity_theme(entity, list_sentences, document_type)
                 if df_sentences is not None:

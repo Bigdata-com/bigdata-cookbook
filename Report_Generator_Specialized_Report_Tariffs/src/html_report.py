@@ -16,7 +16,7 @@ def prepare_data_report_0(df_by_theme, df_by_company_with_responses):
     ### Section 2 - Company-Specific Issues
     
     user_selected_nb_topics = 1
-    user_selected_columns = ['entity_name', 'topic', 'headline', 'n_documents', 'response_summary', 'n_response_documents']
+    user_selected_columns = ['entity_name', 'topic', 'headline', 'n_documents', 'response_summary', 'n_response_documents', 'response_from_news']
     
     list_tops_by_company = []
     
@@ -70,7 +70,7 @@ def prepare_data_report_1(df_by_theme, df_by_company_with_responses):
     
     user_selected_nb_topics_per_company = 1
     user_selected_nb_topics_total = 10
-    user_selected_columns = ['entity_name', 'topic', 'headline', 'n_documents', 'response_summary', 'n_response_documents']
+    user_selected_columns = ['entity_name', 'topic', 'headline', 'n_documents', 'response_summary', 'n_response_documents', 'response_from_news']
     
     user_selected_ranking = ['risk_score', 'uncertainty_score', 'n_documents']  
     user_selected_ascending_order = [False, False, False]
@@ -121,14 +121,17 @@ def generate_html_report(df_theme, df_entities, title):
         headline_sections += "</div>"  # Close flex container
         headline_sections += "<br/>"  # Blank line
 
-        response_summary_items = group[['topic', 'response_summary']].dropna().drop_duplicates()
+        response_summary_items = group[['topic', 'response_summary', 'response_from_news']].dropna(subset=['response_summary']).drop_duplicates()
         if response_summary_items.size > 0:
             headline_sections += "<div class='report-response-summary'>"
             headline_sections += f"<strong>Company's Response:</strong><br/>"
             headline_sections += "<ul>"
             for _, row in response_summary_items.iterrows():
-                headline_sections += f"<li><strong>{row['topic']}</strong>: {row['response_summary']}</li>"
+                suffix = " [From News]" if ('response_from_news' in row and pd.notnull(row['response_from_news']) and bool(row['response_from_news'])) else ""
+                headline_sections += f"<li><strong>{row['topic']}</strong>: {row['response_summary']}{suffix}</li>"
             headline_sections += "</ul></div>"
+        else:
+            headline_sections += "<div class='report-response-summary'>No evidence of discussions found in Transcripts/Filings.</div>"
 
         headline_sections += "</div>"  # Close entity div
     
@@ -268,10 +271,11 @@ def generate_html_report_v1(df_theme, df_entities, title):
         entity_sections += "<div class='report-criterion-box'>"
         entity_sections += "<h4>Company's Response</h4>"
         if pd.notnull(most_reported_row['response_summary']):
-            entity_sections += f"<p>{most_reported_row['response_summary']}<br/>"
+            suffix = " [From News]" if ('response_from_news' in most_reported_row and pd.notnull(most_reported_row['response_from_news']) and bool(most_reported_row['response_from_news'])) else ""
+            entity_sections += f"<p>{most_reported_row['response_summary']}{suffix}<br/>"
             # entity_sections += f"[{most_reported_row['n_response_documents']} Responses]</p>"
         else:
-            entity_sections += "<p>No response provided</p>"
+            entity_sections += "<p>No evidence of discussions found in Transcripts/Filings.</p>"
         entity_sections += "</div>"  # Close Company's Response box
         
         entity_sections += "</div>"  # Close flex container

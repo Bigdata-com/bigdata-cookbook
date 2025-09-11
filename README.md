@@ -137,6 +137,14 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Custom report generation with configurable ranking systems for trending topics
 - Market impact assessment scoring topics for trendiness, novelty, and magnitude
 
+### 🧾 [Specialized Report Tariffs](./Report_Generator_Specialized_Report_Tariffs/)
+**Automated Analysis of Trade Tariff Risks and Corporate Mitigation Strategies**
+
+- Generates sector-wide and company-specific risk reports
+- Extracts mitigation plans from SEC filings and earnings transcripts
+- Produces executive and detailed HTML reports
+- Exports structured CSVs for further analysis
+
 ## Quick Start
 
 ### Prerequisites
@@ -255,6 +263,13 @@ bigdata-cookbook/
 │   ├── report/
 │   ├── requirements.txt
 │   ├── Dockerfile
+│   └── README.md
+├── Report_Generator_Specialized_Report_Tariffs/      # Tariffs risk report generator
+│   ├── Report_Generator_Specialized_Report_Tariffs.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   └── README.md
 └── README.md                                        # This file
 ```
 
