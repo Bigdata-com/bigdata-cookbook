@@ -1,6 +1,6 @@
 python_dotenv>=1.1.1
 bigdata-client>=2.18.0
-bigdata-research-tools>=0.17.3
+bigdata-research-tools[all]>=0.17.3
 pandas>=2.3.1
 asyncio>=4.0.0
 openai>=1.99.3
