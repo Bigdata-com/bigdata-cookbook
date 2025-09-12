@@ -137,6 +137,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Custom report generation with configurable ranking systems for trending topics
 - Market impact assessment scoring topics for trendiness, novelty, and magnitude
 
+
+### 🧾 [Specialized Report Tariffs](./Report_Generator_Specialized_Report_Tariffs/)
+**Automated Analysis of Trade Tariff Risks and Corporate Mitigation Strategies**
+
+- Generates sector-wide and company-specific risk reports
+- Extracts mitigation plans from SEC filings and earnings transcripts
+- Produces executive and detailed HTML reports
+- Exports structured CSVs for further analysis
+
 ### 🪙 [Screener for Crypto](./Screener_for_Crypto/)
 **Automated Cryptocurrency Thematic Screening and Analysis Tool**
 
@@ -145,6 +154,7 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Cross-crypto comparison enabling portfolio-level thematic assessment
 - Interactive visualizations with heatmaps, bar charts, and scatter plots
 - Structured output generating Excel reports and HTML visualizations for investment intelligence
+
 
 ## Quick Start
 
@@ -265,6 +275,11 @@ bigdata-cookbook/
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   └── README.md
+├── Report_Generator_Specialized_Report_Tariffs/      # Tariffs risk report generator
+│   ├── Report_Generator_Specialized_Report_Tariffs.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   ├── Dockerfile
 ├── Screener_for_Crypto/                             # Cryptocurrency thematic screening
 │   ├── Screener_for_Crypto.ipynb
 │   ├── src/
