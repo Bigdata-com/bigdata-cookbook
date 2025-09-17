@@ -145,7 +145,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
         # Customize the plot
         ax.set_title('AI Bubble Narrative: Media vs. Corporate Communications', 
                     fontsize=18, fontweight='bold', pad=20)
-        ax.set_ylabel('Narrative Intensity (z-score) - Unique Sentences', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Narrative Intensity (z-score)', fontsize=12, fontweight='bold')
         ax.set_xlabel('Date', fontsize=12, fontweight='bold')
         
         # Format x-axis dates
@@ -278,7 +278,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
                 fixedrange=not interactive  # Disable zoom/pan when not interactive
             ),
             yaxis=dict(
-                title=dict(text='Narrative Intensity (z-score) - Unique Sentences', font=dict(color='#1f1f1f')),
+                title=dict(text='Narrative Intensity (z-score)', font=dict(color='#1f1f1f')),
                 tickfont=dict(color='#1f1f1f'),
                 gridcolor='rgba(100, 100, 100, 0.2)',
                 zerolinecolor='rgba(0, 0, 0, 0.4)',
@@ -480,7 +480,7 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
         # Customize the plot
         ax.set_title('Breakdown of AI Bubble Narratives in News Media', 
                     fontsize=18, fontweight='bold', pad=20)
-        ax.set_ylabel('Narrative Prevalence (z-score) - Unique Sentences', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Narrative Prevalence (z-score)', fontsize=12, fontweight='bold')
         ax.set_xlabel('Date', fontsize=12, fontweight='bold')
         
         # Format x-axis dates
@@ -561,7 +561,7 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
                 fixedrange=not interactive  # Disable zoom/pan when not interactive
             ),
             yaxis=dict(
-                title=dict(text='Narrative Prevalence (z-score) - Unique Sentences', font=dict(color='#1f1f1f')),
+                title=dict(text='Narrative Prevalence (z-score)', font=dict(color='#1f1f1f')),
                 tickfont=dict(color='#1f1f1f'),
                 gridcolor='rgba(100, 100, 100, 0.2)',
                 zerolinecolor='rgba(0, 0, 0, 0.4)',
