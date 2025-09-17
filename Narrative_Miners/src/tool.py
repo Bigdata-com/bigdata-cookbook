@@ -30,8 +30,14 @@ def prepare_narrative_data(df, freq='W'):
     """
     Prepare narrative data for visualization by creating time series of narrative counts,
     converting to z-scores, and applying smoothing.
+    Uses unique Sentence ID counts per Date/Label to avoid duplication.
     """
-    pivot_df = pd.pivot_table(df, index='Date', columns='Label', aggfunc='size', fill_value=0)
+    # Raggruppa per Date, Label e conta Sentence ID unici
+    date_label_counts = df.groupby(['Date', 'Label'])['Sentence ID'].nunique().reset_index()
+    date_label_counts.columns = ['Date', 'Label', 'Count']
+    
+    # Crea pivot table con i conteggi unici
+    pivot_df = date_label_counts.pivot(index='Date', columns='Label', values='Count').fillna(0)
     resampled_df = pivot_df.resample(freq).sum()
 
     # Calculate z-scores for each narrative
@@ -55,8 +61,10 @@ def prepare_narrative_data(df, freq='W'):
 def calculate_source_scores(df):
     """
     Calculate overall narrative scores (z-scores) across all narratives by source.
+    Uses unique Sentence ID counts per Date to avoid duplication.
     """
-    date_counts = df.groupby('Date').size()
+    # Conta Sentence ID unici per data
+    date_counts = df.groupby('Date')['Sentence ID'].nunique()
     weekly_counts = date_counts.resample('W').sum().fillna(0)
     mean = weekly_counts.mean()
     std = weekly_counts.std()
@@ -85,7 +93,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
     comparison_df['News Media'] = pd.Series(news_score)
     comparison_df['Earnings Calls'] = pd.Series(transcript_score)
     comparison_df['SEC Filings'] = pd.Series(filing_score)
-    comparison_df = comparison_df.sort_index().fillna(method='ffill').fillna(0)
+    comparison_df = comparison_df.sort_index().ffill().fillna(0)
 
     # Define colors
     source_colors = {
@@ -137,7 +145,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
         # Customize the plot
         ax.set_title('AI Bubble Narrative: Media vs. Corporate Communications', 
                     fontsize=18, fontweight='bold', pad=20)
-        ax.set_ylabel('Narrative Intensity (z-score)', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Narrative Intensity (z-score) - Unique Sentences', fontsize=12, fontweight='bold')
         ax.set_xlabel('Date', fontsize=12, fontweight='bold')
         
         # Format x-axis dates
@@ -270,7 +278,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
                 fixedrange=not interactive  # Disable zoom/pan when not interactive
             ),
             yaxis=dict(
-                title=dict(text='Narrative Intensity (z-score)', font=dict(color='#1f1f1f')),
+                title=dict(text='Narrative Intensity (z-score) - Unique Sentences', font=dict(color='#1f1f1f')),
                 tickfont=dict(color='#1f1f1f'),
                 gridcolor='rgba(100, 100, 100, 0.2)',
                 zerolinecolor='rgba(0, 0, 0, 0.4)',
@@ -353,7 +361,7 @@ def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filing
     comparison_df['News Media'] = pd.Series(news_score)
     comparison_df['Earnings Calls'] = pd.Series(transcript_score)
     comparison_df['SEC Filings'] = pd.Series(filing_score)
-    comparison_df = comparison_df.sort_index().fillna(method='ffill').fillna(0)
+    comparison_df = comparison_df.sort_index().ffill().fillna(0)
 
     # Create the plot
     fig, ax = plt.subplots(figsize=(12, 8))
@@ -472,7 +480,7 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
         # Customize the plot
         ax.set_title('Breakdown of AI Bubble Narratives in News Media', 
                     fontsize=18, fontweight='bold', pad=20)
-        ax.set_ylabel('Narrative Prevalence (z-score)', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Narrative Prevalence (z-score) - Unique Sentences', fontsize=12, fontweight='bold')
         ax.set_xlabel('Date', fontsize=12, fontweight='bold')
         
         # Format x-axis dates
@@ -553,7 +561,7 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
                 fixedrange=not interactive  # Disable zoom/pan when not interactive
             ),
             yaxis=dict(
-                title=dict(text='Narrative Prevalence (z-score)', font=dict(color='#1f1f1f')),
+                title=dict(text='Narrative Prevalence (z-score) - Unique Sentences', font=dict(color='#1f1f1f')),
                 tickfont=dict(color='#1f1f1f'),
                 gridcolor='rgba(100, 100, 100, 0.2)',
                 zerolinecolor='rgba(0, 0, 0, 0.4)',
