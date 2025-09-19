@@ -284,10 +284,11 @@ def notebook_initialized(bigdata):
     global _intialization_sent
     if not _intialization_sent:
             trace = tracking_services.TraceEvent(
-                event_name="RiskReportGeneratorTariffs", 
+                event_name="BigdataCookbookExecution", 
                 properties={
                     "bigdataResearchToolsVersion": version("bigdata_research_tools"),
                     "bigdataClientVersion": version("bigdata-client"),
+                    "cookbook_name": "ReportGeneratorSpecializedReportTariffs"                    
                 }
             )
             tracking_services.send_trace(bigdata_client=bigdata, trace=trace)

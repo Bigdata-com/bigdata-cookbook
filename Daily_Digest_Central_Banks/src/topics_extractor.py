@@ -1095,3 +1095,26 @@ def process_all_reports(reports, model, api_key, main_theme, semaphore_size=1000
     filtered_reports = asyncio.run(filter_irrelevant_news(reports, model, api_key, main_theme, semaphore_size))
 
     return filtered_reports
+
+_intialization_sent = False 
+def notebook_initialized():
+    from importlib.metadata import version
+    from bigdata_client import Bigdata
+    from bigdata_client import tracking_services
+
+    try:
+        bigdata = Bigdata()
+        global _intialization_sent
+        if not _intialization_sent:
+            trace = tracking_services.TraceEvent(event_name = "BigdataCookbookExecution", 
+                       properties={"bigdataResearchToolsVersion": version("bigdata_research_tools"),
+                                    "bigdataClientVersion": version("bigdata-client"),
+                                   "cookbook_name": "DailyDigestCentralBank"
+                                  })
+            
+            tracking_services.send_trace(bigdata_client = bigdata, trace = trace)
+            _intialization_sent = True
+    except Exception as e:
+        pass
+        
+notebook_initialized()    
