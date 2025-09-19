@@ -27,10 +27,6 @@ import hashlib
 import pickle
 from pathlib import Path
 
-# ==============================================================================
-# ORIGINAL IMPLEMENTATION - EXACTLY AS IN THE WORKFLOW
-# ==============================================================================
-
 def replace_company_placeholders(row: pd.Series) -> str:
     """
     Replace company placeholders in text.
