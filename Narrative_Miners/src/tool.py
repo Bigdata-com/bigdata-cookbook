@@ -32,11 +32,11 @@ def prepare_narrative_data(df, freq='W'):
     converting to z-scores, and applying smoothing.
     Uses unique Sentence ID counts per Date/Label to avoid duplication.
     """
-    # Raggruppa per Date, Label e conta Sentence ID unici
+    # Group by Date, Label and count unique Sentence IDs
     date_label_counts = df.groupby(['Date', 'Label'])['Sentence ID'].nunique().reset_index()
     date_label_counts.columns = ['Date', 'Label', 'Count']
-    
-    # Crea pivot table con i conteggi unici
+
+    # Create pivot table with unique counts
     pivot_df = date_label_counts.pivot(index='Date', columns='Label', values='Count').fillna(0)
     resampled_df = pivot_df.resample(freq).sum()
 
@@ -63,7 +63,7 @@ def calculate_source_scores(df):
     Calculate overall narrative scores (z-scores) across all narratives by source.
     Uses unique Sentence ID counts per Date to avoid duplication.
     """
-    # Conta Sentence ID unici per data
+    # Count of unique Sentence IDs per date
     date_counts = df.groupby('Date')['Sentence ID'].nunique()
     weekly_counts = date_counts.resample('W').sum().fillna(0)
     mean = weekly_counts.mean()
