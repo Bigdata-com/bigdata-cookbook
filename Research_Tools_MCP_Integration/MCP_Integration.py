@@ -2,7 +2,7 @@
 #
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["mcp[cli]==1.14.1", "bigdata-research-tools==0.20.1", "nest-asyncio==1.6.0"]
+# dependencies = ["mcp[cli]==1.11.0", "bigdata-research-tools==0.20.1", "nest-asyncio==1.6.0"]
 # ///
 
 import os
@@ -20,12 +20,11 @@ from bigdata_research_tools.workflows.thematic_screener import (
 from bigdata_client import Bigdata
 import nest_asyncio
 
-assert "OPENAI_API_KEY" in os.environ, (
-    "Please set the OPENAI_API_KEY environment variable."
-)
-assert "BIGDATA_API_KEY" in os.environ, (
-    "Please set the BIGDATA_API_KEY environment variable."
-)
+# Select your LLM model here
+LLM_MODEL = "openai::gpt-4o-mini"
+# LLM_MODEL = "azure::gpt-4o-mini"
+# LLM_MODEL = "bedrock::anthropic.claude-3-sonnet-20240229-v1:0"
+
 nest_asyncio.apply()
 
 # Create an MCP server
@@ -58,7 +57,7 @@ def screen_companies(
 
     # Configure and run the thematic screener
     them = ThematicScreener(
-        llm_model="openai::gpt-4o-mini",
+        llm_model=LLM_MODEL,
         main_theme=main_theme,
         focus=focus,
         companies=companies,
@@ -75,7 +74,17 @@ def screen_companies(
 
     # Extract and return the relevant data as JSON
     return str(result["df_company"].to_json(orient="records"))
-    
+
+def test_llm_model_configured():
+    """Test that the LLM model is configured correctly."""
+    from bigdata_research_tools.llm.base import LLMEngine
+
+    test_answer = LLMEngine(LLM_MODEL).get_response([{"role": "user", "content": "Hello, world!"}])
+    assert isinstance(test_answer, str), "LLM model is not configured correctly. Read more here: https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration"
 
 if __name__ == "__main__":
+    test_llm_model_configured()
+    assert "BIGDATA_API_KEY" in os.environ, (
+        "Please set the BIGDATA_API_KEY environment variable."
+    )
     mcp.run(transport="streamable-http")
