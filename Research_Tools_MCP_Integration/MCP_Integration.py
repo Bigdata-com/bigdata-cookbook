@@ -1,0 +1,81 @@
+#!/usr/bin/env -S uv run --script
+#
+# /// script
+# requires-python = ">=3.12"
+# dependencies = ["mcp[cli]==1.14.1", "bigdata-research-tools==0.20.1", "nest-asyncio==1.6.0"]
+# ///
+
+import os
+
+from datetime import datetime
+from mcp.server.fastmcp import FastMCP
+from bigdata_research_tools.watchlists import (
+    create_watchlist as create_watchlist_internal,
+    fuzzy_find_watchlist_by_name,
+)
+from bigdata_research_tools.workflows.thematic_screener import (
+    ThematicScreener,
+    DocumentType,
+)
+from bigdata_client import Bigdata
+import nest_asyncio
+
+assert "OPENAI_API_KEY" in os.environ, (
+    "Please set the OPENAI_API_KEY environment variable."
+)
+assert "BIGDATA_API_KEY" in os.environ, (
+    "Please set the BIGDATA_API_KEY environment variable."
+)
+nest_asyncio.apply()
+
+# Create an MCP server
+mcp = FastMCP("Demo", stateless_http=True, json_response=True, host="0.0.0.0")
+
+# Initialize Bigdata client
+BIGDATA = Bigdata()
+
+
+# Add an addition tool
+@mcp.tool()
+def create_watchlist(watchlist_name: str, companies: list[str]):
+    """Create a watchlist for the given companies."""
+    return create_watchlist_internal(watchlist_name, companies, BIGDATA)
+
+
+@mcp.tool()
+def screen_companies(
+    watchlist_name: str, main_theme: str, fiscal_year: int, focus: str = ""
+):
+    """Screen companies in a watchlist for a given theme and fiscal year. This will return
+    a JSON string with the results."""
+    # Find the watchlist by name
+    watchlist = fuzzy_find_watchlist_by_name(watchlist_name, BIGDATA)
+    if not watchlist:
+        return {"error": f"Watchlist '{watchlist_name}' not found."}
+
+    # Extract companies from the watchlist
+    companies = BIGDATA.knowledge_graph.get_entities(watchlist.items)
+
+    # Configure and run the thematic screener
+    them = ThematicScreener(
+        llm_model="openai::gpt-4o-mini",
+        main_theme=main_theme,
+        focus=focus,
+        companies=companies,
+        start_date=datetime(fiscal_year - 1, 1, 1),
+        end_date=datetime(fiscal_year + 1, 12, 31),
+        document_type=DocumentType.TRANSCRIPTS,
+        fiscal_year=fiscal_year,
+    )
+    result = them.screen_companies(
+            document_limit=20,
+            batch_size=10,
+            frequency="3M",
+        )
+
+    # Extract and return the relevant data as JSON
+    return str(result["df_company"].to_json(orient="records"))
+    
+
+if __name__ == "__main__":
+    mcp.run(transport="streamable-http")
