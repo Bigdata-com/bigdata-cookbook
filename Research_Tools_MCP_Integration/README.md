@@ -82,6 +82,8 @@ Create a watchlist called Next Generation Defense with the following companies: 
      OPENAI_API_KEY=your_openai_api_key
      ```
 
+    > **Note:** To configure a different LLM model, edit the `LLM_MODEL` variable in `MCP_Integration.py`. You can find supported models in the [LLM Integration documentation](https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration).
+
 3. **Run the MCP server**:
    ```bash
    uv run MCP_Integration.py
