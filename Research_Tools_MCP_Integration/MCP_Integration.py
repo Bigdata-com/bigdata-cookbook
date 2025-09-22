@@ -2,12 +2,13 @@
 #
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["mcp[cli]==1.11.0", "bigdata-research-tools==0.20.1", "nest-asyncio==1.6.0"]
+# dependencies = ["mcp[cli]==1.11.0", "bigdata-research-tools==0.20.1", "nest-asyncio==1.6.0", "dotenv"]
 # ///
 
 import os
 
 from datetime import datetime
+from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 from bigdata_research_tools.watchlists import (
     create_watchlist as create_watchlist_internal,
@@ -30,6 +31,8 @@ nest_asyncio.apply()
 # Create an MCP server
 mcp = FastMCP("Demo", stateless_http=True, json_response=True, host="0.0.0.0")
 
+
+load_dotenv('.env')
 # Initialize Bigdata client
 BIGDATA = Bigdata()
 
