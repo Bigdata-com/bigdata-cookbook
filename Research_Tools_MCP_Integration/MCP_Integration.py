@@ -67,20 +67,33 @@ def screen_companies(
         fiscal_year=fiscal_year,
     )
     result = them.screen_companies(
-            document_limit=20,
-            batch_size=10,
-            frequency="3M",
-        )
+        document_limit=20,
+        batch_size=10,
+        frequency="3M",
+    )
 
     # Extract and return the relevant data as JSON
     return str(result["df_company"].to_json(orient="records"))
+
 
 def test_llm_model_configured():
     """Test that the LLM model is configured correctly."""
     from bigdata_research_tools.llm.base import LLMEngine
 
-    test_answer = LLMEngine(LLM_MODEL).get_response([{"role": "user", "content": "Hello, world!"}])
-    assert isinstance(test_answer, str), "LLM model is not configured correctly. Read more here: https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration"
+    try:
+        test_answer = LLMEngine(LLM_MODEL).get_response(
+            [{"role": "user", "content": "Hello, world!"}]
+        )
+    except Exception as e:
+        print(
+            "[ERROR] LLM model is not configured correctly. Read more here: https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration"
+        )
+        exit(1)
+    else:
+        assert isinstance(test_answer, str), (
+            "LLM model is not configured correctly. Read more here: https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration"
+        )
+
 
 if __name__ == "__main__":
     test_llm_model_configured()
