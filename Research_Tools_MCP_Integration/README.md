@@ -34,7 +34,7 @@ This project showcases how to integrate the Bigdata research tools with an MCP s
    docker build -t mcp-thematic-screener .
    
    # Run the container
-   docker run -u "$(id -u):$(id -g)" -e HOME=/app -p 8000:8000 --env-file .env mcp-thematic-screener
+   docker run -p 8000:8000 --env-file .env mcp-thematic-screener
    ```
 
 4. **Configure the MCP**:
