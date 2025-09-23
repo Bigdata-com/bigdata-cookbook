@@ -17,7 +17,9 @@ RUN apk update && apk add --no-cache \
     graphviz
 
 # Create non-root user 'bigdata' and necessary directories
-RUN adduser --disabled-password bigdata 
+RUN adduser --disabled-password --home /app bigdata && \
+    mkdir /data && \
+    chown bigdata:bigdata /app /data
 
 # Remove setuid and setgid permissions for extra security
 RUN find / -perm +6000 -type f -exec chmod a-s {} \; || true
@@ -36,4 +38,4 @@ WORKDIR /app
 EXPOSE 8000
 
 # Set the default command to start MCP
-CMD ["uv", "run", "MCP_Integration"]
+CMD ["uv", "run", "MCP_Integration.py"]
