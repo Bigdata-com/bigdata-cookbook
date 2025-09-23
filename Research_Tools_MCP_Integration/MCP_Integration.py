@@ -2,7 +2,7 @@
 #
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["mcp[cli]==1.11.0", "bigdata-research-tools==0.20.1", "nest-asyncio==1.6.0", "dotenv"]
+# dependencies = ["mcp[cli]==1.11.0", "bigdata-research-tools==0.20.1", "nest-asyncio==1.6.0", "python-dotenv==1.1.1"]
 # ///
 
 import os
