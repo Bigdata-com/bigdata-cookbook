@@ -1,0 +1,666 @@
+from os import environ
+from typing import Dict, List
+
+
+def get_other_entity_placeholder() -> str:
+    return environ.get("BIGDATA_OTHER_ENTITY_PLACEHOLDER", "Other Company")
+
+
+def get_target_entity_placeholder() -> str:
+    return environ.get("BIGDATA_TARGET_ENTITY_PLACEHOLDER", "Target Company")
+
+
+narrative_system_prompt_template: str = """
+Forget all previous prompts.
+You are assisting in tracking narrative development within a specific theme. 
+Your task is to analyze sentences and identify how they contribute to key narratives defined in the '{theme_labels}' list.
+
+Please adhere to the following guidelines:
+
+1. **Analyze the Sentence**:
+   - Each input consists of a sentence ID and the sentence text
+   - Analyze the sentence to determine if it clearly relates to any of the themes in '{theme_labels}'
+   - Your goal is to select the most appropriate label from '{theme_labels}' that corresponds to the content of the sentence. 
+   
+2. **Label Assignment**:
+   - If the sentence doesn't clearly match any theme in '{theme_labels}', assign the label 'unclear'
+   - Evaluate each sentence independently, using only the context within that specific sentence
+   - Do not make assumptions beyond what is explicitly stated in the sentence
+   - You must not create new labels or choose labels not present in '{theme_labels}'
+   - The connection to the chosen narrative must be explicit and clear
+
+3. **Response Format**:
+   - Output should be structured as a JSON object with:
+     1. A brief motivation for your choice
+     2. The assigned label
+   - Each entry must start with the sentence ID
+   - The motivation should explain why the specific theme was selected based on the sentence content
+   - The assigned label should be only the string that precedes the colon in '{theme_labels}'
+   - Format your JSON as follows:  {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>"}}, ...}}.
+   - Ensure all strings in the JSON are correctly formatted with proper quotes
+"""
+
+screener_system_prompt_template: str = """
+ Forget all previous prompts.
+ You are assisting a professional analyst in evaluating the impact of the theme '{main_theme}' on a company "Target Company".
+ Your primary task is first, to ensure that each sentence is explicitly related to '{main_theme}', and second, to accurately associate each given sentence with
+ the relevant label contained within the list '{label_summaries}'.
+
+ Please adhere strictly to the following guidelines:
+
+ 1. **Analyze the Sentence**:
+    - Each input consists of a sentence ID, a company name ('Target Company'), and the sentence text.
+    - Analyze the sentence to understand if the content clearly establishes a connection to '{main_theme}'.
+    - Your primary goal is to label as '{unknown_label}' the sentences that don't explicitly mention '{main_theme}'.
+    - Analyze the list of labels '{label_summaries}' used for label assignment. '{label_summaries}' is a Python list variable containing distinct labels and their definition in format 'Label: Summary', you must pick label only from 'Label' part which means left side of the semicolon for each Label:Summary pair.
+    - Your secondary goal is to select the most appropriate label from '{label_summaries}' that corresponds to the content of the sentence.
+
+ 2. **First Label Assignment**:
+    - Assign the label '{unknown_label}' to the sentence related to "Target Company" when it does not explicitly mentions '{main_theme}'. Otherwise, don't assign a label.
+    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
+    - Use only the information contained within the sentence for your label assignment.
+    - When evaluating the sentence, "Target Company" must clearly mention that its business activities are impacted by '{main_theme}'.
+    - Many sentences are only tangentially connected to the topic '{main_theme}'. These sentences must be assigned the label '{unknown_label}'.
+
+ 3. **Second Label Assignment**:
+    - For the sentences not labeled as '{unknown_label}' and only for them, assign a unique label from the list '{label_summaries}' to the sentence related to "Target Company".
+    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
+    - Use only the information contained within the sentence for your label assignment.
+    - Ensure that the sentence clearly establishes a connection to the label you assigned and to the theme '{main_theme}'.
+    - You must not create a new label or choose a label that is not present in '{label_summaries}'.
+    - If the sentence does not explicitly mention the label, assign the label '{unknown_label}'.
+    - When evaluating the sentence, "Target Company" must clearly mention that its business activities are impacted by the label assigned and '{main_theme}'.
+
+ 4. **Response Format**:
+    - Your output should be structured as a JSON object that includes:
+          1. A brief motivation for your choice.
+          2. The assigned label.
+          3. The revenue generation.
+          4. The cost efficiency.
+    - Each entry must start with the sentence ID and contain a clear motivation that begins with "Target Company".
+    - The motivation should explain why the label was selected from '{label_summaries}' based on the information in the sentence and in the context of '{main_theme}'. It should also justify the label that had been assigned to the revenue generation and cost efficiency.
+    - Ensure that the exact context is understood and labels are based only on explicitly mentioned information in the sentence. Otherwise, assign the label '{unknown_label}'.
+    - The assigned label should be only the string that precedes the character ':'.
+    - The revenue generation should be either 'Nan' (no mentions), 'low', 'medium' or 'high', and must define whether "Target Company" is generating revenues with the label assigned.
+    - The cost efficiency should be either 'Nan' (no mentions), 'low', 'medium' or 'high', and must define to whether "Target Company" is reducing costs with the label assigned.
+    - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>", "revenue_generation": "<revenue_generation>", "cost_efficiency": "<cost_efficiency>"}}, ...}}.
+    - Ensure that all strings in the JSON are correctly formatted with proper quotes.
+ """
+
+patent_prompts: Dict[str, str] = {
+    "filing": """
+You are analyzing text to detect patent filing activities by "Target Company". 
+Determine if the text describes a legitimate patent filing.
+
+Check for:
+1. Explicit mention of new patent filing
+2. "Target Company" as the filing entity
+
+Exclude:
+- Patent infringement
+- Patent expiry
+- Filing rejections
+- Filing revocations
+- Legal issues
+- General discussion
+
+Format response as a JSON object with this schema:
+{
+  "relevant": boolean,
+  "explanation": "Brief explanation of classification"
+}
+""",
+    "object": """
+Extract and summarize the key patentable innovation mentioned in 10 words or less.
+
+Requirements:
+- Focus on new inventions/technologies
+- Maximum 10 words
+- Clear, concise language
+- Exclude company names
+
+Format response as a JSON object with this schema:
+{
+  "patent": "brief description of patentable innovation"
+}
+""",
+}
+narrative_system_prompt_template_entity_reference: str = """
+ Forget all previous prompts.   
+ You are assisting a professional analyst in evaluating a piece sentence regarding the theme '{main_theme}'.
+ Your task is to evaluate if the sentence is strictly quoting something that '{entity_track}' has said, in order to track what '{entity_track}' has said, and not if he has done something.
+ You are given a sentence that comes from a news article and the title of the news article in order to give you a context of the sentence.
+
+ Please adhere strictly to the following guidelines:
+
+ 1. **Analyze the Sentence**:
+    - Each input consists of a sentence ID, the title of the news article and the sentence text.
+    - Assign the label '{known_label}' to the sentence related to '{entity_track}' when it contains something that '{entity_track}' has explicitly said, and not if he has done something.
+    - Assign the label '{unknown_label}' to the sentence related to '{entity_track}' when it does not relate to strictly quoting something that '{entity_track}' has said.
+    - Assign the label '{unknown_label}' to the sentence related to '{entity_track}' when it contains something that '{entity_track}' has done, and not something he has said.
+    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
+    - Use only the information contained within the sentence and the title of the news article for your label assignment.
+
+ 2. **Response Format**:
+    - Your output should be structured as a JSON object that includes:
+          1. A brief motivation for your choice.
+          2. The assigned label.
+    - Each entry must start with the sentence ID and contain a clear motivation that begins with '{entity_track}'.
+    - The motivation should explain why the label was related or not related to '{entity_track}'.
+    - Ensure that the exact context is understood and labels are based only on the information in the sentence (use the title of the news article for more context). 
+    - The assigned label should be only the string that precedes the character ':'.
+    - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>"}}, ...}}.
+    - Ensure that all strings in the JSON are correctly formatted with proper quotes.
+ """
+narrative_system_prompt_template_theme_matching: str = """
+ Forget all previous prompts.
+ You are assisting a professional analyst in evaluating if a sentence is related to the theme '{main_theme}'.
+ You are given a sentence that comes from a news article and the title of the news article in order to give you a context of the sentence.
+ Your primary task is to ensure that each sentence is related to '{main_theme}'. Use the title of the news article to understand the context of the sentence.
+
+ Please adhere strictly to the following guidelines:
+
+ 1. **Analyze the Sentence**:
+    - Each input consists of a sentence ID, the title of the news article and the sentence text.
+    - Analyze the sentence to understand if the content clearly establishes a connection to '{main_theme}'.
+    - Your primary goal is to label as '{unknown_label}' the sentences that don't does not relate to '{main_theme}'.
+
+ 2. **Response Format**:
+    - Your output should be structured as a JSON object that includes:
+          1. A brief motivation for your choice.
+          2. The assigned label.
+    - Each entry must start with the sentence ID and contain a clear motivation.
+    - The motivation should explain why the label was related or not related to '{main_theme}' based on the information in the sentence and in the context of '{main_theme}'.
+    - Ensure that the exact context is understood and labels are based only on the information in the sentence (use the title of the news article for more context). Otherwise, assign the label '{unknown_label}'.
+    - The assigned label should be only the string that precedes the character ':'.
+    - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>"}}, ...}}.
+    - Ensure that all strings in the JSON are correctly formatted with proper quotes.
+ """
+
+
+def get_narrative_system_prompt(main_theme: str, theme_labels: List[str], mode: str = "default", entity_track: str = "") -> str:
+    """Generate a system prompt for labeling sentences with narrative labels."""
+    if mode == "entity_reference":
+        return narrative_system_prompt_template_entity_reference.format(
+            main_theme=main_theme,
+            known_label = "quote",
+            unknown_label="unclear",
+            entity_track=entity_track,
+        )
+
+    if mode == "theme_matching":
+        return narrative_system_prompt_template_theme_matching.format(
+            main_theme=main_theme,
+            unknown_label="unclear",
+        )
+    if mode == "default":
+        return narrative_system_prompt_template.format(
+            theme_labels=theme_labels,  
+        )
+    else:
+        raise ValueError(f"Invalid mode: {mode}")
+
+
+screener_system_prompt_template_theme_matching: str = """
+ Forget all previous prompts.
+ You are assisting a professional analyst in evaluating the impact of the theme '{main_theme}' on a company "Target Company".
+ You are given a sentence that comes from a news article and the title of the news article in order to give you a context of the sentence.
+ Your primary task is first, to ensure that each sentence is relates to '{main_theme}'. Use the title of the news article to understand the context of the sentence.
+
+ Please adhere strictly to the following guidelines:
+
+ 1. **Analyze the Sentence**:
+    - Each input consists of a sentence ID, a company name ('Target Company'), the title of the news article and the sentence text.
+    - Analyze the sentence to understand if the content clearly establishes a connection to '{main_theme}'.
+    - Your primary goal is to label as '{unknown_label}' the sentences that don't does not relate to '{main_theme}'.
+
+ 2. **First Label Assignment**:
+    - Assign the label '{unknown_label}' to the sentence related to "Target Company" when it does not relate to '{main_theme}'. Otherwise, don't assign a label.
+    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
+    - Use only the information contained within the sentence and the title of the news article for your label assignment.
+    - When evaluating the sentence, "Target Company" must clearly mention that business activities are impacted by '{main_theme}'.
+
+ 3. **Response Format**:
+    - Your output should be structured as a JSON object that includes:
+          1. A brief motivation for your choice.
+          2. The assigned label.
+    - Each entry must start with the sentence ID and contain a clear motivation that begins with "Target Company".
+    - The motivation should explain why the label was related or not related to '{main_theme}' based on the information in the sentence and in the context of '{main_theme}'.
+    - Ensure that the exact context is understood and labels are based only on the information in the sentence (use the title of the news article for more context). Otherwise, assign the label '{unknown_label}'.
+    - The assigned label should be only the string that precedes the character ':'.
+    - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>"}}, ...}}.
+    - Ensure that all strings in the JSON are correctly formatted with proper quotes.
+ """
+
+screener_system_prompt_template_label_classification: str = """
+ Forget all previous prompts.
+ You are assisting a professional analyst in evaluating the impact of the theme '{main_theme}' on a company "Target Company".
+ You are given a sentence that comes from a news article and the title of the news article in order to give you a context of the sentence.
+
+ Your primary task is to accurately associate each given sentence with the relevant label contained within the list '{label_summaries}'.
+
+ Please adhere strictly to the following guidelines:
+
+ 1. **Analyze the Sentence**:
+    - Each input consists of a sentence ID, a company name ('Target Company'), the title of the news article and the sentence text.
+    - Analyze the list of labels '{label_summaries}' used for label assignment. '{label_summaries}' is a Python list variable containing distinct labels and their definition in format 'Label: Summary', you must pick label only from 'Label' part which means left side of the semicolon for each Label:Summary pair.
+    - Your goal is to select the most appropriate label from '{label_summaries}' that corresponds to the content of the sentence.
+
+ 2. **Label Assignment**:
+    - To the sentences assign a unique label from the list '{label_summaries}' to the sentence related to "Target Company".
+    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
+    - Use only the information contained within the sentence for your label assignment.
+    - You must not create a new label or choose a label that is not present in '{label_summaries}'.
+    - When evaluating the sentence, "Target Company" must clearly mention that business activities are impacted by the label assigned.
+
+ 3. **Response Format**:
+    - Your output should be structured as a JSON object that includes:
+          1. A brief motivation for your choice.
+          2. The assigned label.
+    - Each entry must start with the sentence ID and contain a clear motivation that begins with "Target Company".
+    - The motivation should explain why the label was selected from '{label_summaries}' based on the information in the sentence and in the context of '{main_theme}'.
+    - Ensure that the exact context is understood and labels are based only on explicitly mentioned information in the sentence (use the title of the news article for more context). Otherwise, assign the label '{unknown_label}'.
+    - The assigned label should be only the string that precedes the character ':'.
+    - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>"}}, ...}}.
+    - Ensure that all strings in the JSON are correctly formatted with proper quotes.
+ """
+
+
+
+screener_system_prompt_template_impact: str = """
+ Forget all previous prompts.
+ You are assisting a professional analyst in performing sentiment analysis on sentences related to the theme '{main_theme}' and a company "Target Company".
+ You are given a sentence that comes from a news article and the title of the news article in order to give you context of the sentence.
+
+ Your primary task is to determine the sentiment expressed in each sentence regarding "Target Company" in the context of the shift from '{shift_from}' to '{shift_to}' as described in '{main_theme}'.
+
+ Please adhere strictly to the following guidelines:
+
+ 1. **Analyze the Sentence**:
+    - Each input consists of a sentence ID, a company name ('Target Company'), the title of the news article and the sentence text.
+    - The sentence is already confirmed to be related to '{main_theme}'.
+    - Analyze sentence regarding "Target Company" in the context of the shift from '{shift_from}' to '{shift_to}'.
+    - Use the title of the news article to better understand the context and sentiment.
+
+ 2. **Sentiment Classification Logic and Categories**:
+    - The theme involves a shift/change from '{shift_from}' to '{shift_to}'.
+    - Evaluate sentiment based on how the sentence supports or opposes this directional change:
+      * If the sentence shows positive aspects of '{shift_to}' → this supports the shift → "positive"
+      * If the sentence shows negative aspects of '{shift_to}' → this opposes the shift → "negative"
+      * If the sentence shows positive aspects of '{shift_from}' → this opposes the shift → "negative"
+      * If the sentence shows negative aspects of '{shift_from}' → this supports the shift → "positive"
+      * If the sentence provides factual information without clear directional preference → "neutral"
+    - If the sentiment is unclear or doesn't relate to the shift direction, assign the label '{unknown_label}'.
+    - Use only the information contained within the sentence for your sentiment assignment.
+
+
+ 3. **Response Format**:
+    - Your output should be structured as a JSON object that includes:
+          1. A brief motivation for your choice.
+          2. The assigned label.
+    - Each entry must start with the sentence ID and contain a motivation that begins with "Target Company".
+    - The motivation should briefly explain how the sentence relates to the shift from '{shift_from}' to '{shift_to}'.
+    - The assigned label should be exactly one of: "positive", "negative", "neutral", or '{unknown_label}'.
+    - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>"}}, ...}}.
+    - Ensure that all strings in the JSON are correctly formatted with proper quotes.
+ """
+
+
+
+
+def get_screener_system_prompt(
+    main_theme: str, label_summaries: List[str], unknown_label: str, mode: str = "default", shift_from: str = "", shift_to: str = ""
+) -> str:
+    """Generate a system prompt for labeling sentences with thematic labels."""
+    if mode == "impact":
+        return screener_system_prompt_template_impact.format(
+            main_theme=main_theme,
+            unknown_label=unknown_label,
+            shift_from=shift_from,
+            shift_to=shift_to,
+        )
+    if mode == "theme_matching":
+        return screener_system_prompt_template_theme_matching.format(
+            main_theme=main_theme,
+            unknown_label=unknown_label,
+        )
+    if mode == "label_classification":
+        return screener_system_prompt_template_label_classification.format(
+            main_theme=main_theme,
+            label_summaries=label_summaries,
+            unknown_label=unknown_label,
+          )
+    if mode == "default":
+        return screener_system_prompt_template.format(
+            main_theme=main_theme,
+            label_summaries=label_summaries,
+            unknown_label=unknown_label,
+        )
+    else:
+        raise ValueError(f"Invalid mode: {mode}")
+
+risk_system_prompt_template: str = """
+
+Forget all previous prompts.
+
+You are assisting a professional analyst in evaluating both the exposure and risk classification for "Target Company" regarding the Risk Scenario "{main_theme}". This involves a two-step process: confirming exposure of "Target Company" and classifying specific risks if exposure is confirmed. Use the headline for contextual understanding.
+
+<input_details>
+You will receive the following information::
+- ID: [text ID]
+- Entity Sector: [The sector in which Target Company operates]
+- Entity Industry: [The specific industry segment in which Target Company operates]
+- Headline: [The Headline of the News Article containing Text]
+- Text: [Paragraph requiring analysis]
+- Risk Scenario: "{main_theme}"
+</input_details>
+
+Follow these guidelines:
+
+<exposure_assessment>
+- Examine whether the text explicitly mentions the Risk Scenario "{main_theme}" or any of its core components.
+- Ensure that "Target Company" is the main focus of the text and that it is clearly stated that "Target Company" is facing or will face consequences caused by the Risk Scenario "{main_theme}".
+- Assess if there are DIRECT consequences on "Target Company’s" business activities, operations, or future performance.
+- Designate the exposure as unclear if the text lacks an explicit DIRECT link between "Target Company" and the Risk Scenario
+- Designate the exposure as unclear if the text relies on generic information.
+</exposure_assessment>
+
+<risk_classification>
+If direct exposure of Target Company is confirmed:
+
+- Identify and classify the specific risk using this list of Risk Sub-Scenarios:
+    "{label_summaries}".
+
+- Follow a detailed classification process:
+    - Examine the text to confirm how the Risk Scenario "{main_theme}" directly impacts "Target Company" through one of the Risk Sub-Scenarios.
+    - Write a concise motivation that explains the direct link between "Target Company" and the Risk Sub-Scenario as stated in the text.
+    - The motivation should always start with "Target Company".
+    - Consider the Entity Sector and Industry to align the Risk Sub-Scenario label with Target Company's operations, reflecting material risks faced according to the text.
+    - Identify an appropriate Risk Sub-Scenario label from the list that describes explicitly the impact on the company's business, operations, or performance.
+    - Be specific in the risk classification, ensure that the risk sub-scenario represents well your motivation statement.
+    - Ensure that the Risk Sub-Scenario label can be directly extracted from the text that it describes with high granularity how "Target Company" is affected.
+    - Avoid deriving conclusions based on unstated or inferred information. Focus only on the explicit content of the text or headline.
+</risk_classification>
+
+<verbatim_quotes_extraction>
+- Extract verbatim quotes from the text that support the classification and illustrate Target Company's exposure to the specific Risk Sub-Scenario.
+- Ensure quotes directly relate to the impact described and justify the risk label.
+- Extract full sentences or phrases that clearly indicate, as standalone statements, how "Target Company" is affected by the Risk Scenario "{main_theme}" and the Sub-Scenario label assigned.
+</verbatim_quotes_extraction>
+
+<response_format>
+Structure your response as a JSON object containing:
+"sentence_id": "<sentence_id>"
+"motivation": : A concise explanation describing the link between "Target Company" and the Risk Sub-Scenario.
+"label": State the specific risk Sub-Scenario label or 'unclear'.
+"quotes": Present verbatim quotes that justify exposure and risk label assignment.
+
+{{"<sentence_id>": {{"motivation": "<motivation>", "label": "<risk_classification_label>", "quotes": "<verbatim_quotes>"}}}}.
+</response_format>
+
+<examples>
+ID: 3
+Entity Sector: Consumer Staples
+Entity Industry: Food and Beverages
+Headline: "Tariffs to Strain Supply Chains Globally"
+Text: "New tariffs against China will significantly impact Target Company's operations due to its reliance on raw materials from Chinese suppliers."
+Scenario: "New Tariffs against China"
+Output:
+
+{{3:{{
+  "motivation": "Target Company's supply operations are directly impacted by new tariffs due to their reliance on raw materials sourced from China.",
+  "label": "Supply Chain Disruption",
+  "quotes": ["New tariffs against China will significantly impact Target Company's operations", "reliance on raw materials from Chinese suppliers"]}}
+}}
+
+ID: 5
+Entity Sector: Financial Services
+Entity Industry: Banking
+Headline: "Interest Rate Fluctuations to Affect Markets"
+Text: "Target Company's analysts are forecasting higher risks associated with potential interest rate changes."
+Scenario: "Interest Rate Volatility"
+Output:
+
+{{5:{{
+  "motivation": "Target Company is not directly affected by any risk associated with Interest Rate fluctuations.",
+  "label": "unclear",
+  "quotes": []
+}}}}
+
+ID: 2
+Entity Sector: Retail
+Entity Industry: Apparel
+Headline: "Economic Challenges Ahead Due to Tariffs on China"
+Text: "Target Company’s analysts report a potential economic downturn linked to new tariffs against China."
+Risk Scenario: "New Tariffs Against China"
+Output:
+
+{{2:{{
+  "motivation": "Target Company is not said to be directly affected by new tariffs. Its analyst are simply working on a report assessing generic consequences",
+  "label": "unclear",
+  "quotes": []}}
+}}
+
+ID: 3
+Entity Sector: Technology
+Entity Industry: Software
+Headline: "Analyzing External Factors in Business Strategy"
+Text: "Target Company is studying external factors such as tariffs to gauge potential risks."
+Risk Scenario: "New Tariffs on Semiconductors"
+Output:
+
+{{3:{{
+  "motivation": "Target Company is merely studying the situation without asserting any direct impact on its operations.",
+  "label": "unclear",
+  "quotes": []}}
+}}
+
+ID: 4
+Entity Sector: Finance
+Entity Industry: Investment Banking
+Headline: "Market Trends Influence Stock Performance"
+Text: "Target Company’s stock is influenced by broad market trends."
+Risk Scenario: "Increased Uncertainty and Volatility"
+Output:
+
+{{4:{{
+  "motivation": "The text does not related to the Risk Scenario and it does not mention any specific risk sub-scenario affecting Target Company.",
+  "label": "unclear",
+  "quotes": []}}
+}}
+
+ID: 5
+Entity Sector: Manufacturing
+Entity Industry: Automotive
+Headline: "Tariffs and Their Economic Impact"
+Text: "Target Company researchers estimate that tariffs will affect the broader economy."
+Risk Scenario: "New Tariffs against China"
+Output:
+
+{{5:{{
+  "motivation": "Target Company is not linked with any specific risk sub-scenario or any tangible effect of the Risk Scenario.",
+  "label": "unclear",
+  "quotes": []}}
+}}
+
+ID: 2
+Entity Sector: Consumer Staples
+Entity Industry: Food and Beverages
+Headline: "China Tariffs Impact Supply Chains"
+Text: "According to recent reports, Target Company is heavily dependent on China. The recent tariffs against China have forced Target Company to reconsider its supply chain, potentially leading to increased logistics costs."
+Risk Scenario: "New Tariffs against China"
+Output:
+
+{{2:{{
+  "motivation": "Target Company is said to be reconsidering its supply chain in the face of the risk scenario. The text clearly links Target Company with the Risk Scenario and mentions an explicit Sub-scenario risk of Supply Chain Disruptions.",
+  "label": "Supply Chain Disruption",
+  "quotes": [
+    "Target Company is heavily dependent on China",
+    "The recent tariffs against China have forced Target Company to reconsider its supply chain, potentially leading to increased logistics costs."
+  ]}}
+}}
+</examples>
+
+"""
+
+def get_risk_system_prompt(main_theme: str, label_summaries: List[str]) -> str:
+    """Generate a system prompt for labeling sentences with thematic labels."""
+    return risk_system_prompt_template.format(
+        main_theme=main_theme,
+        label_summaries=label_summaries
+    )
+
+
+# Summarization prompt templates
+summarizer_system_prompt_template: str = """
+Forget all previous prompts.
+You are assisting a professional analyst in creating comprehensive company summaries based on thematic analysis results.
+Your task is to analyze multiple sentences and their associated labels/motivations for a single company and create a coherent summary.
+
+You will receive company data including:
+- Company name
+- Multiple quotes (sentences) from news articles
+- Assigned thematic labels for each quote
+- Labeling motivations explaining why each quote relates to '{main_theme}'
+
+Your primary task is to synthesize this information into a comprehensive summary on how the company is positioned regarding the '{main_theme}'.
+If some part of the information does not relate to '{main_theme}', do not include it in the summary or in the bullet points.
+
+Please adhere strictly to the following guidelines:
+
+1. **Company Analysis**:
+   - Analyze all provided quotes, assigned themes, and motivations together
+   - Identify the company's overall position and involvement with '{main_theme}'
+   - Consider the sector and industry context for your analysis
+
+2. **Summary Creation**:
+   - Create a coherent narrative that connects all the individual quote-level insights
+   - Highlight the most significant aspects of the company's relationship with '{main_theme}'
+   - Focus on concrete evidence from the provided quotes and themes, not speculation
+   - If there are few quotes, do not worry about the length - quality over quantity
+   - Organize information logically (e.g., current position, strategic initiatives, challenges, opportunities)
+   - Do not makeup information or use any prior knowledge, only use information from the quotes
+
+3. **Key Points Extraction**:
+   - Identify bullet points that capture the most important insights specific to this company that relate to '{main_theme}'
+   - Each point must be directly supported by evidence from the provided quotes that relate to '{main_theme}'
+   - Only include bullet points that are explicitly mentioned in the sentences - do not invent or extrapolate
+   - If there are few sentences, create fewer bullet points - quality over quantity
+   - Prioritize unique or distinctive aspects of this company's approach to '{main_theme}'
+   - Do not makeup information or use any prior knowledge, only use information from the quotes
+
+
+4. **Response Format**:
+   - Output should be a JSON object with both a summary and bullet points
+   - Format your response as valid JSON as follows: {{"summary": "<comprehensive_summary>", "bullet_points": ["<point1>", "<point2>", "<point3>"]}}.
+   - Each bullet point should be a complete, standalone statement
+   - Ensure all strings in the JSON are correctly formatted with proper quotes
+   - IMPORTANT: Your response must be valid JSON format only
+"""
+
+
+
+narrative_system_prompt_template_temporal_narrative: str = """
+Forget all previous prompts.
+You are assisting a professional analyst in creating comprehensive summaries with bullet points based on some daily quotes about '{entity_track}' coming from news articles.
+You are also given cumulative narrative summaries from recent past days about '{entity_track}'. These summaries were generated by previous iterations of this same prompt and represent the historical context.
+The content of the summaries and the bullet points must only be related to the theme '{main_theme}'. If some part of the information does not relate to '{main_theme}', do not include it in the summary or in the bullet points.
+
+You will receive:
+    - Historical narrative summaries from recent past days about '{entity_track}'
+    - Multiple sentences from news articles
+
+Please adhere strictly to the following guidelines:
+
+1. **Task**: 
+    - Your task is to analyze today's quotes about '{entity_track}' against the historical narrative to distinguish between:
+    - NEW information: themes, positions, and statements that have not been mentioned in previous summaries
+    - REPEATED information: themes or positions and statements that confirm or reiterate what was already stated in the past narrative
+    - Only focus on what '{entity_track}' has said and not the reactions to what he has said.
+    - The focus must be what '{entity_track}' is saying or what narrative he is pushing.
+
+2. **Create an updated summary that**:
+    - Primarily focuses on the new information emerged today
+    - Explicitly notes when information reinforces or repeats previous statements (e.g., "As previously stated...", "Reiterating the position...", "Confirming earlier reports...")
+    - Integrates new developments with the existing narrative context
+
+3. **Generate bullet points that**:
+    - Contain the actual quotes (direct citations) from today's articles
+    - Each bullet should include the verbatim text from the source
+    - Prioritize quotes that represent new information over repeated statements
+
+4. **Rules**:
+   - Only include information that is related to '{main_theme}', if some part of the information does not relate to '{main_theme}', do not include it in the summary or in the bullet points.
+   - Focus on concrete evidence from the provided quotes and themes, not speculation
+   - If there are few quotes or no news quotes, do not worry about the length - quality over quantity
+   - Do not makeup information or use any prior knowledge, only use information from the quotes
+
+5. **Response Format**:
+   - Output should be a JSON object with both a summary and bullet points
+   - Format your response as valid JSON as follows: {{"summary": "<comprehensive_summary>", "bullet_points": ["<point1>", "<point2>", "<point3>"]}}.
+   - Each bullet point should be a complete, standalone statement
+   - Ensure all strings in the JSON are correctly formatted with proper quotes
+   - IMPORTANT: Your response must be valid JSON format only
+"""
+narrative_system_prompt_template_temporal_narrative_no_previous_narrative: str = """
+Forget all previous prompts.
+You are assisting a professional analyst in creating comprehensive summaries with bullet points based on some daily quotes about '{entity_track}' coming from news articles.
+The content of the summaries and the bullet points must only be related to the theme '{main_theme}'. If some part of the information does not relate to '{main_theme}', do not include it in the summary or in the bullet points.
+
+You will receive:
+    - Multiple sentences from news articles
+
+Please adhere strictly to the following guidelines:
+
+1. **Task**: 
+    - Your task is to analyze today's quotes about '{entity_track}'
+
+2. **Create an updated summary that**:
+    - Primarily focuses on the quotes from '{entity_track}' 
+    - Create a sumamry of the quotes from '{entity_track}'
+
+3. **Generate bullet points that**:
+    - Contain the actual quotes (direct citations) from today's articles
+    - Each bullet should include the verbatim text from the source
+
+4. **Rules**:
+   - Only include information that is related to '{main_theme}', if some part of the information does not relate to '{main_theme}', do not include it in the summary or in the bullet points.
+   - Focus on concrete evidence from the provided quotes and themes, not speculation
+   - If there are few quotes or no news quotes, do not worry about the length - quality over quantity
+   - Do not makeup information or use any prior knowledge, only use information from the quotes
+
+5. **Response Format**:
+   - Output should be a JSON object with both a summary and bullet points
+   - Format your response as valid JSON as follows: {{"summary": "<comprehensive_summary>", "bullet_points": ["<point1>", "<point2>", "<point3>"]}}.
+   - Each bullet point should be a complete, standalone statement
+   - Ensure all strings in the JSON are correctly formatted with proper quotes
+   - IMPORTANT: Your response must be valid JSON format only
+"""
+
+def get_summarizer_system_prompt(
+    main_theme: str, mode: str = "default", shift_from: str = "", shift_to: str = "", entity_track: str = "", previous_narrative: str = ""
+) -> str:
+    """Generate a system prompt for company-level summarization."""
+    # IMPACT MODE DISABLED - always use default template
+    # if mode == "impact":
+    #     return summarizer_system_prompt_template_impact.format(
+    #         main_theme=main_theme,
+    #         shift_from=shift_from,
+    #         shift_to=shift_to,
+    #     )
+    if mode == "temporal_narrative":    
+        if previous_narrative:
+            return narrative_system_prompt_template_temporal_narrative.format(
+                main_theme=main_theme,
+                entity_track=entity_track,
+                previous_narrative=previous_narrative,
+            )
+        else:
+            return narrative_system_prompt_template_temporal_narrative_no_previous_narrative.format(
+            main_theme=main_theme,
+            entity_track=entity_track,
+        )
+    else:
+        return summarizer_system_prompt_template.format(
+            main_theme=main_theme,
+        )

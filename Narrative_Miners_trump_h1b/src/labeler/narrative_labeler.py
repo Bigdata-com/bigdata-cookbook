@@ -1,0 +1,527 @@
+"""
+Module for managing labeling operations.
+
+Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
+"""
+
+from logging import Logger, getLogger
+from typing import Dict, List, Optional, Union
+
+#from risk_labeler import replace_company_placeholders
+from pandas import DataFrame
+
+from bigdata_research_tools.labeler.labeler import (
+    Labeler,
+    parse_labeling_response,
+)
+from ..prompts.labeler import get_narrative_system_prompt
+from ..labeler.labeler import get_prompts_for_labeler
+logger: Logger = getLogger(__name__)
+
+
+class NarrativeLabeler(Labeler):
+    """Narrative labeler."""
+
+    def __init__(
+        self,
+        llm_model: str,
+        label_prompt: Optional[str] = None,
+        unknown_label: str = "unclear",
+        temperature: float = 0,
+    ):
+        """Initialize narrative labeler.
+
+        Args:
+            llm_model: Name of the LLM model to use. Expected format:
+                <provider>::<model>, e.g. "openai::gpt-4o-mini"
+            label_prompt: Prompt provided by user to label the search result chunks.
+                If not provided, then our default labelling prompt is used.
+            unknown_label: Label for unclear classifications
+            temperature: Temperature to use in the LLM model.
+        """
+        super().__init__(llm_model, unknown_label, temperature)
+        self.label_prompt = label_prompt
+
+    def get_labels(
+        self,
+        main_theme: str = "",
+        theme_labels: List[str] = [],
+        texts: List[str] = [],
+        titles: Optional[List[str]] = None,
+        max_workers: int = 50,
+        entity_track: str = "",
+        mode: str = "default",
+    ) -> DataFrame:
+        """
+        Process thematic labels for texts.
+
+        Args:
+            theme_labels: The main theme to analyze.
+            texts: List of texts to label.
+            titles: Optional list of titles. If provided, they will be added as "title" field.
+            max_workers: Maximum number of concurrent workers.
+            entity_track: Entity track for tracking the entity.
+            mode: Mode of the labeling.
+        Returns:
+            DataFrame with schema:
+            - index: sentence_id
+            - columns:
+                - motivation
+                - label
+        """
+        system_prompt = (
+            get_narrative_system_prompt(main_theme, theme_labels, mode, entity_track)
+            if self.label_prompt is None
+            else self.label_prompt
+        )
+
+        prompts = get_prompts_for_labeler(texts, titles=titles)
+
+
+        responses = self._run_labeling_prompts(
+            prompts, system_prompt, max_workers=max_workers
+        )
+        responses = [parse_labeling_response(response) for response in responses]
+        return self._deserialize_label_responses(responses)
+
+    def post_process_dataframe(self, df: DataFrame) -> DataFrame:
+        """
+        Post-process the labeled DataFrame.
+
+        Args:
+            df: DataFrame to process. Schema:
+                - Index: int
+                - Columns:
+                    - timestamp_utc: datetime64
+                    - document_id: str
+                    - sentence_id: str
+                    - headline: str
+                    - text: str
+                    - label: str
+                    - motivation: str
+        Returns:
+            Processed DataFrame. Schema:
+            - index: int
+            - Columns:
+                - Time Period
+                - Date
+                - Document ID
+                - Headline
+                - Chunk Text
+                - Motivation
+                - Label
+                - Entity
+                - Country Code
+                - Entity Type
+        """
+        # Filter unlabeled sentences
+        df = df.loc[df["label"] != self.unknown_label].copy()
+        if df.empty:
+            logger.warning(f"Empty dataframe: all rows labelled {self.unknown_label}")
+            return df
+
+        # Process timestamps
+        df["timestamp_utc"] = df["timestamp_utc"].dt.tz_localize(None)
+
+        # Sort and format
+        sort_columns = ["timestamp_utc", "label"]
+        df = df.sort_values(by=sort_columns).reset_index(drop=True)
+
+        # Add formatted columns
+        df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
+        df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
+
+        df = df.rename(
+            columns={
+                "document_id": "Document ID",
+                "sentence_id": "Sentence ID",
+                "headline": "Headline",
+                "text": "Chunk Text",
+                "motivation": "Motivation",
+                "label": "Label",
+                "entity": "Entity",
+                "country_code": "Country Code",
+                "entity_type": "Entity Type",
+            }
+        )
+
+        df = df.explode(["Entity", "Entity Type", "Country Code"], ignore_index=True)
+
+        # Select and order columns
+        export_columns = [
+            "Time Period",
+            "Date",
+            "Document ID",
+            "Sentence ID",
+            "Headline",
+            "Chunk Text",
+            "Motivation",
+            "Label",
+            "Entity",
+            "Country Code",
+            "Entity Type",
+        ]
+
+        sort_columns = ["Date", "Time Period", "Document ID", "Headline", "Chunk Text"]
+        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True) 
+        
+        return df
+
+
+
+class NarrativeSummarizerFlex(Labeler):
+    """Screener summarizer for company-level analysis."""
+
+    def __init__(
+        self,
+        llm_model: str,
+        summary_prompt: Optional[str] = None,
+        unknown_label: str = "unclear",
+        temperature: float = 0,
+    ):
+        """
+        Args:
+            llm_model: Name of the LLM model to use. Expected format:
+                <provider>::<model>, e.g. "openai::gpt-4o-mini"
+            summary_prompt: Prompt provided by user to summarize the company data.
+                If not provided, then our default summarization prompt is used.
+            unknown_label: Label for unclear classifications.
+            temperature: Temperature to use in the LLM model.
+        """
+        super().__init__(llm_model, unknown_label, temperature)
+        self.summary_prompt = summary_prompt
+
+    def get_summaries(
+        self,
+        main_theme: str,
+        df: DataFrame,
+        mode: str = "default",
+        max_workers: int = 50,
+        shift_from: str = "",
+        shift_to: str = "",
+        entity_track: str = "",
+        previous_narrative: Union[str, Dict[str, str]] = "",
+        data_fields: List[str] = None,
+    ) -> DataFrame:
+        """
+        Process entity-level summaries from labeled data.
+
+        Args:
+            main_theme: The main theme to analyze.
+            df: DataFrame with labeled entity data. Expected columns:
+                - Entity: str (entity name)
+                - Chunk Text: str (sentence text)
+                - Label: str (assigned thematic label)
+                - Motivation: str (labeling motivation explaining the theme assignment)
+                - Country Code: str (entity country code)
+                - Time Period: str (time period info)
+                - Date: str (date info)
+                - Document ID: str (document identifier)
+                - Sentence ID: str (sentence identifier)
+                - Headline: str (headline text)
+            mode: Mode of the summarization ('default' or 'impact').
+            max_workers: Maximum number of concurrent workers.
+            shift_from: Source element for shift-based analysis (used in 'impact' mode).
+            shift_to: Target element for shift-based analysis (used in 'impact' mode).
+            entity_track: Entity track for tracking the entity.
+            previous_narrative: Previous narrative for temporal analysis. Can be:
+                - str: Single narrative text (legacy format)
+                - dict: Dictionary with day keys and narrative values, e.g. {"2024-01-01": "narrative1", "2024-01-02": "narrative2"}
+            data_fields: List of data fields to include in prompts. Default: ["quotes"].
+                Available options: ["quotes", "themes", "motivations"].
+                - "quotes" maps to Chunk Text
+                - "themes" maps to Label  
+                - "motivations" maps to Motivation
+        Returns:
+            DataFrame with schema:
+            - index: entity_name
+            - columns:
+                - summary: str (comprehensive entity summary)
+                - key_points: List[str] (key insights)
+                - country: str
+                - quote_count: int
+        """
+        # Set default data fields if not provided
+        if data_fields is None:
+            data_fields = ["quotes"]
+        
+        # Group data by entity
+        entity_groups = self._group_data_by_entity(df)
+        
+        # Generate prompts for each entity
+        prompts = self._get_prompts_for_summarizer(entity_groups, data_fields, entity_track, previous_narrative)
+        
+        # Get system prompt for summarization
+        system_prompt = self.summary_prompt or self._get_summarizer_system_prompt(
+            main_theme, mode=mode, shift_from=shift_from, shift_to=shift_to, entity_track=entity_track, previous_narrative=previous_narrative
+        )
+        
+        # DEBUG: Print system prompt
+        print("=" * 80)
+        print("DEBUG: SYSTEM PROMPT")
+        print("=" * 80)
+        print(system_prompt)
+        print("=" * 80)
+        import sys
+        sys.stdout.flush()
+
+        # DEBUG: Print all prompts
+        print("DEBUG: USER PROMPTS (Total: {})".format(len(prompts)))
+        print("=" * 80)
+        for i, prompt in enumerate(prompts):
+            print(f"PROMPT {i+1}:")
+            print("-" * 40)
+            print(prompt)
+            print("-" * 40)
+        print("=" * 80)
+        sys.stdout.flush()
+        
+        # Run summarization prompts using same low-level function
+        responses = self._run_labeling_prompts(
+            prompts, system_prompt, max_workers=max_workers
+        )
+        
+        # Parse responses (entity-level instead of sentence-level)
+        responses = [self._parse_summarization_response(response) for response in responses]
+        return self._deserialize_summary_responses(responses, entity_groups)
+
+    def _group_data_by_entity(self, df: DataFrame) -> Dict[str, Dict]:
+        """
+        Group DataFrame data by entity.
+        
+        Args:
+            df: Input DataFrame with labeled data. Expected columns:
+                - Entity: str (entity name)
+                - Chunk Text: str (sentence text)
+                - Label: str (assigned label)
+                - Motivation: str (labeling motivation)
+                - Country Code: str (entity country code)
+                - Time Period: str (time period info)
+                - Date: str (date info)
+                - Document ID: str (document identifier)
+                - Sentence ID: str (sentence identifier)
+                - Headline: str (headline text)
+            
+        Returns:
+            Dictionary with entity names as keys and aggregated data as values
+        """
+        grouped_data = {}
+        
+        for entity_name in df['Entity'].unique():
+            entity_df = df[df['Entity'] == entity_name]
+            
+            # Aggregate data for this entity using new column names
+            grouped_data[entity_name] = {
+                'entity_name': entity_name,
+                'quotes': entity_df['Chunk Text'].tolist(),
+                'themes': entity_df['Label'].tolist(),
+                'motivations': entity_df['Motivation'].tolist(),
+                'country': entity_df['Country Code'].iloc[0] if 'Country Code' in entity_df.columns else '',
+                'quote_count': len(entity_df)
+            }
+        
+        return grouped_data
+    
+    def _get_prompts_for_summarizer(self, entity_groups: Dict[str, Dict], data_fields: List[str], entity_track: str = "", previous_narrative: Union[str, Dict[str, str]] = "") -> List[str]:
+        """
+        Generate prompts for entity-level summarization.
+        
+        Args:
+            entity_groups: Dictionary of entity data
+            data_fields: List of data fields to include in prompts
+            entity_track: Entity track for tracking - if present, don't add Entity field
+            previous_narrative: Previous narrative - if present, add before quotes. Can be:
+                - str: Single narrative (legacy format)
+                - dict: Dictionary with day keys and narrative values
+            
+        Returns:
+            List of JSON prompts for summarization with configurable data structure
+        """
+        from json import dumps
+        
+        prompts = []
+        for entity_name, entity_data in entity_groups.items():
+            # Create prompt data - only add Entity name if entity_track is not provided
+            prompt_data = {}
+            if not entity_track:
+                prompt_data['Entity'] = entity_name
+            
+            # Add previous narrative if provided (before all quotes)
+            if previous_narrative:
+                if isinstance(previous_narrative, dict):
+                    # If dictionary format, add each day's narrative separately with simple day numbering
+                    for day_index, (day, narrative) in enumerate(sorted(previous_narrative.items()), 1):
+                        prompt_data[f'Narrative day {day_index}'] = narrative
+                else:
+                    # Legacy string format
+                    prompt_data['Previous_Narrative'] = previous_narrative
+            
+            # Determine the maximum number of items (based on quotes which should always be present)
+            max_items = len(entity_data.get('quotes', []))
+            
+            # Add data fields based on configuration
+            for i in range(max_items):
+                item_index = i + 1
+                
+                if 'quotes' in data_fields and i < len(entity_data.get('quotes', [])):
+                    prompt_data[f'Quote_{item_index}'] = entity_data['quotes'][i]
+                
+                if 'themes' in data_fields and i < len(entity_data.get('themes', [])):
+                    prompt_data[f'Theme_{item_index}'] = entity_data['themes'][i]
+                
+                if 'motivations' in data_fields and i < len(entity_data.get('motivations', [])):
+                    prompt_data[f'Motivation_{item_index}'] = entity_data['motivations'][i]
+            
+            prompts.append(dumps(prompt_data))
+        
+        return prompts
+    
+    def _get_summarizer_system_prompt(
+        self, main_theme: str, mode: str = "default", shift_from: str = "", shift_to: str = "", entity_track: str = "", previous_narrative: Union[str, Dict[str, str]] = ""
+    ) -> str:
+        """
+        Get system prompt for summarization.
+        
+        Args:
+            main_theme: The main theme to analyze
+            mode: Summarization mode
+            shift_from: Source element for shift analysis
+            shift_to: Target element for shift analysis
+            entity_track: Entity track for tracking the entity
+            previous_narrative: Previous narrative for temporal analysis (str or dict format)
+        Returns:
+            System prompt string
+        """
+        from ..prompts.labeler import get_summarizer_system_prompt
+        return get_summarizer_system_prompt(main_theme, mode, shift_from, shift_to, entity_track, previous_narrative)
+    
+    def _parse_summarization_response(self, response: str) -> Dict:
+        """
+        Parse summarization response from LLM.
+        
+        Args:
+            response: Raw LLM response string
+            
+        Returns:
+            Parsed response dictionary
+        """
+        from json import JSONDecodeError, loads
+        
+        try:
+            deserialized_response = loads(response)
+        except JSONDecodeError:
+            logger.error(f"Error deserializing summarization response: {response}")
+            return {}
+        
+        # The response should be a simple dict with summary
+        # e.g., {"summary": "..."}
+        if not isinstance(deserialized_response, dict):
+            logger.error(f"Expected dict response, got {type(deserialized_response)}")
+            return {}
+        
+        return deserialized_response
+    
+    def _deserialize_summary_responses(self, responses: List[Dict], entity_groups: Dict[str, Dict]) -> DataFrame:
+        """
+        Convert parsed responses to DataFrame.
+        
+        Args:
+            responses: List of parsed response dictionaries
+            entity_groups: Original entity group data
+            
+        Returns:
+            DataFrame with summarization results
+        """
+        import pandas as pd
+        
+        summary_data = []
+        entity_names = list(entity_groups.keys())
+        
+        # Process each response (one per entity)
+        for i, response in enumerate(responses):
+            if not response:  # Skip empty responses
+                continue
+            
+            # Get the corresponding entity name (responses are in same order as entity_groups)
+            if i < len(entity_names):
+                entity_name = entity_names[i]
+                entity_meta = entity_groups[entity_name]
+                
+                # Extract both summary and bullet points from response
+                summary_text = response.get('summary', '')
+                bullet_points = response.get('bullet_points', [])
+                
+                summary_record = {
+                    'entity_name': entity_name,
+                    'summary': summary_text,
+                    'key_points': bullet_points,
+                    'country': entity_meta.get('country', ''),
+                    'quote_count': entity_meta.get('quote_count', 0)
+                }
+                
+                summary_data.append(summary_record)
+        
+        # Create DataFrame with entity_name as index
+        if summary_data:
+            df = pd.DataFrame(summary_data)
+            df = df.set_index('entity_name')
+        else:
+            # Return empty DataFrame with expected structure
+            df = pd.DataFrame(columns=[
+                'summary', 'key_points', 
+                'country', 'quote_count'
+            ])
+            df.index.name = 'entity_name'
+        
+        return df
+
+    def post_process_dataframe(self, df: DataFrame) -> DataFrame:
+        """
+        Post-process the summarized DataFrame.
+
+        Args:
+            df: DataFrame to process. Schema:
+                - Index: entity_name
+                - Columns:
+                    - summary: str
+                    - key_points: List[str]
+                    - country: str
+                    - quote_count: int
+
+        Returns:
+            Processed DataFrame with export-ready format.
+        """
+        if df.empty:
+            logger.warning("Empty summarization dataframe")
+            return df
+
+        # Reset index to make entity_name a column
+        df = df.reset_index()
+        
+        # Key points not used in simplified format
+        # df['key_points_formatted'] = ''
+        
+        # Sort by entity name
+        df = df.sort_values('entity_name').reset_index(drop=True)
+        
+        # Rename columns for export
+        df = df.rename(columns={
+            'entity_name': 'Entity',
+            'summary': 'Summary',
+            'country': 'Country',
+            'quote_count': 'Quote Count'
+        })
+        
+        # Select and order columns for export
+        export_columns = [
+            'Entity',
+            'Country',
+            'Quote Count',
+            'Summary'
+        ]
+        
+        # Only include columns that exist in the DataFrame
+        available_columns = [col for col in export_columns if col in df.columns]
+        df = df[available_columns]
+        
+        return df
