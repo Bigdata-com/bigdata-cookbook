@@ -18,9 +18,11 @@ from bigdata_research_tools.workflows.thematic_screener import (
     ThematicScreener,
     DocumentType,
 )
+from bigdata_research_tools.search.search import run_search
 from bigdata_client import Bigdata
 import nest_asyncio
-
+from bigdata_client.query import Similarity
+from bigdata_client.daterange import AbsoluteDateRange
 # Select your LLM model here
 LLM_MODEL = "openai::gpt-4o-mini"
 # LLM_MODEL = "azure::gpt-4o-mini"
@@ -78,6 +80,29 @@ def screen_companies(
     # Extract and return the relevant data as JSON
     return str(result["df_company"].to_json(orient="records"))
 
+@mcp.tool()
+def bigdata_search(queries: list[str]):
+    """Run a search on bigdata for the given queries and return the results."""
+
+    search_results = run_search(
+        [Similarity(query) for query in queries],
+        date_ranges=AbsoluteDateRange(datetime(1970, 1, 1), datetime(2025, 12, 31)),
+        bigdata=BIGDATA,
+    )
+    results = {}
+    for i, _ in enumerate(search_results):
+        results[queries[i]] = []
+        for result in search_results[i]:
+            results[queries[i]].append(
+                {
+                    "title": result.headline,
+                    "content": "".join([p.text for p in result.chunks]),
+                    "timestamp": result.timestamp,
+                    "url": result.url,
+                }
+            )
+
+    return results
 
 def test_llm_model_configured():
     """Test that the LLM model is configured correctly."""
@@ -103,4 +128,4 @@ if __name__ == "__main__":
     assert "BIGDATA_API_KEY" in os.environ, (
         "Please set the BIGDATA_API_KEY environment variable."
     )
-    mcp.run(transport="streamable-http")
+    mcp.run(transport="sse")
