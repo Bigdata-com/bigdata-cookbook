@@ -194,15 +194,18 @@ class NarrativeSummarizerFlex(Labeler):
     def get_summaries(
         self,
         main_theme: str,
-        df: DataFrame,
+        df: DataFrame = None,
         mode: str = "default",
         max_workers: int = 50,
         shift_from: str = "",
         shift_to: str = "",
         entity_track: str = "",
         previous_narrative: Union[str, Dict[str, str]] = "",
+        additional_parameters: Dict[str, str] = {},
         data_fields: List[str] = None,
-    ) -> DataFrame:
+        previous_summary: str = "",
+        today_summary: str = "",
+    ) -> Union[DataFrame, str]:
         """
         Process entity-level summaries from labeled data.
 
@@ -227,6 +230,7 @@ class NarrativeSummarizerFlex(Labeler):
             previous_narrative: Previous narrative for temporal analysis. Can be:
                 - str: Single narrative text (legacy format)
                 - dict: Dictionary with day keys and narrative values, e.g. {"2024-01-01": "narrative1", "2024-01-02": "narrative2"}
+            additional_parameters: Additional parameters to include in the prompt.
             data_fields: List of data fields to include in prompts. Default: ["quotes"].
                 Available options: ["quotes", "themes", "motivations"].
                 - "quotes" maps to Chunk Text
@@ -241,6 +245,12 @@ class NarrativeSummarizerFlex(Labeler):
                 - country: str
                 - quote_count: int
         """
+        # Special handling for company_narrative_consolidation mode
+        if mode == "company_narrative_consolidation":
+            return self._handle_narrative_consolidation(
+                main_theme, previous_summary, today_summary, max_workers, additional_parameters
+            )
+        
         # Set default data fields if not provided
         if data_fields is None:
             data_fields = ["quotes"]
@@ -249,11 +259,11 @@ class NarrativeSummarizerFlex(Labeler):
         entity_groups = self._group_data_by_entity(df)
         
         # Generate prompts for each entity
-        prompts = self._get_prompts_for_summarizer(entity_groups, data_fields, entity_track, previous_narrative)
+        prompts = self._get_prompts_for_summarizer(entity_groups, data_fields, entity_track, previous_narrative, mode)
         
         # Get system prompt for summarization
         system_prompt = self.summary_prompt or self._get_summarizer_system_prompt(
-            main_theme, mode=mode, shift_from=shift_from, shift_to=shift_to, entity_track=entity_track, previous_narrative=previous_narrative
+            main_theme, mode=mode, shift_from=shift_from, shift_to=shift_to, entity_track=entity_track, previous_narrative=previous_narrative, additional_parameters=additional_parameters
         )
         
         # DEBUG: Print system prompt
@@ -311,18 +321,28 @@ class NarrativeSummarizerFlex(Labeler):
             entity_df = df[df['Entity'] == entity_name]
             
             # Aggregate data for this entity using new column names
-            grouped_data[entity_name] = {
+            entity_data = {
                 'entity_name': entity_name,
-                'quotes': entity_df['Chunk Text'].tolist(),
-                'themes': entity_df['Label'].tolist(),
-                'motivations': entity_df['Motivation'].tolist(),
+                'quotes': entity_df['Chunk Text'].tolist() if 'Chunk Text' in entity_df.columns else [],
+                'themes': entity_df['Label'].tolist() if 'Label' in entity_df.columns else [],
+                'motivations': entity_df['Motivation'].tolist() if 'Motivation' in entity_df.columns else [],
                 'country': entity_df['Country Code'].iloc[0] if 'Country Code' in entity_df.columns else '',
                 'quote_count': len(entity_df)
             }
+            
+            # Add Summary, Key_points, Quotes if they exist (for temporal_company_narrative_from_summaries mode)
+            if 'Summary' in entity_df.columns:
+                entity_data['summary'] = entity_df['Summary'].iloc[0]  # Take first value since it should be the same for all rows of the same entity
+            if 'Key_points' in entity_df.columns:
+                entity_data['key_points'] = entity_df['Key_points'].iloc[0]
+            if 'Quotes' in entity_df.columns:
+                entity_data['quotes'] = entity_df['Quotes'].iloc[0]  # Override the Chunk Text quotes if this exists
+                
+            grouped_data[entity_name] = entity_data
         
         return grouped_data
     
-    def _get_prompts_for_summarizer(self, entity_groups: Dict[str, Dict], data_fields: List[str], entity_track: str = "", previous_narrative: Union[str, Dict[str, str]] = "") -> List[str]:
+    def _get_prompts_for_summarizer(self, entity_groups: Dict[str, Dict], data_fields: List[str], entity_track: str = "", previous_narrative: Union[str, Dict[str, str]] = "", mode: str = "default") -> List[str]:
         """
         Generate prompts for entity-level summarization.
         
@@ -333,6 +353,7 @@ class NarrativeSummarizerFlex(Labeler):
             previous_narrative: Previous narrative - if present, add before quotes. Can be:
                 - str: Single narrative (legacy format)
                 - dict: Dictionary with day keys and narrative values
+            mode: Mode of summarization to determine prompt structure
             
         Returns:
             List of JSON prompts for summarization with configurable data structure
@@ -343,41 +364,85 @@ class NarrativeSummarizerFlex(Labeler):
         for entity_name, entity_data in entity_groups.items():
             # Create prompt data - only add Entity name if entity_track is not provided
             prompt_data = {}
-            if not entity_track:
+            
+            # For companies_impact and temporal_company_narrative_from_summaries modes, always add Company field
+            if mode == "companies_impact" or mode == "temporal_company_narrative_from_summaries":
+                prompt_data['Company'] = entity_name
+            elif not entity_track:
                 prompt_data['Entity'] = entity_name
             
             # Add previous narrative if provided (before all quotes)
             if previous_narrative:
                 if isinstance(previous_narrative, dict):
-                    # If dictionary format, add each day's narrative separately with simple day numbering
-                    for day_index, (day, narrative) in enumerate(sorted(previous_narrative.items()), 1):
-                        prompt_data[f'Narrative day {day_index}'] = narrative
+                    # Filter previous narrative for this specific entity
+                    entity_previous = {}
+                    
+                    for key, narrative in previous_narrative.items():
+                        # If key contains entity name, extract the date part
+                        if f"{entity_name}_" in key:
+                            date_part = key.replace(f"{entity_name}_", "")
+                            entity_previous[date_part] = narrative
+                        # If key doesn't contain entity name, it's a legacy format, use as is
+                        elif "_" not in key:
+                            entity_previous[key] = narrative
+                    
+                    # For temporal_company_narrative_from_summaries mode, use consolidated approach
+                    if mode == "temporal_company_narrative_from_summaries":
+                        # Consolidate all narratives into a single "Previous Narrative" block
+                        if entity_previous:
+                            consolidated_narrative = ""
+                            for day, narrative in sorted(entity_previous.items()):
+                                if narrative:
+                                    consolidated_narrative += narrative + "\n\n"
+                            
+                            if consolidated_narrative.strip():
+                                prompt_data['Previous Narrative'] = consolidated_narrative.strip()
+                    else:
+                        # Original behavior for other modes - separate day entries
+                        for day_index, (day, narrative) in enumerate(sorted(entity_previous.items()), 1):
+                            prompt_data[f'Narrative day {day_index}'] = narrative
                 else:
                     # Legacy string format
                     prompt_data['Previous_Narrative'] = previous_narrative
             
-            # Determine the maximum number of items (based on quotes which should always be present)
-            max_items = len(entity_data.get('quotes', []))
-            
-            # Add data fields based on configuration
-            for i in range(max_items):
-                item_index = i + 1
+            # Handle different modes for data inclusion
+            if mode == "temporal_company_narrative_from_summaries":
+                # For this mode, use Summary, Key_points, Quotes directly from the data
+                # Add "Today" prefix if there's previous narrative
+                summary_key = "Today Summary" if previous_narrative else "Summary"
+                key_points_key = "Today Key_points" if previous_narrative else "Key_points"
+                quotes_key = "Today Quotes" if previous_narrative else "Quotes"
                 
-                if 'quotes' in data_fields and i < len(entity_data.get('quotes', [])):
-                    prompt_data[f'Quote_{item_index}'] = entity_data['quotes'][i]
+                if 'summary' in entity_data:
+                    prompt_data[summary_key] = entity_data['summary']
+                if 'key_points' in entity_data:
+                    prompt_data[key_points_key] = entity_data['key_points']
+                if 'quotes' in entity_data:
+                    prompt_data[quotes_key] = entity_data['quotes']
+            else:
+                # Original logic for other modes
+                # Determine the maximum number of items (based on quotes which should always be present)
+                max_items = len(entity_data.get('quotes', []))
                 
-                if 'themes' in data_fields and i < len(entity_data.get('themes', [])):
-                    prompt_data[f'Theme_{item_index}'] = entity_data['themes'][i]
-                
-                if 'motivations' in data_fields and i < len(entity_data.get('motivations', [])):
-                    prompt_data[f'Motivation_{item_index}'] = entity_data['motivations'][i]
+                # Add data fields based on configuration
+                for i in range(max_items):
+                    item_index = i + 1
+                    
+                    if 'quotes' in data_fields and i < len(entity_data.get('quotes', [])):
+                        prompt_data[f'Quote_{item_index}'] = entity_data['quotes'][i]
+                    
+                    if 'themes' in data_fields and i < len(entity_data.get('themes', [])):
+                        prompt_data[f'Theme_{item_index}'] = entity_data['themes'][i]
+                    
+                    if 'motivations' in data_fields and i < len(entity_data.get('motivations', [])):
+                        prompt_data[f'Motivation_{item_index}'] = entity_data['motivations'][i]
             
             prompts.append(dumps(prompt_data))
         
         return prompts
     
     def _get_summarizer_system_prompt(
-        self, main_theme: str, mode: str = "default", shift_from: str = "", shift_to: str = "", entity_track: str = "", previous_narrative: Union[str, Dict[str, str]] = ""
+        self, main_theme: str, mode: str = "default", shift_from: str = "", shift_to: str = "", entity_track: str = "", previous_narrative: Union[str, Dict[str, str]] = "",additional_parameters: Dict[str, str] = {}
     ) -> str:
         """
         Get system prompt for summarization.
@@ -389,11 +454,12 @@ class NarrativeSummarizerFlex(Labeler):
             shift_to: Target element for shift analysis
             entity_track: Entity track for tracking the entity
             previous_narrative: Previous narrative for temporal analysis (str or dict format)
+            additional_parameters: Additional parameters to include in the prompt.
         Returns:
             System prompt string
         """
         from ..prompts.labeler import get_summarizer_system_prompt
-        return get_summarizer_system_prompt(main_theme, mode, shift_from, shift_to, entity_track, previous_narrative)
+        return get_summarizer_system_prompt(main_theme, mode, shift_from, shift_to, entity_track, previous_narrative, additional_parameters)
     
     def _parse_summarization_response(self, response: str) -> Dict:
         """
@@ -447,31 +513,31 @@ class NarrativeSummarizerFlex(Labeler):
                 entity_name = entity_names[i]
                 entity_meta = entity_groups[entity_name]
                 
-                # Extract both summary and bullet points from response
+                # Extract summary, bullet points, and quotes from response
                 summary_text = response.get('summary', '')
                 bullet_points = response.get('bullet_points', [])
+                quotes = response.get('quotes', [])
                 
                 summary_record = {
-                    'entity_name': entity_name,
+                    'Entity': entity_name,
                     'summary': summary_text,
                     'key_points': bullet_points,
+                    'quotes': quotes,
                     'country': entity_meta.get('country', ''),
                     'quote_count': entity_meta.get('quote_count', 0)
                 }
                 
                 summary_data.append(summary_record)
         
-        # Create DataFrame with entity_name as index
+        # Create DataFrame with entity_name as column
         if summary_data:
             df = pd.DataFrame(summary_data)
-            df = df.set_index('entity_name')
         else:
             # Return empty DataFrame with expected structure
             df = pd.DataFrame(columns=[
-                'summary', 'key_points', 
+                'Entity', 'summary', 'key_points', 'quotes',
                 'country', 'quote_count'
             ])
-            df.index.name = 'entity_name'
         
         return df
 
@@ -485,6 +551,7 @@ class NarrativeSummarizerFlex(Labeler):
                 - Columns:
                     - summary: str
                     - key_points: List[str]
+                    - quotes: List[str]
                     - country: str
                     - quote_count: int
 
@@ -502,12 +569,13 @@ class NarrativeSummarizerFlex(Labeler):
         # df['key_points_formatted'] = ''
         
         # Sort by entity name
-        df = df.sort_values('entity_name').reset_index(drop=True)
+        df = df.sort_values('Entity').reset_index(drop=True)
         
         # Rename columns for export
         df = df.rename(columns={
-            'entity_name': 'Entity',
+            'Entity': 'Entity',
             'summary': 'Summary',
+            'quotes': 'Quotes',
             'country': 'Country',
             'quote_count': 'Quote Count'
         })
@@ -517,7 +585,8 @@ class NarrativeSummarizerFlex(Labeler):
             'Entity',
             'Country',
             'Quote Count',
-            'Summary'
+            'Summary',
+            'Quotes'
         ]
         
         # Only include columns that exist in the DataFrame
@@ -525,3 +594,67 @@ class NarrativeSummarizerFlex(Labeler):
         df = df[available_columns]
         
         return df
+    
+    def _handle_narrative_consolidation(
+        self, 
+        main_theme: str, 
+        previous_summary: str, 
+        today_summary: str, 
+        max_workers: int,
+        additional_parameters: Dict[str, str] = {}
+    ) -> str:
+        """
+        Handle narrative consolidation mode that takes two summary strings.
+        
+        Args:
+            main_theme: The main theme to analyze
+            previous_summary: Previous summary string
+            today_summary: Today's summary string
+            max_workers: Maximum number of concurrent workers
+            additional_parameters: Additional parameters for the prompt
+            
+        Returns:
+            Consolidated summary as string
+        """
+        from json import dumps
+        
+        # Create prompt data with the two summaries
+        prompt_data = {
+            'Previous Summary': previous_summary,
+            'Today Summary': today_summary
+        }
+        
+        # Create single prompt
+        prompt = dumps(prompt_data)
+        prompts = [prompt]
+        
+        # Get system prompt for consolidation
+        system_prompt = self.summary_prompt or self._get_summarizer_system_prompt(
+            main_theme, mode="company_narrative_consolidation", entity_track="", previous_narrative="", additional_parameters=additional_parameters
+        )
+        
+        # DEBUG: Print system prompt
+        print("=" * 80)
+        print("DEBUG: CONSOLIDATION SYSTEM PROMPT")
+        print("=" * 80)
+        print(system_prompt)
+        print("=" * 80)
+        
+        # DEBUG: Print prompt
+        print("DEBUG: CONSOLIDATION USER PROMPT")
+        print("=" * 80)
+        print(prompt)
+        print("=" * 80)
+        
+        # Run consolidation prompt
+        responses = self._run_labeling_prompts(
+            prompts, system_prompt, max_workers=max_workers
+        )
+        
+        # Parse response and extract just the summary text
+        if responses and len(responses) > 0:
+            response = self._parse_summarization_response(responses[0])
+            consolidated_summary = response.get('summary', '')
+            return consolidated_summary
+        else:
+            return ""
