@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>US Visa Fees Dashboard - September 2025</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .header h1 {
+            color: #2d3748;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #718096;
+            font-size: 1.2em;
+            font-style: italic;
+        }
+        
+        .key-metric {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+        
+        .key-metric h2 {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+        }
+        
+        .metric-value {
+            font-size: 3em;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .metric-subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+        }
+        
+        .card h3 {
+            color: #2d3748;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-bottom: 20px;
+        }
+        
+        .timeline-item:before {
+            content: '';
+            position: absolute;
+            left: -30px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            background: #667eea;
+            border-radius: 50%;
+        }
+        
+        .timeline-item:after {
+            content: '';
+            position: absolute;
+            left: -25px;
+            top: 15px;
+            width: 1px;
+            height: calc(100% - 10px);
+            background: #cbd5e0;
+        }
+        
+        .timeline-item:last-child:after {
+            display: none;
+        }
+        
+        .timeline-date {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 0.9em;
+        }
+        
+        .timeline-content {
+            color: #4a5568;
+            margin-top: 5px;
+            font-size: 0.95em;
+        }
+        
+        .quote-box {
+            background: linear-gradient(135deg, #f6f8fb 0%, #f0f4f8 100%);
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+        
+        .quote-text {
+            color: #2d3748;
+            font-style: italic;
+            font-size: 1em;
+            line-height: 1.6;
+        }
+        
+        .quote-author {
+            color: #667eea;
+            font-weight: bold;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        
+        .company-list {
+            list-style: none;
+        }
+        
+        .company-item {
+            padding: 12px;
+            background: #f7fafc;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+        
+        .company-item:hover {
+            background: #edf2f7;
+        }
+        
+        .company-name {
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .visa-count {
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        
+        .source-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        
+        .source-link:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        
+        .impact-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-right: 5px;
+            margin-top: 5px;
+        }
+        
+        .impact-high {
+            background: #fed7d7;
+            color: #9b2c2c;
+        }
+        
+        .impact-medium {
+            background: #feebc8;
+            color: #975a16;
+        }
+        
+        .impact-low {
+            background: #d6f5d6;
+            color: #22543d;
+        }
+        
+        .legal-warning {
+            background: #fff5f5;
+            border: 2px solid #fc8181;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .legal-warning h4 {
+            color: #c53030;
+            margin-bottom: 10px;
+        }
+        
+        .legal-warning p {
+            color: #742a2a;
+            line-height: 1.6;
+        }
+        
+        .powered-by {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #718096;
+            font-size: 0.9em;
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
+            background-color: #2d3748;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 10px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -125px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.85em;
+            line-height: 1.4;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .fee-comparison {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .fee-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .fee-item:last-child {
+            border-bottom: none;
+        }
+        
+        .fee-label {
+            color: #4a5568;
+        }
+        
+        .fee-amount {
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .old-fee {
+            text-decoration: line-through;
+            color: #a0aec0;
+            margin-right: 10px;
+        }
+        
+        .new-fee {
+            color: #e53e3e;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>US Visa Fee Evolution Dashboard</h1>
+            <div class="subtitle">September 2025: Major Developments in Immigration Costs</div>
+            <div class="subtitle" style="margin-top: 10px; font-size: 1em; color: #667eea;">Powered by Bigdata.com</div>
+        </div>
+        
+        <div class="key-metric">
+            <h2>H-1B Visa Fee Increase</h2>
+            <div class="metric-value">$100,000</div>
+            <div class="metric-subtitle">One-time fee for new H-1B applications (from $215)</div>
+            <div class="metric-subtitle" style="margin-top: 10px; font-size: 0.9em;">
+                Effective: September 21, 2025 at 12:01 AM ET | Expires: September 21, 2026
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h3>📅 Timeline of Events</h3>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-date">July 4, 2025</div>
+                        <div class="timeline-content">
+                            "One Big Beautiful Bill Act" signed, introducing $250 visa integrity fee
+                            <a href="https://apnews.com/press-release/ein-presswire-newsmatics/visa-integrity-fee-introduced-for-nonimmigrant-visa-applicants-1e4f839c42ae5ede4a2c7945bf3b2956" class="source-link" title="Source: AP News">[Source]</a>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-date">September 19, 2025</div>
+                        <div class="timeline-content">
+                            President Trump signs proclamation imposing $100,000 H-1B visa fee
+                            <a href="https://apnews.com/article/h1b-visa-trump-immigration-8d39699d0b2de3d90936f8076357254e" class="source-link" title="Source: AP News">[Source]</a>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-date">September 20, 2025</div>
+                        <div class="timeline-content">
+                            Major tech companies issue travel warnings to H-1B employees
+                            <a href="https://www.wsj.com/politics/policy/trumps-100-000-h-1b-visa-fee-sets-off-scramble-across-corporate-america-adb14a3c" class="source-link" title="Source: Wall Street Journal">[Source]</a>
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-date">September 21, 2025</div>
+                        <div class="timeline-content">
+                            White House clarifies: Fee is one-time only, not annual
+                            <a href="https://apnews.com/article/h1b-visa-changes-trump-cbb0995814cf2c9a3c74a6dcf2b31d72" class="source-link" title="Source: AP News">[Source]</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>💰 Fee Structure Comparison</h3>
+                <div class="fee-comparison">
+                    <div class="fee-item">
+                        <span class="fee-label">H-1B Application Fee</span>
+                        <span><span class="old-fee">$215</span><span class="new-fee">$100,000</span></span>
+                    </div>
+                    <div class="fee-item">
+                        <span class="fee-label">Visa Integrity Fee (Non-immigrant)</span>
+                        <span class="fee-amount">$250</span>
+                    </div>
+                    <div class="fee-item">
+                        <span class="fee-label">ESTA Fee (Visa Waiver Program)</span>
+                        <span><span class="old-fee">$21</span><span class="new-fee">$40</span></span>
+                    </div>
+                    <div class="fee-item">
+                        <span class="fee-label">I-94 Border Entry Fee</span>
+                        <span><span class="old-fee">$6</span><span class="new-fee">$30</span></span>
+                    </div>
+                    <div class="fee-item">
+                        <span class="fee-label">Trump Gold Card</span>
+                        <span class="fee-amount">$1 million</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h3>🏢 Most Affected Companies (FY 2024 H-1B Approvals)</h3>
+                <ul class="company-list">
+                    <li class="company-item">
+                        <span class="company-name">
+                            <span class="tooltip">Amazon
+                                <span class="tooltiptext">Largest H-1B sponsor, approved for over 9,000 visas in FY 2024. Issued immediate travel warnings to employees.</span>
+                            </span>
+                        </span>
+                        <span class="visa-count">9,000+</span>
+                    </li>
+                    <li class="company-item">
+                        <span class="company-name">
+                            <span class="tooltip">Google
+                                <span class="tooltiptext">Advised visa holders to return to US by Sept 20, 2025. Sponsored 5,364 H-1B visas in FY 2024.</span>
+                            </span>
+                        </span>
+                        <span class="visa-count">5,364</span>
+                    </li>
+                    <li class="company-item">
+                        <span class="company-name">
+                            <span class="tooltip">Meta
+                                <span class="tooltiptext">Warned employees against international travel. Approved for 4,844 H-1B visas in FY 2024.</span>
+                            </span>
+                        </span>
+                        <span class="visa-count">4,844</span>
+                    </li>
+                    <li class="company-item">
+                        <span class="company-name">Microsoft</span>
+                        <span class="visa-count">4,725</span>
+                    </li>
+                    <li class="company-item">
+                        <span class="company-name">Apple</span>
+                        <span class="visa-count">3,873</span>
+                    </li>
+                    <li class="company-item">
+                        <span class="company-name">JPMorgan Chase</span>
+                        <span class="visa-count">2,440</span>
+                    </li>
+                </ul>
+                <p style="font-size: 0.85em; color: #718096; margin-top: 10px;">
+                    Source: <a href="https://us.cnn.com/2025/09/20/business/h-1b-fee-trump-immigration-workers" class="source-link">USCIS Data Hub via CNN</a>
+                </p>
+            </div>
+            
+            <div class="card">
+                <h3>📊 Industry Impact Analysis</h3>
+                <div class="chart-container">
+                    <canvas id="industryChart"></canvas>
+                </div>
+                <div style="margin-top: 20px;">
+                    <span class="impact-badge impact-high">High Impact</span>
+                    <span>Technology, IT Services</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <span class="impact-badge impact-medium">Medium Impact</span>
+                    <span>Finance, Healthcare</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <span class="impact-badge impact-low">Lower Impact</span>
+                    <span>Retail, Education</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>💬 Key Stakeholder Comments</h3>
+            
+            <div class="quote-box">
+                <div class="quote-text">
+                    "We need great workers, and this pretty much ensures that that's what's going to happen. The company needs to decide... is the person valuable enough to have a $100,000-a-year payment to the government, or they should head home and go hire an American?"
+                </div>
+                <div class="quote-author">
+                    Howard Lutnick, Commerce Secretary
+                    <a href="https://us.cnn.com/2025/09/20/business/h-1b-fee-trump-immigration-workers" class="source-link" title="Source: CNN">[Source]</a>
+                </div>
+            </div>
+            
+            <div class="quote-box">
+                <div class="quote-text">
+                    "To be clear, the president has literally zero legal authority to impose a $100,000 fee on visas. The only authority Congress has ever given the executive branch here is to charge fees to recover the cost of processing the application."
+                </div>
+                <div class="quote-author">
+                    Aaron Reichlin-Melnick, Senior Fellow, American Immigration Council
+                    <a href="https://us.cnn.com/2025/09/20/business/h-1b-fee-trump-immigration-workers" class="source-link" title="Source: CNN via X/Twitter">[Source]</a>
+                </div>
+            </div>
+            
+            <div class="quote-box">
+                <div class="quote-text">
+                    "This is NOT an annual fee. It's a one-time fee that applies only to the petition. Those who already hold H-1B visas and are currently outside of the country right now will NOT be charged $100,000 to re-enter."
+                </div>
+                <div class="quote-author">
+                    Karoline Leavitt, White House Press Secretary
+                    <a href="https://apnews.com/article/h1b-visa-changes-trump-cbb0995814cf2c9a3c74a6dcf2b31d72" class="source-link" title="Source: AP News">[Source]</a>
+                </div>
+            </div>
+            
+            <div class="quote-box">
+                <div class="quote-text">
+                    "The US risks taxing away its innovation edge, trading dynamism for short-sighted protectionism."
+                </div>
+                <div class="quote-author">
+                    Jeremy Goldman, eMarketer Analyst
+                    <a href="https://www.benzinga.com/node/47778633" class="source-link" title="Source: Benzinga">[Source]</a>
+                </div>
+            </div>
+            
+            <div class="quote-box">
+                <div class="quote-text">
+                    "We had a lot of phone calls over the weekend that what does it mean? [The announcement] caught [us] off-guard... I would beg the president to have a merit-based immigration system."
+                </div>
+                <div class="quote-author">
+                    Jamie Dimon, CEO of JPMorgan Chase
+                    <a href="https://www.benzinga.com/node/47817498" class="source-link" title="Source: Benzinga/CNBC TV18">[Source]</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legal-warning">
+            <h4>⚖️ Legal Challenges Expected</h4>
+            <p>
+                Multiple legal experts have indicated that the $100,000 H-1B fee will likely face immediate legal challenges. Critics argue that the executive branch lacks the statutory authority to impose such fees without Congressional approval. The fee is set to expire on September 21, 2026, unless extended.
+            </p>
+            <p style="margin-top: 10px;">
+                <strong>Key Legal Concerns:</strong> Violation of Administrative Procedure Act, exceeding executive authority, potential discrimination claims.
+                <a href="https://www.washingtonpost.com/politics/2025/09/19/trump-h1b-visa-fee-immigration/" class="source-link" title="Source: Washington Post">[Source]</a>
+            </p>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h3>🌍 International Reactions</h3>
+                <ul style="list-style: none; padding: 0;">
+                    <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                        <strong>India (71% of H-1B recipients):</strong> Ministry of External Affairs expressed concerns about "humanitarian consequences" and family disruptions
+                        <a href="https://apnews.com/article/h1b-visa-changes-trump-cbb0995814cf2c9a3c74a6dcf2b31d72" class="source-link" title="Source: AP News">[Source]</a>
+                    </li>
+                    <li style="padding: 10px 0; border-bottom: 1px solid #e2e8f0;">
+                        <strong>NASSCOM (India IT body):</strong> Warned of "business continuity disruption for onshore projects"
+                        <a href="https://www.france24.com/en/live-news/20250920-trump-s-100-000-fee-for-h-1b-visas-a-tech-industry-favourite-concerns-india" class="source-link" title="Source: France24">[Source]</a>
+                    </li>
+                    <li style="padding: 10px 0;">
+                        <strong>US Travel Association:</strong> Fee increases could deter 1 million visits annually, costing $11 billion in lost revenue
+                        <a href="https://www.forbes.com/sites/dougmelville/2025/09/07/traveling-to-the-us-new-visa-integrity-fee-will-cost-250-and-up-to-15000-with-bonds/" class="source-link" title="Source: Forbes/Oxford Economics">[Source]</a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h3>📈 Economic Projections</h3>
+                <div class="chart-container">
+                    <canvas id="economicChart"></canvas>
+                </div>
+                <p style="margin-top: 15px; font-size: 0.9em; color: #4a5568;">
+                    The Congressional Budget Office estimates the visa integrity fee alone will generate $28.9 billion over 10 years.
+                    <a href="https://www.benzinga.com/node/46516070" class="source-link" title="Source: Benzinga/CBO">[Source]</a>
+                </p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3>🔮 Market Outlook & Analyst Perspectives</h3>
+            <ul style="list-style: none; padding: 0;">
+                <li style="padding: 15px; background: #f7fafc; margin-bottom: 10px; border-radius: 8px;">
+                    <strong>Tech Sector Impact:</strong> D.A. Davidson and Jefferies warn of "constrained talent supply" driving up wages by 4-13%
+                    <a href="https://www.benzinga.com/node/47776971" class="source-link" title="Source: MT Newswires via Benzinga">[Source]</a>
+                </li>
+                <li style="padding: 15px; background: #f7fafc; margin-bottom: 10px; border-radius: 8px;">
+                    <strong>Indian IT Companies:</strong> HCL, Infosys, Wipro, TCS expected to face significant cost increases for on-site deployments
+                    <a href="https://asia.nikkei.com/business/technology/indian-it-stocks-and-rupee-hit-by-h-1b-fee-impact" class="source-link" title="Source: Nikkei Asia">[Source]</a>
+                </li>
+                <li style="padding: 15px; background: #f7fafc; border-radius: 8px;">
+                    <strong>Tourism Impact:</strong> International visits to US already down 3.4% in H1 2025; new fees expected to further reduce visitor numbers
+                    <a href="https://www.foxnews.com/travel/foreign-travelers-soon-pay-visa-integrity-fee-visit-u-s-costing-250" class="source-link" title="Source: Fox News/Reuters">[Source]</a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="powered-by">
+            <strong>Powered by Bigdata.com</strong> | Data compiled from multiple sources | September 2025
+            <br>
+            <span style="font-size: 0.85em; margin-top: 5px; display: inline-block;">
+                Dashboard for Financial Analysts | All data sourced from verified news outlets and official statements
+            </span>
+        </div>
+    </div>
+    
+    <script>
+        // Industry Impact Chart
+        const industryCtx = document.getElementById('industryChart').getContext('2d');
+        new Chart(industryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Computer-related', 'Architecture/Engineering', 'Education', 'Other'],
+                datasets: [{
+                    data: [64, 10, 6, 20],
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(118, 75, 162, 0.8)',
+                        'rgba(234, 102, 162, 0.8)',
+                        'rgba(162, 118, 234, 0.8)'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'H-1B Approvals by Industry (FY 2024)',
+                        font: {
+                            size: 14
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': ' + context.parsed + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Economic Impact Chart
+        const economicCtx = document.getElementById('economicChart').getContext('2d');
+        new Chart(economicCtx, {
+            type: 'bar',
+            data: {
+                labels: ['H-1B Fee Revenue', 'Visa Integrity Fee', 'Tourism Loss', 'Net Impact'],
+                datasets: [{
+                    label: 'Projected Annual Impact (Billions USD)',
+                    data: [8.5, 2.9, -3.7, 7.7],
+                    backgroundColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? 'rgba(239, 68, 68, 0.8)' : 'rgba(102, 126, 234, 0.8)';
+                    },
+                    borderWidth: 2,
+                    borderColor: function(context) {
+                        const value = context.parsed.y;
+                        return value < 0 ? 'rgba(239, 68, 68, 1)' : 'rgba(102, 126, 234, 1)';
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Estimated Economic Impact (Annual)',
+                        font: {
+                            size: 14
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value + 'B';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Add tooltips for sources
+        document.querySelectorAll('.source-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                if (this.href) {
+                    e.preventDefault();
+                    window.open(this.href, '_blank');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

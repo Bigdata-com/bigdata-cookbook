@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ukraine Conflict: Emerging Macro Narratives Dashboard - 2025 YTD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        /* Layout */
+        .dashboard-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,215,0,0.2);
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        
+        .header .subtitle {
+            color: #888;
+            font-size: 0.95rem;
+        }
+        
+        .timestamp {
+            color: #ffd700;
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
+        
+        /* Two Column Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        /* Card Styles */
+        .narrative-card {
+            background: linear-gradient(135deg, rgba(26,26,46,0.8) 0%, rgba(22,33,62,0.4) 100%);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.08);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .narrative-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #ffd700, transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .narrative-card:hover::before {
+            opacity: 1;
+        }
+        
+        .narrative-card h2 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .impact-badge {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .critical {
+            background: rgba(244,67,54,0.2);
+            color: #ff5252;
+            border: 1px solid rgba(244,67,54,0.3);
+        }
+        
+        .emerging {
+            background: rgba(255,152,0,0.2);
+            color: #ff9800;
+            border: 1px solid rgba(255,152,0,0.3);
+        }
+        
+        .monitoring {
+            background: rgba(33,150,243,0.2);
+            color: #2196f3;
+            border: 1px solid rgba(33,150,243,0.3);
+        }
+        
+        /* Key Insight Box */
+        .insight-box {
+            background: rgba(0,0,0,0.4);
+            border-left: 3px solid #ffd700;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-radius: 6px;
+        }
+        
+        .insight-title {
+            color: #ffd700;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .insight-text {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: #e0e0e0;
+        }
+        
+        /* Data Points */
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        
+        .data-point {
+            background: rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .data-label {
+            font-size: 0.75rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        
+        .data-value {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .data-context {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        /* Source Attribution */
+        .sourced {
+            border-bottom: 1px dotted rgba(255,215,0,0.4);
+            cursor: help;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        
+        .sourced:hover {
+            color: #ffd700;
+            border-bottom-color: #ffd700;
+        }
+        
+        .sourced::after {
+            content: attr(data-source);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1000;
+            border: 1px solid rgba(255,215,0,0.3);
+            max-width: 250px;
+            white-space: normal;
+        }
+        
+        .sourced:hover::after {
+            opacity: 1;
+        }
+        
+        /* Narrative Flow */
+        .narrative-flow {
+            position: relative;
+            padding-left: 25px;
+            margin: 20px 0;
+        }
+        
+        .flow-item {
+            position: relative;
+            padding-bottom: 20px;
+            border-left: 2px solid rgba(255,215,0,0.2);
+        }
+        
+        .flow-item::before {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            background: #ffd700;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255,215,0,0.5);
+        }
+        
+        .flow-item.future::before {
+            background: rgba(255,215,0,0.3);
+            border: 2px solid #ffd700;
+        }
+        
+        .flow-date {
+            font-size: 0.8rem;
+            color: #ffd700;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .flow-event {
+            font-size: 0.9rem;
+            color: #e0e0e0;
+        }
+        
+        /* Macro Impact Meter */
+        .impact-meter {
+            display: flex;
+            gap: 8px;
+            margin: 16px 0;
+            align-items: center;
+        }
+        
+        .impact-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .impact-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #ffd700, #ff5252);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        .impact-label {
+            font-size: 0.8rem;
+            color: #888;
+            min-width: 100px;
+        }
+        
+        /* Connecting Lines */
+        .connection {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 12px 0;
+            font-size: 0.9rem;
+        }
+        
+        .connection::before {
+            content: '→';
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        /* Hidden Pattern Box */
+        .pattern-box {
+            background: linear-gradient(135deg, rgba(76,175,80,0.1) 0%, rgba(33,150,243,0.1) 100%);
+            border: 1px solid rgba(76,175,80,0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .pattern-title {
+            color: #4caf50;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .pattern-title::before {
+            content: '🔍';
+        }
+        
+        /* Full Width */
+        .full-width {
+            grid-column: 1 / -1;
+        }
+        
+        /* Warning Box */
+        .warning-box {
+            background: rgba(244,67,54,0.1);
+            border: 1px solid rgba(244,67,54,0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        
+        .warning-title {
+            color: #ff5252;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .warning-title::before {
+            content: '⚠️';
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>🎯 Ukraine Conflict: Emerging Macro Narratives Dashboard</h1>
+            <div class="subtitle">Second-Order Effects & Hidden Patterns Shaping Global Markets</div>
+            <div class="timestamp">2025 Year-to-Date Analysis | Last Updated: September 23, 2025</div>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Left Column -->
+            <div class="narrative-card">
+                <h2>💵 The Dollar's Existential Crisis <span class="impact-badge critical">CRITICAL</span></h2>
+                
+                <div class="insight-box">
+                    <div class="insight-title">What You Might Not Know</div>
+                    <div class="insight-text">
+                        <span class="sourced" data-source="Moneycontrol, July 9, 2025">95% of China-Russia trade now settled in local currencies</span> (up from 21% in 2021). 
+                        <span class="sourced" data-source="Moneycontrol, July 9, 2025">90% of India-Russia trade bypasses the dollar</span>. 
+                        This isn't just sanctions evasion—it's a structural shift.
+                    </div>
+                </div>
+                
+                <div class="data-grid">
+                    <div class="data-point">
+                        <div class="data-label">BRICS Local Currency Trade</div>
+                        <div class="data-value"><span class="sourced" data-source="Korea Times, Jan 1, 2025">>50%</span></div>
+                        <div class="data-context">Now exceeds dollar trade</div>
+                    </div>
+                    <div class="data-point">
+                        <div class="data-label">Central Bank Gold</div>
+                        <div class="data-value"><span class="sourced" data-source="Benzinga/Lear Capital, Aug 14, 2025">1,045 MT</span></div>
+                        <div class="data-context">2024 purchases (20% of demand)</div>
+                    </div>
+                </div>
+                
+                <div class="pattern-box">
+                    <div class="pattern-title">Hidden Pattern</div>
+                    <div>
+                        <span class="sourced" data-source="Financial Express, July 16, 2025">China-Brazil March 2025 agreement</span> to settle ALL bilateral trade in local currencies. 
+                        Saudi Arabia now <span class="sourced" data-source="BusinessLine, July 15, 2025">trading oil in yuan</span>. 
+                        India settling oil with <span class="sourced" data-source="BusinessLine, July 15, 2025">rupees and dirhams</span>. 
+                        The petrodollar system is quietly unraveling.
+                    </div>
+                </div>
+                
+                <div class="connection">Trump's response: <span class="sourced" data-source="Economic Times, Aug 14, 2025">100% tariffs threat</span> → Actually accelerating de-dollarization</div>
+                <div class="connection">BRICS exploring "<span class="sourced" data-source="IBT, Jan 31, 2025">Unit</span>" gold-backed currency</div>
+                <div class="connection">Impact: Dollar hegemony ending faster than markets realize</div>
+            </div>
+            
+            <div class="narrative-card">
+                <h2>🌏 The North Korea Factor <span class="impact-badge emerging">EMERGING</span></h2>
+                
+                <div class="insight-box">
+                    <div class="insight-title">The Untold Military Alliance</div>
+                    <div class="insight-text">
+                        North Korea has sent <span class="sourced" data-source="CNN, May 30, 2025">14,000 troops</span>, 
+                        <span class="sourced" data-source="CNN, May 30, 2025">100 ballistic missiles</span>, and 
+                        <span class="sourced" data-source="Yonhap via Nikkei, July 13, 2025">12 million artillery rounds</span> to Russia. 
+                        This is now a proxy Asian land war in Europe.
+                    </div>
+                </div>
+                
+                <div class="data-grid">
+                    <div class="data-point">
+                        <div class="data-label">NK Troops Deployed</div>
+                        <div class="data-value"><span class="sourced" data-source="France24, Mar 27, 2025">+3,000</span></div>
+                        <div class="data-context">Additional in 2025</div>
+                    </div>
+                    <div class="data-point">
+                        <div class="data-label">Artillery Systems</div>
+                        <div class="data-value"><span class="sourced" data-source="France24, Feb 11, 2025">200</span></div>
+                        <div class="data-context">Long-range pieces</div>
+                    </div>
+                </div>
+                
+                <div class="warning-box">
+                    <div class="warning-title">Second-Order Effect</div>
+                    <div>NK gaining real combat experience and testing weapons systems. This fundamentally changes Asian security dynamics. SK/Japan defense spending will explode. Asian arms race accelerating.</div>
+                </div>
+                
+                <div class="connection">Kim Jong Un: <span class="sourced" data-source="ABC News, July 13, 2025">"Unconditionally support" Russia</span></div>
+                <div class="connection">Implication: Two-front war risk for US allies increasing</div>
+            </div>
+            
+            <div class="narrative-card">
+                <h2>🔄 Supply Chain Rewiring <span class="impact-badge critical">CRITICAL</span></h2>
+                
+                <div class="insight-box">
+                    <div class="insight-title">The Permanent Fragmentation</div>
+                    <div class="insight-text">
+                        <span class="sourced" data-source="SEC filings, 2025">Ukraine electricity costs +27.3%</span>. 
+                        <span class="sourced" data-source="Forbes, May 9, 2025">Russian civilian industry -0.8% monthly</span>. 
+                        <span class="sourced" data-source="SEC filings, 2025">Grain/fertilizer trade permanently disrupted</span>. 
+                        This isn't temporary—it's a new world order.
+                    </div>
+                </div>
+                
+                <div class="pattern-box">
+                    <div class="pattern-title">Cascading Effects</div>
+                    <div>
+                        • Food inflation becoming structural, not cyclical<br>
+                        • <span class="sourced" data-source="Daily News Egypt, Feb 4, 2025">Global inflation hit 8%+ in 2022</span> from war disruptions<br>
+                        • Energy infrastructure attacks normalizing globally<br>
+                        • Insurance/shipping costs permanently elevated<br>
+                        • "Friend-shoring" replacing globalization
+                    </div>
+                </div>
+                
+                <div class="impact-meter">
+                    <div class="impact-label">Deglobalization:</div>
+                    <div class="impact-bar">
+                        <div class="impact-fill" style="width: 75%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column -->
+            <div class="narrative-card">
+                <h2>🎭 The Casualty Paradox <span class="impact-badge emerging">EMERGING</span></h2>
+                
+                <div class="insight-box">
+                    <div class="insight-title">What Markets Are Missing</div>
+                    <div class="insight-text">
+                        Russia losing <span class="sourced" data-source="UK Intelligence, Feb 5, 2025">1,556 soldiers/day</span> in January. 
+                        Total exceeds <span class="sourced" data-source="UK Intel, July 11, 2025">1 million casualties</span>. 
+                        Yet <span class="sourced" data-source="ISW/France24, Apr 1, 2025">territorial gains minimal</span>. 
+                        This math doesn't work long-term.
+                    </div>
+                </div>
+                
+                <div class="narrative-flow">
+                    <div class="flow-item">
+                        <div class="flow-date">Current State</div>
+                        <div class="flow-event"><span class="sourced" data-source="Miami Herald, Mar 17, 2025">104,650 casualties in Q1 2025</span></div>
+                    </div>
+                    <div class="flow-item">
+                        <div class="flow-date">Demographic Crisis</div>
+                        <div class="flow-event">Russia can't sustain these losses with aging population</div>
+                    </div>
+                    <div class="flow-item future">
+                        <div class="flow-date">Tipping Point</div>
+                        <div class="flow-event">Internal pressure forces settlement or mobilization</div>
+                    </div>
+                    <div class="flow-item future">
+                        <div class="flow-date">Market Impact</div>
+                        <div class="flow-event">Sudden resolution = commodity crash, defense rotation</div>
+                    </div>
+                </div>
+                
+                <div class="connection">Hidden truth: War of attrition favoring Ukraine despite territory losses</div>
+            </div>
+            
+            <div class="narrative-card">
+                <h2>⚡ Energy Weapon Reversal <span class="impact-badge monitoring">MONITORING</span></h2>
+                
+                <div class="insight-box">
+                    <div class="insight-title">The Backfire Effect</div>
+                    <div class="insight-text">
+                        <span class="sourced" data-source="Forbes, May 9, 2025">Russian oil revenues declining</span>. 
+                        GDP <span class="sourced" data-source="Forbes, May 9, 2025">-0.3% Q1 2025</span> (first contraction). 
+                        Meanwhile, Europe adapted faster than expected to energy independence.
+                    </div>
+                </div>
+                
+                <div class="data-grid">
+                    <div class="data-point">
+                        <div class="data-label">Russian Inflation</div>
+                        <div class="data-value"><span class="sourced" data-source="Forbes, May 9, 2025">10%</span></div>
+                        <div class="data-context">Despite high rates</div>
+                    </div>
+                    <div class="data-point">
+                        <div class="data-label">Civilian Production</div>
+                        <div class="data-value"><span class="sourced" data-source="Forbes, May 9, 2025">-0.8%/mo</span></div>
+                        <div class="data-context">Entering recession</div>
+                    </div>
+                </div>
+                
+                <div class="pattern-box">
+                    <div class="pattern-title">Unintended Consequences</div>
+                    <div>
+                        • Europe's renewable transition accelerated by 5-10 years<br>
+                        • LNG infrastructure boom creating new trade routes<br>
+                        • Russia permanently lost European market share<br>
+                        • China gaining leverage over Russia via energy dependence
+                    </div>
+                </div>
+            </div>
+            
+            <div class="narrative-card">
+                <h2>🤝 The BRICS Wildcard <span class="impact-badge critical">CRITICAL</span></h2>
+                
+                <div class="insight-box">
+                    <div class="insight-title">Coalition of the Unwilling</div>
+                    <div class="insight-text">
+                        BRICS now represents <span class="sourced" data-source="IBT, Jan 31, 2025">nearly 50% of world population</span>. 
+                        But <span class="sourced" data-source="Korea Times, Mar 12, 2025">India declares "no interest" in dollar replacement</span> while 
+                        <span class="sourced" data-source="Times of India, July 6, 2025">Putin pushes 90% non-dollar trade</span>. 
+                        Internal contradictions growing.
+                    </div>
+                </div>
+                
+                <div class="warning-box">
+                    <div class="warning-title">The Fracture Lines</div>
+                    <div>
+                        • India won't sacrifice US ties for Russia<br>
+                        • Brazil's central bank: <span class="sourced" data-source="BusinessLine, May 20, 2025">"No BRICS asset big enough to rival dollar"</span><br>
+                        • China wants yuan dominance, not BRICS currency<br>
+                        • Trump's tariffs forcing countries to pick sides
+                    </div>
+                </div>
+                
+                <div class="connection">Reality: BRICS unity is theater; bilateral deals are real shift</div>
+            </div>
+            
+            <!-- Full Width Bottom Section -->
+            <div class="narrative-card full-width">
+                <h2>🔮 The Macro Implications Most Are Missing</h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+                    <div class="insight-box">
+                        <div class="insight-title">1. The Multipolar Monetary System</div>
+                        <div class="insight-text">
+                            We're not heading to a "BRICS currency" but to 5-6 regional settlement systems. Dollar remains dominant but loses monopoly. This means permanent FX volatility and death of carry trades.
+                        </div>
+                    </div>
+                    
+                    <div class="insight-box">
+                        <div class="insight-title">2. Defense Inflation Is Structural</div>
+                        <div class="insight-text">
+                            <span class="sourced" data-source="Benzinga, Sep 10, 2025">NATO-Russia first direct clash</span> (Poland drones) crossed a red line. 
+                            Every nation now needs redundant defense systems. This is a 10-year supercycle, not a trade.
+                        </div>
+                    </div>
+                    
+                    <div class="insight-box">
+                        <div class="insight-title">3. The Food Security Premium</div>
+                        <div class="insight-text">
+                            Countries will pay ANY price for food security after seeing weaponized grain. 
+                            Agricultural land values and agtech will outperform for a decade. Vertical farming finally viable.
+                        </div>
+                    </div>
+                    
+                    <div class="insight-box">
+                        <div class="insight-title">4. The Demographics Accelerant</div>
+                        <div class="insight-text">
+                            War casualties plus emigration are accelerating demographic collapse in Eastern Europe. 
+                            Labor shortages will drive automation/AI adoption faster than Western markets expect.
+                        </div>
+                    </div>
+                    
+                    <div class="insight-box">
+                        <div class="insight-title">5. The Insurance Crisis</div>
+                        <div class="insight-text">
+                            War risk + climate + cyber = uninsurable world. 
+                            Governments will be forced to backstop everything. This is MMT by default, not choice.
+                        </div>
+                    </div>
+                    
+                    <div class="insight-box">
+                        <div class="insight-title">6. China's Quiet Victory</div>
+                        <div class="insight-text">
+                            While world watches Ukraine, China locked in Russian resources at discount for 30 years. 
+                            <span class="sourced" data-source="Financial Express, July 16, 2025">$244.8B bilateral trade</span>. 
+                            China got energy security without firing a shot.
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 30px; padding: 20px; background: rgba(255,215,0,0.05); border: 1px solid rgba(255,215,0,0.2); border-radius: 8px;">
+                    <h3 style="color: #ffd700; margin-bottom: 15px;">🎯 The Meta-Narrative</h3>
+                    <div style="font-size: 0.95rem; line-height: 1.8;">
+                        <strong>We're not watching a regional conflict. We're watching the violent death of the post-1945 order.</strong><br><br>
+                        
+                        The Ukraine war is the catalyst, not the cause. Every assumption about globalization, monetary systems, 
+                        energy markets, and security alliances is being rewritten in real-time. Markets pricing this as a 
+                        "geopolitical risk premium" are missing the point—this is a regime change in how the world works.<br><br>
+                        
+                        <strong>The winners:</strong> Commodity producers, defense contractors, gold, regional hegemons<br>
+                        <strong>The losers:</strong> Globalized supply chains, fiat currencies, peace dividends, multilateral institutions<br>
+                        <strong>The wildcards:</strong> India (choosing sides), Saudi Arabia (petrodollar abandonment), Japan (remilitarization)
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 25px; padding: 20px; background: rgba(26,26,46,0.8); border-radius: 8px;">
+            <p style="color: #666; font-size: 0.8rem; line-height: 1.6;">
+                <strong>Sources:</strong> Hover over any data point for attribution | 
+                Primary: Moneycontrol, Financial Express, BusinessLine, Times of India, Korea Times, Economic Times, 
+                France24, CNN, Associated Press, Forbes, Benzinga, SEC Filings, UK Intelligence<br>
+                <strong>Note:</strong> This dashboard focuses on non-consensus narratives and second-order effects. 
+                Traditional metrics available in standard financial terminals.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
