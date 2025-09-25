@@ -6,7 +6,7 @@
 # ///
 
 import os
-
+from typing import Literal
 from datetime import datetime
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
@@ -27,6 +27,9 @@ from bigdata_client.daterange import AbsoluteDateRange
 LLM_MODEL = "openai::gpt-4o-mini"
 # LLM_MODEL = "azure::gpt-4o-mini"
 # LLM_MODEL = "bedrock::anthropic.claude-3-sonnet-20240229-v1:0"
+
+# Use streamable-http for better compatibility with various clients, unless you want to connect to ChatGPT developer mode
+TRANSPORT: Literal["sse", "streamable-http"] = "streamable-http"
 
 nest_asyncio.apply()
 
@@ -128,4 +131,4 @@ if __name__ == "__main__":
     assert "BIGDATA_API_KEY" in os.environ, (
         "Please set the BIGDATA_API_KEY environment variable."
     )
-    mcp.run(transport="sse")
+    mcp.run(transport=TRANSPORT)
