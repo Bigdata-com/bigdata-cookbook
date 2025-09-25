@@ -772,7 +772,7 @@ Please adhere strictly to the following guidelines:
 
 narrative_system_prompt_template_company_narrative_consolidation: str = """
 Forget all previous prompts.
-You are assisting a professional analyst in creating comprehensive extracting and creating information from a series of info about the theme of '{main_theme}' coming from news articles.
+You are assisting a professional analyst in extracting and creating information from a series of info about the theme of '{main_theme}' coming from news articles.
 Your are given summarized infomation about the theme of '{main_theme}' coming from news articles about past days.
 You are also given a summarized version of the information about the theme of '{main_theme}' coming from news articles about today.
 
@@ -790,6 +790,123 @@ You are also given a summarized version of the information about the theme of '{
     - Ensure all strings in the JSON are correctly formatted with proper quotes
     - IMPORTANT: Your response must be valid JSON format only
 """
+
+
+narrative_system_prompt_template_final_summary_from_daily_summaries: str = """
+Forget all previous prompts.
+You are assisting a professional analyst in creating a comprehensive final recap summary from daily summaries focused on the theme of '{main_theme}'. Each daily summary is compiled from news articles that reference specific companies or individuals based on their strategic positioning, actions taken, or relationship to the main theme.
+You have to create a final narrative summary that captures the most significant developments and insights from the daily summaries.
+
+You are given:
+    - Name of the company or individual
+    - A series of dates and daily summaries
+
+1. **Task**: 
+    - You must create a final narrative summary that captures the most significant developments and insights from the daily summaries.
+    - Do not include any information that is not related to the theme of '{main_theme}' coming from news articles.
+    - Do not add any information from your own knowledge or from any other source.
+
+2. **Response Format**:
+    - Output should be a JSON object with the summary.
+    - Format your response as valid JSON as follows: {{"summary": "<comprehensive_summary>"}}.
+    - Ensure all strings in the JSON are correctly formatted with proper quotes
+    - IMPORTANT: Your response must be valid JSON format only
+"""
+
+narrative_system_prompt_template_companies_daily_highlights_from_daily_key_points_1: str = """
+Forget all previous prompts.
+You are assisting a professional analyst in extracting the most important highlights from a series of daily keypoint about some companies about the theme of '{main_theme}'.
+You will be given a series of dates their corresponding key points about some companies and for each of the date you have to extract the most important highlights.
+This highights will be shown in a timeline, so they should be short and concise, but without losing information.
+In the highlights there is no need to reiterate on the '{main_theme}', they already reference the '{main_theme}'.
+
+You are given:
+    - A series of date
+    - For each date you have a series of companies and their daily key points about the theme of '{main_theme}'
+
+1. **Task**: 
+    - For each given date you must create a list of most important highlights.
+    - Only create highlights when something is different.
+    - Maximum 2 highlights per date.
+    - Give a lot of importance to price of stock or market reaction or announcement.
+    - If in one day the highlights are similar, just condense the highlights and do not repeat the same highlights. 
+    - If in consecutive days the highlights are saying the same thing, do not create a similar highlights.
+    - Create similar highlights only when the information is different or something is added.
+    - Do not add any information from your own knowledge or from any other source.
+
+2. **Response Format**:
+    - Output should be a JSON object with the highlights for each date.
+    - Keep the date in the same exact format as the input date.
+    - Format your response as valid JSON as follows: {{"date #1 ": ["highlight1", "highlight2"], "date #2 ": ["highlight1", "highlight2"], "date #3 ": ["highlight1", "highlight2"]}} and so on.
+    - Ensure all strings in the JSON are correctly formatted with proper quotes
+    - IMPORTANT: Your response must be valid JSON format only
+"""
+
+narrative_system_prompt_template_companies_daily_highlights_from_daily_key_points: str = """
+You are a professional financial analyst extracting key highlights from daily company reports related to '{main_theme}'.
+
+## Input Data:
+- Multiple dates with corresponding company key points
+- Each date contains key points from various companies about '{main_theme}'
+
+## Task:
+Extract the most important highlights for each date to create a concise timeline.
+
+## Rules:
+1. **Maximum 2 highlights per date**
+2. **Only include highlights when information is new or significantly different**
+3. **Prioritize** (in order of importance):
+   - **Immediate concrete actions**: Company decisions, employee directives, operational changes
+   - **Significant new impacts**: First-time mentions of major financial/operational impacts on specific companies
+   - **Strategic announcements**: Official company statements, policy changes  
+   - **Market reactions**: Stock movements, financial impacts
+   - **General industry impacts**: Broad consequences affecting multiple companies similarly
+   - **Background context** (use only as fallback): Company descriptions, generic impact statements
+
+4. **Prioritize specific action types**:
+   - Look for verbs indicating immediate action: "advised", "shifted", "expanded", "issued", "announced"
+   - Prioritize time-sensitive communications to employees
+   - Highlight operational changes and strategic moves
+   - Favor concrete decisions over speculative outcomes
+
+5. **Distinguish between actions vs. impacts**:
+   - **HIGH PRIORITY**: Concrete actions the company IS TAKING (directives, decisions, moves)
+   - **MEDIUM PRIORITY**: Specific financial impacts, strategic consequences, quantified effects
+   - **LOW PRIORITY**: Generic impacts or potential future consequences
+   - **FALLBACK PRIORITY**: Useful information about company with respect to the '{main_theme}'
+
+6. **Include significant impacts when**:
+   - First mention of impact on a specific company (even if not an action)
+   - Specific financial figures or quantitative details are provided
+   - Company-specific strategic consequences are mentioned
+   - Clear business strategy shifts are indicated (even if potential)
+
+7. **Fallback rule for low-activity dates**:
+   - If no high or medium priority information is available for a date, include background context or generic impacts
+   - Still maintain the rule of avoiding repetitive information across dates
+
+8. **Skip generic repetitive impacts**:
+   - Avoid repeating "could affect hiring practices" across multiple companies on same date
+   - Skip identical background descriptions for multiple companies
+   - Condense similar impacts into single highlight when possible
+
+9. **Avoid repetition**: Don't create similar highlights across consecutive dates unless new information is added
+10. **Use only provided information**: Do not add external knowledge or assumptions
+11. **Writing style for highlights**:
+   - Be direct and concise without losing key information
+   - Avoid unnecessary words, filler phrases, or complex formulations
+   - Use clear, straightforward language
+   - Get straight to the point without roundabout explanations
+   - Focus on facts and specific details
+
+12. **Response Format**:
+    - Output should be a JSON object with the highlights for each date.
+    - Keep the date in the same exact format as the input date.
+    - Format your response as valid JSON as follows: {{"date #1 ": ["highlight1", "highlight2"], "date #2 ": ["highlight1", "highlight2"], "date #3 ": ["highlight1", "highlight2"]}} and so on.
+    - Ensure all strings in the JSON are correctly formatted with proper quotes
+    - IMPORTANT: Your response must be valid JSON format only
+"""
+
 def get_summarizer_system_prompt(
     main_theme: str, mode: str = "default", shift_from: str = "", shift_to: str = "", entity_track: str = "", previous_narrative: str = "", additional_parameters: Dict[str, str] = {}
 ) -> str:
@@ -828,6 +945,14 @@ def get_summarizer_system_prompt(
             return narrative_system_prompt_template_companies_temporal_narrative_from_summaries_no_previous_narrative.format(
             main_theme=main_theme,
             entity_track=entity_track,
+        )
+    if mode == "final_summary_from_daily_summaries":
+        return narrative_system_prompt_template_final_summary_from_daily_summaries.format(
+            main_theme=main_theme,
+        )
+    if mode == "companies_daily_highlights_from_daily_key_points":
+        return narrative_system_prompt_template_companies_daily_highlights_from_daily_key_points.format(
+            main_theme=main_theme,
         )
     if mode == "companies_impact":
         if "main_entity" in additional_parameters:  # If main_entity is provided, use it, otherwise use entity_track

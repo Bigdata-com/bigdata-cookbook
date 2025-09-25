@@ -1,0 +1,322 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>H-1B Visa Fee Impact - Complete Dashboard</title>
+        <meta charset="utf-8">
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #2c3e50;
+                min-height: 100vh;
+            }
+            .main-container {
+                max-width: 1600px;
+                margin: 0 auto;
+                background: white;
+                border-radius: 15px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+                overflow: hidden;
+            }
+            .header-section {
+                background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                color: white;
+                padding: 40px;
+                text-align: center;
+            }
+            .header-section h1 {
+                margin: 0;
+                font-size: 2.8em;
+                font-weight: 300;
+            }
+            .header-section p {
+                margin: 15px 0 0 0;
+                font-size: 1.1em;
+                opacity: 0.9;
+            }
+            .content-section {
+                padding: 40px;
+            }
+            .section-title {
+                font-size: 2em;
+                color: #2c3e50;
+                margin: 40px 0 20px 0;
+                text-align: center;
+                border-bottom: 3px solid #3498db;
+                padding-bottom: 15px;
+            }
+            .section-description {
+                text-align: center;
+                color: #7f8c8d;
+                font-size: 1.1em;
+                margin-bottom: 30px;
+                line-height: 1.6;
+            }
+            .dashboard-container {
+                background: #f8f9fa;
+                border-radius: 10px;
+                padding: 20px;
+                margin: 30px 0;
+                border: 1px solid #ecf0f1;
+            }
+            /* Timeline styles - copied from existing function */
+            .chart-container {
+                position: relative;
+                margin: 100px 0;
+                padding: 0 50px;
+                min-height: 500px;
+            }
+            .timeline-line {
+                position: absolute;
+                top: 50%;
+                left: 50px;
+                right: 50px;
+                height: 4px;
+                background: linear-gradient(to right, #3498db, #2980b9);
+                border-radius: 2px;
+                transform: translateY(-50%);
+            }
+            .timeline-line::before {
+                content: '📊';
+                position: absolute;
+                left: -25px;
+                top: -15px;
+                font-size: 20px;
+            }
+            .timeline-line::after {
+                content: '🎯';
+                position: absolute;
+                right: -25px;
+                top: -15px;
+                font-size: 20px;
+            }
+            .chart-point {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+            .point-marker {
+                width: 14px;
+                height: 14px;
+                background: #e74c3c;
+                border: 3px solid white;
+                border-radius: 50%;
+                position: relative;
+                transform: translateX(-50%);
+                box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+                z-index: 20;
+            }
+            .date-label {
+                position: absolute;
+                top: 35px;
+                left: 0;
+                transform: translateX(-50%);
+                font-size: 0.75em;
+                font-weight: 600;
+                color: #3498db;
+                white-space: nowrap;
+                background: white;
+                padding: 3px 6px;
+                border-radius: 4px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            }
+            .highlights-box {
+                position: absolute;
+                left: 0;
+                transform: translateX(-50%);
+                background: white;
+                border-radius: 10px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+                padding: 15px;
+                min-width: 280px;
+                max-width: 320px;
+                border: 2px solid #3498db;
+                z-index: 10;
+            }
+            .chart-point.above .highlights-box {
+                bottom: 60px;
+            }
+            .chart-point.above .arrow {
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 0;
+                height: 0;
+                border-left: 10px solid transparent;
+                border-right: 10px solid transparent;
+                border-top: 10px solid #3498db;
+            }
+            .chart-point.below .highlights-box {
+                top: 60px;
+            }
+            .chart-point.below .arrow {
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 0;
+                height: 0;
+                border-left: 10px solid transparent;
+                border-right: 10px solid transparent;
+                border-bottom: 10px solid #3498db;
+            }
+            .region-header {
+                font-size: 0.9em;
+                font-weight: bold;
+                color: #2c3e50;
+                margin: 10px 0 8px 0;
+                padding-bottom: 4px;
+                border-bottom: 1px solid #ecf0f1;
+            }
+            .region-header:first-child {
+                margin-top: 0;
+            }
+            .highlight-item {
+                background: rgba(52, 152, 219, 0.08);
+                padding: 6px 10px;
+                margin: 4px 0;
+                border-radius: 5px;
+                border-left: 3px solid #3498db;
+                font-size: 0.85em;
+                line-height: 1.3;
+            }
+            .metadata {
+                text-align: center;
+                color: #7f8c8d;
+                font-size: 0.9em;
+                margin-top: 50px;
+                padding-top: 30px;
+                border-top: 2px solid #ecf0f1;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="main-container">
+            <div class="header-section">
+                <h1>📊 H-1B Visa Fee Impact Dashboard</h1>
+                <p>Comprehensive analysis of the $100,000 H-1B visa fee impact on companies</p>
+            </div>
+            
+            <div class="content-section">
+                <div class="section-title">📈 Interactive Data Analysis</div>
+                <div class="section-description">
+                    Explore the data with interactive charts showing narrative trends, company citations, and market analysis
+                </div>
+                <div class="dashboard-container">
+                    <div id="plotly-chart" class="plotly-graph-div" style="height:900px; width:1400px;"></div>            <script type="text/javascript">                                    window.PLOTLYENV=window.PLOTLYENV || {};                                    if (document.getElementById("plotly-chart")) {                    Plotly.newPlot(                        "plotly-chart",                        [{"fill":"tonexty","fillcolor":"rgba(231, 76, 60, 0.1)","hovertemplate":"\u003cb\u003eTrump Citations\u003c\u002fb\u003e\u003cbr\u003eDate: %{x|%Y-%m-%d}\u003cbr\u003eCount: %{y}\u003cbr\u003e\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#e74c3c","dash":"solid","width":3},"marker":{"size":8,"symbol":"circle"},"mode":"lines+markers","name":"Trump Citations","x":["2025-09-19T00:00:00.000000000","2025-09-20T00:00:00.000000000","2025-09-21T00:00:00.000000000","2025-09-22T00:00:00.000000000","2025-09-23T00:00:00.000000000","2025-09-24T00:00:00.000000000","2025-09-25T00:00:00.000000000"],"y":[2,8,17,10,4,4,1],"type":"scatter","xaxis":"x2","yaxis":"y3"},{"fill":"tozeroy","fillcolor":"rgba(52, 152, 219, 0.1)","hovertemplate":"\u003cb\u003eTrump Narrative\u003c\u002fb\u003e\u003cbr\u003eDate: %{x|%Y-%m-%d}\u003cbr\u003eCount: %{y}\u003cbr\u003e\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#3498db","dash":"dot","width":3},"marker":{"size":8,"symbol":"diamond"},"mode":"lines+markers","name":"Trump Narrative","x":["2025-09-19T00:00:00.000000000","2025-09-20T00:00:00.000000000","2025-09-21T00:00:00.000000000","2025-09-22T00:00:00.000000000","2025-09-23T00:00:00.000000000","2025-09-24T00:00:00.000000000","2025-09-25T00:00:00.000000000"],"y":[19,103,79,89,84,89,28],"type":"scatter","xaxis":"x2","yaxis":"y3"},{"connectgaps":true,"customdata":["\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eAmazon.com Inc. is one of the major tech companies that could be significantly impacted by the introduction of a high fee on H-1B visas. This policy c...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Amazon is one of the top tech companies sponsoring H-1B visas, which could be affected by the new hi...\u003cbr\u003e📌 The introduction of a high fee on H-1B visas may require Amazon to rethink its hiring practices.\u003cbr\u003e📌 The fee could make access to U.S. jobs more difficult for foreign workers, impacting Amazon's talent...\u003cbr\u003e📌 Major corporations like Amazon may not be deterred by the fee hikes, but smaller startups could face...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eAmazon.com Inc. is facing significant challenges due to the introduction of a $100,000 annual fee on H-1B visas, a policy signed by President Donald T...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Amazon is significantly impacted by the $100,000 annual fee on H-1B visas, affecting hiring strategi...\u003cbr\u003e📌 Amazon has advised H-1B and H-4 visa holders to remain in or return to the US to avoid complications...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eAmazon.com Inc. is facing significant financial implications due to the Trump administration's introduction of a $100,000 annual fee on H-1B visa appl...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Amazon is expected to become more selective in sponsoring H-1B candidates, focusing on business-crit...\u003cbr\u003e📌 Amazon is part of the Compete America coalition, advocating for a reconsideration of the fee, highli...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eAmazon.com Inc. is significantly impacted by the introduction of a $100,000 fee on H-1B visas, as it is one of the largest employers of H-1B visa hold...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Amazon is the top H-1B sponsor in FY 2024 with over 9,000 approvals, facing the steepest cost burden...\u003cbr\u003e📌 The $100,000 H-1B visa fee could drive Amazon to expand offshore capability centers instead of hirin...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eAmazon.com Inc. continues to be significantly impacted by the introduction of a $100,000 fee on new H-1B visa applications. As the largest sponsor of ...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Amazon is the largest sponsor of H-1B visas, with 10,000 approved beneficiaries in the 2025 fiscal y...\u003cbr\u003e📌 Despite the high fee, Amazon might benefit from the changes as it can afford to pay for highly skill...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eAmazon.com Inc. is facing a significant impact from the Trump administration's introduction of a $100,000 fee on new H-1B visa applications. As one of...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Amazon has more than 14,000 visa holders on its payroll as of June, with 14,667 visas received this ...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eToday's information reiterates that Amazon.com Inc. is significantly impacted by the introduction of a high fee on H-1B visas, as it is one of the lar...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Amazon has not publicly commented on the introduction of the high H-1B visa fee, highlighting a new ..."],"hovertemplate":"\u003cb\u003e%{fullData.name}\u003c\u002fb\u003e\u003cbr\u003eDate: %{x|%Y-%m-%d}\u003cbr\u003eOccurrences: %{y}\u003cbr\u003e\u003cbr\u003e%{customdata}\u003cbr\u003e\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#f39c12","width":3},"marker":{"line":{"color":"white","width":2},"size":8,"symbol":"circle"},"mode":"lines+markers","name":"Amazon.com Inc. (avg: 70.6)","x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[7,107,63,151,71,77,18],"type":"scatter","xaxis":"x","yaxis":"y"},{"hoverinfo":"skip","line":{"color":"#f39c12","dash":"dash","width":1},"mode":"lines","name":"Amazon.com Inc. (trend)","opacity":0.6,"showlegend":false,"x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[12.828571428571385,78.88571428571431,112.37142857142852,103.51428571428565,105.71428571428567,74.4571428571428,13.485714285714224],"type":"scatter","xaxis":"x","yaxis":"y"},{"connectgaps":true,"customdata":["\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eMicrosoft Corp., as a major sponsor of H-1B visas, is likely to be significantly impacted by the introduction of a high fee on these visas. The fee ap...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 The introduction of a high fee on H-1B visas could lead to a dramatic rethink of hiring practices fo...\u003cbr\u003e📌 The fee applies to both new visas and renewals, impacting Microsoft's sponsorship of H-1B visas.\u003cbr\u003e📌 While the fee may not deter major corporations like Microsoft, it could impose significant burdens o...\u003cbr\u003e📌 The increased cost could make access to U.S. jobs harder and more exclusive for foreign workers, aff...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eMicrosoft Corp. is facing significant impacts from the introduction of a $100,000 fee on H-1B visas, a policy move by the Trump administration aimed a...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Microsoft is significantly impacted by the $100,000 H-1B visa fee, leading to increased operational ...\u003cbr\u003e📌 The fee hike is expected to shift Microsoft's focus towards hiring highly specialized, high-wage tal...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eMicrosoft Corp. is considering shifting more workers to Canada to mitigate the impact of the high fee on H-1B visas, as Canadian immigration laws are ...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Microsoft is considering shifting more workers to Canada to avoid the high H-1B visa fee, potentiall...\u003cbr\u003e📌 The company has issued urgent advisories for H-1B employees to remain in or return to the U.S. befor...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eMicrosoft Corp. has expressed strong opposition to the $100,000 fee on H-1B visas, emphasizing that it could shrink the talent pool, slow innovation, ...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Microsoft is considering expanding operations in Vancouver or Bangalore to mitigate the impact of th...\u003cbr\u003e📌 The company warns that the fee could shrink the talent pool, slow innovation, and undermine U.S. com...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eMicrosoft Corp. is significantly impacted by the introduction of a $100,000 fee on new H-1B visa applications, a policy introduced by Donald Trump. De...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 The new fee could prompt Microsoft to hire laid-off H-1B visa holders from other tech companies, off...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eToday's updates on Microsoft's response to the high fee on H-1B visas reveal that the company is advising its H-1B employees to return to the US befor...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Microsoft advised H-1B employees to return to the US before the new fees took effect, showing a proa...\u003cbr\u003e📌 Despite the $100,000 fee, Microsoft's large R&D budget may allow it to maintain its H-1B hiring leve...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eToday's information highlights that Microsoft Corp. is significantly impacted by the Trump administration's introduction of a $100,000 fee on H-1B vis...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Microsoft employs 5,189 H-1B visa holders between 2009 and June 2025, highlighting its heavy relianc...\u003cbr\u003e📌 Microsoft has not publicly commented on the $100,000 fee on H-1B visas, despite its significant impa..."],"hovertemplate":"\u003cb\u003e%{fullData.name}\u003c\u002fb\u003e\u003cbr\u003eDate: %{x|%Y-%m-%d}\u003cbr\u003eOccurrences: %{y}\u003cbr\u003e\u003cbr\u003e%{customdata}\u003cbr\u003e\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#27ae60","width":3},"marker":{"line":{"color":"white","width":2},"size":8,"symbol":"square"},"mode":"lines+markers","name":"Microsoft Corp. (avg: 61.7)","x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[7,103,63,114,52,62,31],"type":"scatter","xaxis":"x","yaxis":"y"},{"hoverinfo":"skip","line":{"color":"#27ae60","dash":"dash","width":1},"mode":"lines","name":"Microsoft Corp. (trend)","opacity":0.6,"showlegend":false,"x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[15.45714285714277,73.77142857142854,99.94285714285711,80.65714285714282,77.54285714285712,59.37142857142854,28.0571428571428],"type":"scatter","xaxis":"x","yaxis":"y"},{"connectgaps":true,"customdata":["\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eAlphabet Inc., the parent company of Google, is among the top tech companies that sponsor H-1B visas. The introduction of a high fee on H-1B visas by ...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Alphabet Inc. is one of the top tech companies sponsoring H-1B visas.\u003cbr\u003e📌 The high fee on H-1B visas applies to both new visas and renewals, affecting Alphabet's hiring pract...\u003cbr\u003e📌 The fee could lead to a dramatic rethink of hiring strategies for Alphabet, making access to U.S. jo...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eAlphabet Inc., the parent company of Google, is facing significant challenges due to the introduction of a $100,000 fee on H-1B visas. This new fee is...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 The $100,000 fee on H-1B visas could alter Google's hiring strategies, particularly affecting junior...\u003cbr\u003e📌 The fee poses challenges to Google's innovation and competitiveness, potentially leading to increase...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eAlphabet Inc., a major user of H-1B talent, is expected to scale back on visa hires due to the high fee, which could lead to project delays and cost e...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Alphabet Inc. is expected to scale back on H-1B visa hires due to the high fee, potentially leading ...\u003cbr\u003e📌 The company has advised H-1B visa holders not to leave the U.S. and urged those overseas to return, ...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eToday's updates reveal that Alphabet Inc., through Google, is significantly impacted by the introduction of a high fee on H-1B visas, with the $100,00...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Google may consider expanding offshore capability centers as a cost-effective alternative to hiring ...\u003cbr\u003e📌 The fee is seen as a threat to U.S. innovation and competitiveness, potentially leading to a 'revers...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eToday's information highlights that Alphabet Inc., particularly Google, is significantly impacted by the $100,000 fee on new H-1B visa applications, w...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Alphabet Inc.'s Google is significantly impacted by the $100,000 fee on new H-1B visa applications, ...\u003cbr\u003e📌 Despite high costs, Google could benefit from the changes as it can afford to pay higher fees for sk...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eToday's information highlights that Alphabet Inc., particularly Google, is significantly impacted by the new $100,000 fee on H-1B visas, as it heavily...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 The new $100,000 fee on H-1B visas could double Google's hiring costs, prompting a reassessment of h...\u003cbr\u003e📌 The fee applies only to new H-1B visa applicants, not renewals, which Google continues to process.","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eToday's information highlights that while Alphabet Inc., through its subsidiary Google, is significantly impacted by the $100,000 fee on H-1B visa app...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Google has not publicly commented on the $100,000 H-1B visa fee, indicating a strategic silence or i...\u003cbr\u003e📌 The fee could disproportionately affect smaller companies and startups, potentially impacting their ..."],"hovertemplate":"\u003cb\u003e%{fullData.name}\u003c\u002fb\u003e\u003cbr\u003eDate: %{x|%Y-%m-%d}\u003cbr\u003eOccurrences: %{y}\u003cbr\u003e\u003cbr\u003e%{customdata}\u003cbr\u003e\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#9b59b6","width":3},"marker":{"line":{"color":"white","width":2},"size":8,"symbol":"diamond"},"mode":"lines+markers","name":"Alphabet Inc. (avg: 48.9)","x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[7,48,29,85,84,82,7],"type":"scatter","xaxis":"x","yaxis":"y"},{"hoverinfo":"skip","line":{"color":"#9b59b6","dash":"dash","width":1},"mode":"lines","name":"Alphabet Inc. (trend)","opacity":0.6,"showlegend":false,"x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[11.114285714285714,32.14285714285714,51.88571428571426,68.88571428571424,94.97142857142853,71.48571428571418,10.428571428571242],"type":"scatter","xaxis":"x","yaxis":"y"},{"connectgaps":true,"customdata":["\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eInfosys Ltd., along with other consultancies, is involved in outsourcing basic technical operations to American firms, employing foreign workers prima...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Infosys Ltd. is involved in outsourcing technical operations to American firms, employing foreign wo...\u003cbr\u003e📌 The introduction of a high fee on H-1B visas could impact Infosys's hiring of foreign workers due to...\u003cbr\u003e📌 Current fees for companies include $215 to register for the lottery and $780 for a Form I-129.","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eInfosys Ltd. is now facing a significant impact due to the introduction of a $100,000 annual fee on H-1B visas by the US government. This new fee is e...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Infosys is significantly impacted by the $100,000 annual fee on H-1B visas, which may dampen fresh a...\u003cbr\u003e📌 The policy is anticipated to affect Infosys's ability to bring junior and mid-level engineers to the...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eInfosys Ltd. is experiencing significant impacts from the introduction of a $100,000 annual fee on H-1B visas, as announced by President Donald Trump....\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Infosys' US-listed shares fell by 4% following the announcement of the $100,000 H-1B visa fee, refle...\u003cbr\u003e📌 Infosys is likely to shift more work to India and increase local hiring in the US to mitigate the im...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eInfosys Ltd. is significantly impacted by the introduction of a $100,000 fee on H-1B visas, prompting a reevaluation of their business strategies. The...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Infosys is forced to redesign its pricing plans due to the $100,000 H-1B visa fee.\u003cbr\u003e📌 Operating profits could be reduced by 7-15% due to the fee increase.","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eInfosys Ltd. is facing increased operating costs due to the new H-1B visa fees, which are impacting its onshore-offshore strategies. The company may n...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Infosys may need to curb short-term employee transfers and increase local hiring in the US due to ne...\u003cbr\u003e📌 Despite increased costs, Infosys is relatively well-positioned to absorb changes due to its aggressi...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eToday's information highlights that Infosys Ltd. is significantly impacted by the new high fee on H-1B visas, which poses a substantial financial burd...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Infosys Ltd. faces increased operational costs due to the new high fee on H-1B visas, potentially le...\u003cbr\u003e📌 The new fee structure exacerbates existing industry challenges, including tighter client budgets and...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eInfosys Ltd. has decreased its reliance on H-1B visas by expanding offshore delivery and increasing local hiring in the US. Despite this strategic shi...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Infosys has decreased its reliance on H-1B visas by expanding offshore delivery and hiring locally i...\u003cbr\u003e📌 The introduction of a high fee on H-1B visas could increase Infosys's visa costs to 1.0% of total em..."],"hovertemplate":"\u003cb\u003e%{fullData.name}\u003c\u002fb\u003e\u003cbr\u003eDate: %{x|%Y-%m-%d}\u003cbr\u003eOccurrences: %{y}\u003cbr\u003e\u003cbr\u003e%{customdata}\u003cbr\u003e\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#e67e22","width":3},"marker":{"line":{"color":"white","width":2},"size":8,"symbol":"triangle-up"},"mode":"lines+markers","name":"Infosys Ltd. (avg: 27.4)","x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[4,40,52,69,16,5,6],"type":"scatter","xaxis":"x","yaxis":"y"},{"hoverinfo":"skip","line":{"color":"#e67e22","dash":"dash","width":1},"mode":"lines","name":"Infosys Ltd. (trend)","opacity":0.6,"showlegend":false,"x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[0.8857142857142155,43.257142857142824,60.91428571428569,52.97142857142855,28.171428571428557,13.285714285714242,-0.17142857142859214],"type":"scatter","xaxis":"x","yaxis":"y"},{"connectgaps":true,"customdata":["\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eWipro Ltd., along with other consultancies, is involved in outsourcing basic technical operations to American firms, employing foreign workers primari...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Wipro Ltd. is involved in outsourcing technical operations to American firms, employing foreign work...\u003cbr\u003e📌 The introduction of a high fee on H-1B visas could affect Wipro's hiring of foreign workers due to i...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eWipro Ltd. is significantly impacted by the introduction of a $100,000 fee on H-1B visas, which is expected to affect its ability to deploy junior and...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Wipro is significantly affected by the $100,000 H-1B visa fee, impacting its ability to send junior ...\u003cbr\u003e📌 The high fee may force Wipro to reconsider its US staffing strategies, potentially reducing on-site ...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eWipro Ltd. is facing increased operational costs due to the new H-1B visa fee, which is expected to impact its ability to hire new talent or maintain ...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Wipro has started reducing its reliance on H-1B visas by shifting work to India and hiring locally i...\u003cbr\u003e📌 Wipro's US-listed shares declined following the announcement of the new visa fee, reflecting investo...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eWipro Ltd. is facing significant operational and financial challenges due to the introduction of a $100,000 annual fee on H-1B visas by the Trump admi...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Wipro is evaluating alternative strategies, including remote work and client-side training in India,...\u003cbr\u003e📌 The fee hike could reduce Wipro's operating profits by 7-15%, prompting a reassessment of workforce ...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eWipro Ltd. is anticipated to experience a 1-3% drag on net profit due to the newly introduced high fee on H-1B visas. The company is expected to face ...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Wipro is expected to face a 1-3% drag on net profit due to the new H-1B visa fee.\u003cbr\u003e📌 Wipro's annual immigration bills could escalate by $150-550 million, impacting operating margins by ...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eWipro Ltd. is expected to face significant challenges due to the introduction of a high fee on H-1B visas, as the company heavily relies on these visa...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 Wipro Ltd. heavily relies on H-1B visas for hiring skilled foreign workers, and the new fee structur...\u003cbr\u003e📌 Over half of Wipro's yearly revenue comes from the U.S. market, making the new fee regime particular...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eWipro Ltd., along with other major IT companies, is expected to face significant cost increases due to the introduction of a high fee on H-1B visas. A...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 The new H-1B visa fee structure could increase visa costs to 1.0% of total employee costs for compan...\u003cbr\u003e📌 Wipro generates 96% of its revenue from international markets, with the US accounting for 53%."],"hovertemplate":"\u003cb\u003e%{fullData.name}\u003c\u002fb\u003e\u003cbr\u003eDate: %{x|%Y-%m-%d}\u003cbr\u003eOccurrences: %{y}\u003cbr\u003e\u003cbr\u003e%{customdata}\u003cbr\u003e\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#2c3e50","width":3},"marker":{"line":{"color":"white","width":2},"size":8,"symbol":"triangle-down"},"mode":"lines+markers","name":"Wipro Ltd. (avg: 18.9)","x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[4,27,43,40,10,2,6],"type":"scatter","xaxis":"x","yaxis":"y"},{"hoverinfo":"skip","line":{"color":"#2c3e50","dash":"dash","width":1},"mode":"lines","name":"Wipro Ltd. (trend)","opacity":0.6,"showlegend":false,"x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[1.9428571428570958,31.22857142857143,42.657142857142844,35.1142857142857,15.057142857142846,6.428571428571388,2.942857142857129],"type":"scatter","xaxis":"x","yaxis":"y"},{"connectgaps":true,"customdata":["No data available for this date","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eTata Consultancy Services Ltd. (TCS), a major player in the Indian IT sector, is significantly impacted by the introduction of a high fee on H-1B visa...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 TCS is significantly impacted by the new $100,000 H-1B visa fee introduced by Donald Trump.\u003cbr\u003e📌 The fee increase poses a financial challenge for TCS, which relies heavily on H-1B visas for deployi...\u003cbr\u003e📌 TCS may need to reassess its US staffing strategies, potentially shifting focus to highly specialise...\u003cbr\u003e📌 The policy could lead TCS to consider moving work offshore to manage costs.\u003cbr\u003e📌 TCS has not yet issued an official response or comment on the new H-1B visa fee.","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eTata Consultancy Services Ltd. (TCS) has taken proactive measures to reduce its reliance on H-1B visas by establishing a substantial onshore presence ...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 TCS has established a strong onshore presence in North America with over 46,000 employees across 32 ...\u003cbr\u003e📌 TCS advised employees on H-1B visas to stay in or return to the U.S. before the new fee implementati...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eTata Consultancy Services Ltd. (TCS) is facing significant operational and financial challenges due to the introduction of a $100,000 annual fee on H-...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 TCS is exploring remote work and client-side training in India as alternative solutions to manage th...\u003cbr\u003e📌 Despite the financial burden, TCS is better equipped to handle the fee increase due to its strong ba...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eTata Consultancy Services Ltd. (TCS) employs 5,505 H-1B visa holders, highlighting its significant reliance on this visa category. The introduction of...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 TCS employs 5,505 H-1B visa holders, indicating its significant reliance on this visa category.\u003cbr\u003e📌 Brokerages consider TCS among the least exposed to the new H-1B visa fee policy due to its strategic...","\u003cb\u003eSummary:\u003c\u002fb\u003e\u003cbr\u003eToday's updates highlight that Tata Consultancy Services Ltd. (TCS) is facing compounded challenges due to the introduction of a $100,000 fee on new H...\u003cbr\u003e\u003cbr\u003e\u003cb\u003eKey Points:\u003c\u002fb\u003e\u003cbr\u003e📌 The $100,000 fee on new H-1B visas deepens margin pressures for Tata Consultancy Services Ltd., whic...\u003cbr\u003e📌 Over half of Tata Consultancy Services' revenue comes from the U.S., making it particularly vulnerab...","No data available for this date"],"hovertemplate":"\u003cb\u003e%{fullData.name}\u003c\u002fb\u003e\u003cbr\u003eDate: %{x|%Y-%m-%d}\u003cbr\u003eOccurrences: %{y}\u003cbr\u003e\u003cbr\u003e%{customdata}\u003cbr\u003e\u003cextra\u003e\u003c\u002fextra\u003e","line":{"color":"#16a085","width":3},"marker":{"line":{"color":"white","width":2},"size":8,"symbol":"cross"},"mode":"lines+markers","name":"Tata Consultancy Services Ltd. (avg: 14.3)","x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[0,17,16,59,5,3,0],"type":"scatter","xaxis":"x","yaxis":"y"},{"hoverinfo":"skip","line":{"color":"#16a085","dash":"dash","width":1},"mode":"lines","name":"Tata Consultancy Services Ltd. (trend)","opacity":0.6,"showlegend":false,"x":["2025-09-19T00:00:00","2025-09-20T00:00:00","2025-09-21T00:00:00","2025-09-22T00:00:00","2025-09-23T00:00:00","2025-09-24T00:00:00","2025-09-25T00:00:00"],"y":[-5.000000000000043,21.199999999999985,33.39999999999999,34.142857142857125,22.314285714285703,10.657142857142833,-6.714285714285733],"type":"scatter","xaxis":"x","yaxis":"y"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmapgl":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmapgl"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"xaxis":{"anchor":"y","domain":[0.0,0.94],"title":{"text":"Date"},"showgrid":true,"gridcolor":"rgba(128,128,128,0.2)","tickformat":"%m\u002f%d","tickangle":45,"rangeslider":{"visible":false},"rangeselector":{"buttons":[{"count":1,"label":"1d","step":"day","stepmode":"backward"},{"count":3,"label":"3d","step":"day","stepmode":"backward"},{"step":"all"}]},"type":"date"},"yaxis":{"anchor":"x","domain":[0.405,1.0],"title":{"text":"Corporate Mentions"},"showgrid":true,"gridcolor":"rgba(128,128,128,0.2)"},"yaxis2":{"anchor":"x","overlaying":"y","side":"right","title":{"text":"Corporate Mentions"},"showgrid":true,"gridcolor":"rgba(128,128,128,0.2)"},"xaxis2":{"anchor":"y3","domain":[0.0,0.94],"title":{"text":"Date"},"showgrid":true,"gridcolor":"rgba(128,128,128,0.2)","tickformat":"%m\u002f%d","tickangle":45},"yaxis3":{"anchor":"x2","domain":[0.0,0.255],"title":{"text":"Trump Activity"},"showgrid":true,"gridcolor":"rgba(128,128,128,0.2)"},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Main Narrative Trends","x":0.47,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Trump-specific Activity","x":0.47,"xanchor":"center","xref":"paper","y":0.255,"yanchor":"bottom","yref":"paper"},{"arrowcolor":"rgba(0,0,0,0.5)","arrowhead":2,"arrowsize":1,"arrowwidth":2,"bgcolor":"rgba(255,255,255,0.8)","bordercolor":"rgba(0,0,0,0.2)","borderwidth":1,"font":{"size":10},"showarrow":true,"text":"Peak: Amazon.com Inc.\u003cbr\u003e151","x":"2025-09-22T00:00:00","xref":"x","y":151,"yref":"y"},{"arrowcolor":"rgba(0,0,0,0.5)","arrowhead":2,"arrowsize":1,"arrowwidth":2,"bgcolor":"rgba(255,255,255,0.8)","bordercolor":"rgba(0,0,0,0.2)","borderwidth":1,"font":{"size":10},"showarrow":true,"text":"Peak: Microsoft Corp.\u003cbr\u003e114","x":"2025-09-22T00:00:00","xref":"x","y":114,"yref":"y"},{"arrowcolor":"rgba(0,0,0,0.5)","arrowhead":2,"arrowsize":1,"arrowwidth":2,"bgcolor":"rgba(255,255,255,0.8)","bordercolor":"rgba(0,0,0,0.2)","borderwidth":1,"font":{"size":10},"showarrow":true,"text":"Peak: Alphabet Inc.\u003cbr\u003e85","x":"2025-09-22T00:00:00","xref":"x","y":85,"yref":"y"}],"title":{"font":{"size":24,"color":"#2c3e50"},"text":"\u003cb\u003eH-1B Visa Narrative Analysis Dashboard\u003c\u002fb\u003e\u003cbr\u003e\u003csub\u003eCorporate Response and Media Coverage Timeline\u003c\u002fsub\u003e","x":0.5,"xanchor":"center","y":0.95},"legend":{"font":{"size":11},"orientation":"v","yanchor":"top","y":0.98,"xanchor":"left","x":1.02,"bgcolor":"rgba(255,255,255,0.95)","bordercolor":"rgba(0,0,0,0.2)","borderwidth":1},"margin":{"r":200,"t":100,"b":80,"l":80},"width":1400,"height":900,"hovermode":"closest","showlegend":true},                        {"responsive": true}                    )                };                            </script>
+                </div>
+                
+                <div class="section-title">⏱️ Timeline of Key Highlights</div>
+                <div class="section-description">
+                    Daily highlights showing the most important developments for US and Indian companies
+                </div>
+                
+        <div class="chart-container">
+            <div class="timeline-line"></div>
+            
+        <div class="chart-point above" style="left: 0.0%;" data-date="2025-09-19">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 19</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• The high fee on H-1B visas applies to both new visas and renewals, affecting Alphabet's hiring practices.</div><div class="highlight-item">• The introduction of a high fee on H-1B visas may require Amazon to rethink its hiring practices.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point below" style="left: 16.666666666666664%;" data-date="2025-09-20">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 20</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Amazon has advised H-1B and H-4 visa holders to remain in or return to the US to avoid complications from the new fee structure.</div><div class="highlight-item">• Microsoft is significantly impacted by the $100,000 H-1B visa fee, leading to increased operational costs and potential hiring strategy disruptions.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• TCS may need to reassess its US staffing strategies, potentially shifting focus to highly specialised, high-wage talent and domestic graduates.</div><div class="highlight-item">• Infosys is significantly impacted by the $100,000 annual fee on H-1B visas, which may dampen fresh applications and accelerate offshoring.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point above" style="left: 33.33333333333333%;" data-date="2025-09-21">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 21</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Microsoft is considering shifting more workers to Canada to avoid the high H-1B visa fee, potentially resulting in a loss of U.S. tax revenue.</div><div class="highlight-item">• Alphabet Inc. is expected to scale back on H-1B visa hires due to the high fee, potentially leading to project delays and cost escalations.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• Wipro has started reducing its reliance on H-1B visas by shifting work to India and hiring locally in the US.</div><div class="highlight-item">• TCS advised employees on H-1B visas to stay in or return to the U.S. before the new fee implementation, showing a strategic response to the policy change.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point below" style="left: 50.0%;" data-date="2025-09-22">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 22</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Amazon is the top H-1B sponsor in FY 2024 with over 9,000 approvals, facing the steepest cost burden among tech companies.</div><div class="highlight-item">• Microsoft is considering expanding operations in Vancouver or Bangalore to mitigate the impact of the H-1B visa fee.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• TCS is exploring remote work and client-side training in India as alternative solutions to manage the $100,000 H-1B visa fee.</div><div class="highlight-item">• Wipro is evaluating alternative strategies, including remote work and client-side training in India, to mitigate the financial impact of the new $100,000 H-1B visa fee.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point above" style="left: 66.66666666666666%;" data-date="2025-09-23">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 23</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Alphabet Inc.'s Google is significantly impacted by the $100,000 fee on new H-1B visa applications, posing a financial burden on the tech industry.</div><div class="highlight-item">• The new fee could prompt Microsoft to hire laid-off H-1B visa holders from other tech companies, offering a potential silver lining.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• Wipro's annual immigration bills could escalate by $150-550 million, impacting operating margins by 7-15%.</div><div class="highlight-item">• Infosys may need to curb short-term employee transfers and increase local hiring in the US due to new H-1B visa fees.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point below" style="left: 83.33333333333334%;" data-date="2025-09-24">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 24</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Microsoft advised H-1B employees to return to the US before the new fees took effect, showing a proactive approach.</div><div class="highlight-item">• The new $100,000 fee on H-1B visas could double Google's hiring costs, prompting a reassessment of human resources strategies.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• Infosys Ltd. faces increased operational costs due to the new high fee on H-1B visas, potentially leading to reduced hiring or job relocation back to India.</div><div class="highlight-item">• Over half of Wipro's yearly revenue comes from the U.S. market, making the new fee regime particularly impactful on its margins.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point above" style="left: 100.0%;" data-date="2025-09-25">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 25</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Amazon has not publicly commented on the introduction of the high H-1B visa fee, highlighting a new development in its response strategy.</div><div class="highlight-item">• Google has not publicly commented on the $100,000 H-1B visa fee, indicating a strategic silence or internal deliberation.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• Infosys has decreased its reliance on H-1B visas by expanding offshore delivery and hiring locally in the US.</div><div class="highlight-item">• The new H-1B visa fee structure could increase visa costs to 1.0% of total employee costs for companies like Wipro.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        </div>
+    
+                
+                <div class="metadata">
+                    <p>Combined dashboard generated on September 25, 2025 at 01:53 PM</p>
+                    <p>Timeline covers September 19 to September 25, 2025</p>
+                </div>
+            </div>
+        </div>
+    </body>
+    </html>
+    

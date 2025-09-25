@@ -251,6 +251,12 @@ class NarrativeSummarizerFlex(Labeler):
                 main_theme, previous_summary, today_summary, max_workers, additional_parameters
             )
         
+        # Special handling for companies_daily_highlights_from_daily_key_points mode
+        if mode == "companies_daily_highlights_from_daily_key_points":
+            return self._handle_companies_daily_highlights(
+                main_theme, df, max_workers, additional_parameters
+            )
+        
         # Set default data fields if not provided
         if data_fields is None:
             data_fields = ["quotes"]
@@ -270,7 +276,7 @@ class NarrativeSummarizerFlex(Labeler):
         print("=" * 80)
         print("DEBUG: SYSTEM PROMPT")
         print("=" * 80)
-        print(system_prompt)
+        print(system_prompt[:1000])
         print("=" * 80)
         import sys
         sys.stdout.flush()
@@ -281,7 +287,7 @@ class NarrativeSummarizerFlex(Labeler):
         for i, prompt in enumerate(prompts):
             print(f"PROMPT {i+1}:")
             print("-" * 40)
-            print(prompt)
+            print(prompt[:1000])
             print("-" * 40)
         print("=" * 80)
         sys.stdout.flush()
@@ -338,6 +344,13 @@ class NarrativeSummarizerFlex(Labeler):
             if 'Quotes' in entity_df.columns:
                 entity_data['quotes'] = entity_df['Quotes'].iloc[0]  # Override the Chunk Text quotes if this exists
                 
+            # Add Date and Summary lists for final_summary_from_daily_summaries mode
+            if 'Date' in entity_df.columns and 'Summary' in entity_df.columns:
+                # Sort by date to ensure chronological order
+                entity_df_sorted = entity_df.sort_values('Date')
+                entity_data['dates'] = entity_df_sorted['Date'].dt.strftime('%Y-%m-%d').tolist()
+                entity_data['daily_summaries'] = entity_df_sorted['Summary'].tolist()
+                
             grouped_data[entity_name] = entity_data
         
         return grouped_data
@@ -368,6 +381,8 @@ class NarrativeSummarizerFlex(Labeler):
             # For companies_impact and temporal_company_narrative_from_summaries modes, always add Company field
             if mode == "companies_impact" or mode == "temporal_company_narrative_from_summaries":
                 prompt_data['Company'] = entity_name
+            elif mode == "final_summary_from_daily_summaries":
+                prompt_data['Company or Person'] = entity_name
             elif not entity_track:
                 prompt_data['Entity'] = entity_name
             
@@ -419,6 +434,16 @@ class NarrativeSummarizerFlex(Labeler):
                     prompt_data[key_points_key] = entity_data['key_points']
                 if 'quotes' in entity_data:
                     prompt_data[quotes_key] = entity_data['quotes']
+            elif mode == "final_summary_from_daily_summaries":
+                # For this mode, structure data with dates and summaries chronologically
+                if 'dates' in entity_data and 'daily_summaries' in entity_data:
+                    dates = entity_data['dates']
+                    summaries = entity_data['daily_summaries']
+                    
+                    # Create the structured prompt as requested:
+                    # Nome Entity, Summary 2024-01-01, Summary 2024-01-02, etc.
+                    for date, summary in zip(dates, summaries):
+                        prompt_data[f'Summary {date}'] = summary
             else:
                 # Original logic for other modes
                 # Determine the maximum number of items (based on quotes which should always be present)
@@ -658,3 +683,108 @@ class NarrativeSummarizerFlex(Labeler):
             return consolidated_summary
         else:
             return ""
+    
+    def _handle_companies_daily_highlights(
+        self, 
+        main_theme: str, 
+        df: DataFrame, 
+        max_workers: int,
+        additional_parameters: Dict[str, str] = {}
+    ) -> DataFrame:
+        """
+        Handle companies_daily_highlights_from_daily_key_points mode.
+        
+        Args:
+            main_theme: The main theme to analyze
+            df: DataFrame with Entity, Date, Key Points columns
+            max_workers: Maximum number of concurrent workers
+            additional_parameters: Must contain "companies" key with list of companies
+            
+        Returns:
+            DataFrame with highlights results
+        """
+        from json import dumps
+        
+        # Get companies list from additional_parameters
+        companies = additional_parameters.get("companies", [])
+        if not companies:
+            logger.warning("No companies provided in additional_parameters")
+            return DataFrame()
+        
+        # Filter DataFrame to only include specified companies
+        df_filtered = df[df['Entity'].isin(companies)].copy()
+        
+        if df_filtered.empty:
+            logger.warning(f"No data found for companies: {companies}")
+            return DataFrame()
+        
+        # Group by date and create the structured prompt
+        prompt_data = {}
+        
+        for date in sorted(df_filtered['Date'].dt.strftime('%Y-%m-%d').unique()):
+            date_data = df_filtered[df_filtered['Date'].dt.strftime('%Y-%m-%d') == date]
+            
+            # Create company -> key_points mapping for this date
+            company_highlights = {}
+            for _, row in date_data.iterrows():
+                company = row['Entity']
+                key_points = row['Key Points'] if 'Key Points' in row else row.get('Key_points', '')
+                company_highlights[company] = key_points
+            
+            prompt_data[f'Data {date}'] = company_highlights
+        
+        # Create single prompt
+        prompt = dumps(prompt_data)
+        prompts = [prompt]
+        
+        # Get system prompt
+        system_prompt = self.summary_prompt or self._get_summarizer_system_prompt(
+            main_theme, mode="companies_daily_highlights_from_daily_key_points", 
+            entity_track="", previous_narrative="", additional_parameters=additional_parameters
+        )
+        
+        
+        # Run prompt
+        responses = self._run_labeling_prompts(
+            prompts, system_prompt, max_workers=max_workers
+        )
+        
+        # Parse response
+        if responses and len(responses) > 0:
+            response = self._parse_summarization_response(responses[0])
+            
+            # The response should be a dict with dates as keys and highlight arrays as values
+            # Format: {"Data 2024-01-01": ["highlight1", "highlight2"], "Data 2024-01-02": ["highlight1"]}
+            
+            # Convert to DataFrame format 
+            result_data = []
+            for date_key, highlights in response.items():
+                # Clean the date key: remove "Data " prefix and keep only YYYY-MM-DD
+                clean_date = date_key.replace("Data ", "").strip()
+                
+                # highlights should be a list of strings
+                if isinstance(highlights, list):
+                    for highlight in highlights:
+                        result_data.append({
+                            'Date': clean_date,  # Use cleaned date format (YYYY-MM-DD only)
+                            'Highlight': highlight,
+                            'Companies': ', '.join(companies)
+                        })
+                elif isinstance(highlights, str):
+                    # In case highlights is a single string, treat it as one highlight
+                    result_data.append({
+                        'Date': clean_date,
+                        'Highlight': highlights,
+                        'Companies': ', '.join(companies)
+                    })
+                else:
+                    # Log unexpected format but continue
+                    logger.warning(f"Unexpected highlights format for date {date_key}: {type(highlights)}")
+            
+            if result_data:
+                return DataFrame(result_data)
+            else:
+                # Return empty DataFrame with expected structure if no data
+                return DataFrame(columns=['Date', 'Highlight', 'Companies'])
+        else:
+            return DataFrame(columns=['Date', 'Highlight', 'Companies'])

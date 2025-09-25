@@ -1,0 +1,339 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Companies Timeline Chart</title>
+        <meta charset="utf-8">
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #2c3e50;
+                min-height: 100vh;
+            }
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+                background: white;
+                padding: 40px;
+                border-radius: 15px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            }
+            h1 {
+                color: #2c3e50;
+                text-align: center;
+                margin-bottom: 50px;
+                font-size: 2.5em;
+                font-weight: 300;
+            }
+            .chart-container {
+                position: relative;
+                margin: 300px 0;
+                padding: 0 50px;
+                min-height: 500px;
+            }
+            .timeline-line {
+                position: absolute;
+                top: 50%;
+                left: 50px;
+                right: 50px;
+                height: 4px;
+                background: linear-gradient(to right, #3498db, #2980b9);
+                border-radius: 2px;
+                transform: translateY(-50%);
+            }
+            .timeline-line::before {
+                content: '📊';
+                position: absolute;
+                left: -25px;
+                top: -15px;
+                font-size: 20px;
+            }
+            .timeline-line::after {
+                content: '🎯';
+                position: absolute;
+                right: -25px;
+                top: -15px;
+                font-size: 20px;
+            }
+            .chart-point {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+            .point-marker {
+                width: 14px;
+                height: 14px;
+                background: #e74c3c;
+                border: 3px solid white;
+                border-radius: 50%;
+                position: relative;
+                transform: translateX(-50%);
+                box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+                z-index: 20;
+            }
+            .date-label {
+                position: absolute;
+                top: 35px;
+                left: 0;
+                transform: translateX(-50%);
+                font-size: 0.75em;
+                font-weight: 600;
+                color: #3498db;
+                white-space: nowrap;
+                background: white;
+                padding: 3px 6px;
+                border-radius: 4px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            }
+            .highlights-box {
+                position: absolute;
+                left: 0;
+                transform: translateX(-50%);
+                background: white;
+                border-radius: 10px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+                padding: 15px;
+                min-width: 280px;
+                max-width: 320px;
+                border: 2px solid #3498db;
+                z-index: 10;
+            }
+            /* Above positioning */
+            .chart-point.above .highlights-box {
+                bottom: 60px;
+            }
+            .chart-point.above .arrow {
+                position: absolute;
+                top: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 0;
+                height: 0;
+                border-left: 10px solid transparent;
+                border-right: 10px solid transparent;
+                border-top: 10px solid #3498db;
+            }
+            /* Below positioning */
+            .chart-point.below .highlights-box {
+                top: 60px;
+            }
+            .chart-point.below .arrow {
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 0;
+                height: 0;
+                border-left: 10px solid transparent;
+                border-right: 10px solid transparent;
+                border-bottom: 10px solid #3498db;
+            }
+            .region-header {
+                font-size: 0.9em;
+                font-weight: bold;
+                color: #2c3e50;
+                margin: 10px 0 8px 0;
+                padding-bottom: 4px;
+                border-bottom: 1px solid #ecf0f1;
+            }
+            .region-header:first-child {
+                margin-top: 0;
+            }
+            .highlight-item {
+                background: rgba(52, 152, 219, 0.08);
+                padding: 6px 10px;
+                margin: 4px 0;
+                border-radius: 5px;
+                border-left: 3px solid #3498db;
+                font-size: 0.85em;
+                line-height: 1.3;
+            }
+            .summary-stats {
+                display: flex;
+                justify-content: center;
+                gap: 40px;
+                margin: 30px 0;
+                flex-wrap: wrap;
+            }
+            .stat-item {
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 10px;
+                text-align: center;
+                min-width: 150px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            }
+            .stat-number {
+                font-size: 2em;
+                font-weight: bold;
+                color: #3498db;
+                display: block;
+            }
+            .stat-label {
+                color: #7f8c8d;
+                font-size: 0.9em;
+                margin-top: 5px;
+            }
+            .instructions {
+                text-align: center;
+                color: #7f8c8d;
+                font-style: italic;
+                margin: 30px 0;
+                padding: 15px;
+                background: #f8f9fa;
+                border-radius: 8px;
+            }
+            .metadata {
+                text-align: center;
+                color: #7f8c8d;
+                font-size: 0.9em;
+                margin-top: 50px;
+                padding-top: 30px;
+                border-top: 2px solid #ecf0f1;
+            }
+            @media (max-width: 768px) {
+                .chart-container {
+                    padding: 0 20px;
+                }
+                .highlights-popup {
+                    min-width: 300px;
+                    max-width: 350px;
+                }
+                .summary-stats {
+                    gap: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📈 Companies Timeline Chart</h1>
+            
+            <div class="summary-stats">
+                <div class="stat-item">
+                    <span class="stat-number">7</span>
+                    <div class="stat-label">Days Analyzed</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">26</span>
+                    <div class="stat-label">Total Highlights</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">14</span>
+                    <div class="stat-label">USA Highlights</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">12</span>
+                    <div class="stat-label">India Highlights</div>
+                </div>
+            </div>
+            
+            <div class="instructions">
+                📍 Red markers show key dates with highlights displayed alternately above and below the timeline
+            </div>
+            
+            <div class="chart-container">
+                <div class="timeline-line"></div>
+                
+        <div class="chart-point above" style="left: 0.0%;" data-date="2025-09-19">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 19</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• The high fee on H-1B visas applies to both new visas and renewals, affecting Alphabet's hiring practices.</div><div class="highlight-item">• The introduction of a high fee on H-1B visas may require Amazon to rethink its hiring practices.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point below" style="left: 16.666666666666664%;" data-date="2025-09-20">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 20</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Amazon has advised H-1B and H-4 visa holders to remain in or return to the US to avoid complications from the new fee structure.</div><div class="highlight-item">• Microsoft is significantly impacted by the $100,000 H-1B visa fee, leading to increased operational costs and potential hiring strategy disruptions.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• TCS may need to reassess its US staffing strategies, potentially shifting focus to highly specialised, high-wage talent and domestic graduates.</div><div class="highlight-item">• Infosys is significantly impacted by the $100,000 annual fee on H-1B visas, which may dampen fresh applications and accelerate offshoring.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point above" style="left: 33.33333333333333%;" data-date="2025-09-21">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 21</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Microsoft is considering shifting more workers to Canada to avoid the high H-1B visa fee, potentially resulting in a loss of U.S. tax revenue.</div><div class="highlight-item">• Alphabet Inc. is expected to scale back on H-1B visa hires due to the high fee, potentially leading to project delays and cost escalations.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• Wipro has started reducing its reliance on H-1B visas by shifting work to India and hiring locally in the US.</div><div class="highlight-item">• TCS advised employees on H-1B visas to stay in or return to the U.S. before the new fee implementation, showing a strategic response to the policy change.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point below" style="left: 50.0%;" data-date="2025-09-22">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 22</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Amazon is the top H-1B sponsor in FY 2024 with over 9,000 approvals, facing the steepest cost burden among tech companies.</div><div class="highlight-item">• Microsoft is considering expanding operations in Vancouver or Bangalore to mitigate the impact of the H-1B visa fee.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• TCS is exploring remote work and client-side training in India as alternative solutions to manage the $100,000 H-1B visa fee.</div><div class="highlight-item">• Wipro is evaluating alternative strategies, including remote work and client-side training in India, to mitigate the financial impact of the new $100,000 H-1B visa fee.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point above" style="left: 66.66666666666666%;" data-date="2025-09-23">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 23</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Alphabet Inc.'s Google is significantly impacted by the $100,000 fee on new H-1B visa applications, posing a financial burden on the tech industry.</div><div class="highlight-item">• The new fee could prompt Microsoft to hire laid-off H-1B visa holders from other tech companies, offering a potential silver lining.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• Wipro's annual immigration bills could escalate by $150-550 million, impacting operating margins by 7-15%.</div><div class="highlight-item">• Infosys may need to curb short-term employee transfers and increase local hiring in the US due to new H-1B visa fees.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point below" style="left: 83.33333333333334%;" data-date="2025-09-24">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 24</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Microsoft advised H-1B employees to return to the US before the new fees took effect, showing a proactive approach.</div><div class="highlight-item">• The new $100,000 fee on H-1B visas could double Google's hiring costs, prompting a reassessment of human resources strategies.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• Infosys Ltd. faces increased operational costs due to the new high fee on H-1B visas, potentially leading to reduced hiring or job relocation back to India.</div><div class="highlight-item">• Over half of Wipro's yearly revenue comes from the U.S. market, making the new fee regime particularly impactful on its margins.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+        <div class="chart-point above" style="left: 100.0%;" data-date="2025-09-25">
+            <div class="point-marker"></div>
+            <div class="date-label">Sep 25</div>
+            <div class="highlights-box">
+        
+                <div class="region-header">US Companies</div>
+            <div class="highlight-item">• Amazon has not publicly commented on the introduction of the high H-1B visa fee, highlighting a new development in its response strategy.</div><div class="highlight-item">• Google has not publicly commented on the $100,000 H-1B visa fee, indicating a strategic silence or internal deliberation.</div>
+                <div class="region-header">Indian Companies</div>
+            <div class="highlight-item">• Infosys has decreased its reliance on H-1B visas by expanding offshore delivery and hiring locally in the US.</div><div class="highlight-item">• The new H-1B visa fee structure could increase visa costs to 1.0% of total employee costs for companies like Wipro.</div>
+                <div class="arrow"></div>
+            </div>
+        </div>
+        
+            </div>
+            
+            <div class="metadata">
+                <p>Report generated on September 25, 2025 at 01:43 PM</p>
+                <p>Timeline covers September 19 to September 25, 2025</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    

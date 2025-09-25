@@ -1,0 +1,444 @@
+
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Companies Timeline Report</title>
+        <meta charset="utf-8">
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: #2c3e50;
+                min-height: 100vh;
+            }
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                background: white;
+                padding: 40px;
+                border-radius: 15px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            }
+            h1 {
+                color: #2c3e50;
+                text-align: center;
+                margin-bottom: 50px;
+                padding-bottom: 20px;
+                border-bottom: 3px solid #3498db;
+                font-size: 2.8em;
+                font-weight: 300;
+            }
+            .timeline {
+                position: relative;
+                padding: 20px 0;
+            }
+            .timeline::before {
+                content: '';
+                position: absolute;
+                left: 50%;
+                top: 0;
+                bottom: 0;
+                width: 4px;
+                background: linear-gradient(to bottom, #3498db, #2980b9);
+                transform: translateX(-50%);
+            }
+            .timeline-item {
+                position: relative;
+                margin: 60px 0;
+                display: flex;
+                align-items: flex-start;
+            }
+            .timeline-marker {
+                position: absolute;
+                left: 50%;
+                top: 20px;
+                width: 16px;
+                height: 16px;
+                background: #3498db;
+                border: 4px solid white;
+                border-radius: 50%;
+                transform: translateX(-50%);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                z-index: 10;
+            }
+            .timeline-content {
+                width: 100%;
+                display: flex;
+                align-items: flex-start;
+                gap: 40px;
+            }
+            .timeline-date {
+                flex: 0 0 200px;
+                text-align: right;
+                padding-right: 40px;
+                margin-top: 10px;
+            }
+            .timeline-date .day {
+                display: block;
+                font-size: 1.1em;
+                font-weight: 600;
+                color: #3498db;
+            }
+            .timeline-date .date {
+                display: block;
+                font-size: 0.95em;
+                color: #7f8c8d;
+                margin-top: 5px;
+            }
+            .regions-container {
+                flex: 1;
+                margin-left: 40px;
+            }
+            .region-block {
+                background: white;
+                border-radius: 12px;
+                padding: 25px;
+                margin-bottom: 20px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+                border-left: 5px solid;
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+            .region-block:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+            }
+            .usa-block {
+                border-left-color: #e74c3c;
+                background: linear-gradient(135deg, #fff 0%, #fff5f5 100%);
+            }
+            .india-block {
+                border-left-color: #f39c12;
+                background: linear-gradient(135deg, #fff 0%, #fffbf5 100%);
+            }
+            .region-title {
+                font-size: 1.3em;
+                font-weight: 600;
+                margin: 0 0 10px 0;
+                color: #2c3e50;
+            }
+            .companies-list {
+                font-size: 0.9em;
+                color: #7f8c8d;
+                margin-bottom: 15px;
+                font-style: italic;
+            }
+            .highlights {
+                margin-top: 15px;
+            }
+            .highlight-item {
+                background: rgba(52, 152, 219, 0.05);
+                padding: 12px 15px;
+                margin: 8px 0;
+                border-radius: 8px;
+                border-left: 3px solid #3498db;
+                font-size: 0.95em;
+                line-height: 1.6;
+                transition: background 0.2s ease;
+            }
+            .highlight-item:hover {
+                background: rgba(52, 152, 219, 0.1);
+            }
+            .metadata {
+                text-align: center;
+                color: #7f8c8d;
+                font-size: 0.9em;
+                margin-top: 50px;
+                padding-top: 30px;
+                border-top: 2px solid #ecf0f1;
+            }
+            .summary-stats {
+                display: flex;
+                justify-content: center;
+                gap: 40px;
+                margin: 30px 0;
+                flex-wrap: wrap;
+            }
+            .stat-item {
+                background: #f8f9fa;
+                padding: 20px;
+                border-radius: 10px;
+                text-align: center;
+                min-width: 150px;
+            }
+            .stat-number {
+                font-size: 2em;
+                font-weight: bold;
+                color: #3498db;
+                display: block;
+            }
+            .stat-label {
+                color: #7f8c8d;
+                font-size: 0.9em;
+                margin-top: 5px;
+            }
+            @media (max-width: 768px) {
+                .timeline-content {
+                    flex-direction: column;
+                    gap: 20px;
+                }
+                .timeline-date {
+                    flex: none;
+                    text-align: left;
+                    padding-right: 0;
+                    margin-bottom: 10px;
+                }
+                .regions-container {
+                    margin-left: 0;
+                }
+                .timeline::before {
+                    left: 20px;
+                }
+                .timeline-marker {
+                    left: 20px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🕒 Companies Timeline Report</h1>
+            
+            <div class="summary-stats">
+                <div class="stat-item">
+                    <span class="stat-number">7</span>
+                    <div class="stat-label">Days Analyzed</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">20</span>
+                    <div class="stat-label">Total Highlights</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">7</span>
+                    <div class="stat-label">USA Highlights</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">13</span>
+                    <div class="stat-label">India Highlights</div>
+                </div>
+            </div>
+            
+            <div class="timeline">
+                
+        <div class="timeline-item">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+                <div class="timeline-date">
+                    <span class="day">Friday</span>
+                    <span class="date">September 19, 2025</span>
+                </div>
+                
+                <div class="regions-container">
+        
+                    <div class="region-block usa-block">
+                        <h3 class="region-title">🇺🇸 USA Companies</h3>
+                        <div class="companies-list">Alphabet Inc., Amazon.com Inc., Microsoft Corp.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• The high fee on H-1B visas could lead to a dramatic rethink of hiring strategies for major tech companies like Alphabet, Amazon, and Microsoft, affecting their ability to secure foreign talent.</div>
+                        </div>
+                    </div>
+            
+                    <div class="region-block india-block">
+                        <h3 class="region-title">🇮🇳 India Companies</h3>
+                        <div class="companies-list">Wipro Ltd., Infosys Ltd., Tata Consultancy Services Ltd.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• The introduction of a high fee on H-1B visas could affect Wipro and Infosys's hiring of foreign workers due to increased costs.</div>
+                        </div>
+                    </div>
+            
+                </div>
+            </div>
+        </div>
+        
+        <div class="timeline-item">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+                <div class="timeline-date">
+                    <span class="day">Saturday</span>
+                    <span class="date">September 20, 2025</span>
+                </div>
+                
+                <div class="regions-container">
+        
+                    <div class="region-block usa-block">
+                        <h3 class="region-title">🇺🇸 USA Companies</h3>
+                        <div class="companies-list">Alphabet Inc., Amazon.com Inc., Microsoft Corp.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• Amazon, Alphabet, and Microsoft are significantly impacted by the $100,000 annual fee on H-1B visas, leading to potential shifts in hiring strategies and increased operational costs.</div>
+                        </div>
+                    </div>
+            
+                    <div class="region-block india-block">
+                        <h3 class="region-title">🇮🇳 India Companies</h3>
+                        <div class="companies-list">Wipro Ltd., Infosys Ltd., Tata Consultancy Services Ltd.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• TCS, Infosys, and Wipro are significantly impacted by the $100,000 H-1B visa fee, affecting their ability to send engineers to the US and potentially leading to offshoring.</div><div class="highlight-item">• The high fee may force these companies to reconsider US staffing strategies, focusing on specialized talent and domestic graduates.</div>
+                        </div>
+                    </div>
+            
+                </div>
+            </div>
+        </div>
+        
+        <div class="timeline-item">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+                <div class="timeline-date">
+                    <span class="day">Sunday</span>
+                    <span class="date">September 21, 2025</span>
+                </div>
+                
+                <div class="regions-container">
+        
+                    <div class="region-block usa-block">
+                        <h3 class="region-title">🇺🇸 USA Companies</h3>
+                        <div class="companies-list">Alphabet Inc., Amazon.com Inc., Microsoft Corp.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• Microsoft and Alphabet are considering strategic shifts, such as relocating workers to avoid the high H-1B visa fee, while Amazon is advocating for a reconsideration of the fee.</div>
+                        </div>
+                    </div>
+            
+                    <div class="region-block india-block">
+                        <h3 class="region-title">🇮🇳 India Companies</h3>
+                        <div class="companies-list">Wipro Ltd., Infosys Ltd., Tata Consultancy Services Ltd.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• Wipro and Infosys's US-listed shares declined following the announcement of the new visa fee, reflecting investor concerns.</div><div class="highlight-item">• TCS advised employees on H-1B visas to stay in or return to the U.S. before the new fee implementation, showing a strategic response.</div>
+                        </div>
+                    </div>
+            
+                </div>
+            </div>
+        </div>
+        
+        <div class="timeline-item">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+                <div class="timeline-date">
+                    <span class="day">Monday</span>
+                    <span class="date">September 22, 2025</span>
+                </div>
+                
+                <div class="regions-container">
+        
+                    <div class="region-block usa-block">
+                        <h3 class="region-title">🇺🇸 USA Companies</h3>
+                        <div class="companies-list">Alphabet Inc., Amazon.com Inc., Microsoft Corp.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• Amazon, Microsoft, and Alphabet are exploring offshore expansions to mitigate the impact of the $100,000 H-1B visa fee, which threatens U.S. competitiveness and innovation.</div>
+                        </div>
+                    </div>
+            
+                    <div class="region-block india-block">
+                        <h3 class="region-title">🇮🇳 India Companies</h3>
+                        <div class="companies-list">Wipro Ltd., Infosys Ltd., Tata Consultancy Services Ltd.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• TCS and Wipro are exploring remote work and client-side training in India to manage the $100,000 H-1B visa fee.</div><div class="highlight-item">• The fee hike could reduce operating profits by 7-15% for Wipro and Infosys, prompting a reassessment of workforce strategies.</div>
+                        </div>
+                    </div>
+            
+                </div>
+            </div>
+        </div>
+        
+        <div class="timeline-item">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+                <div class="timeline-date">
+                    <span class="day">Tuesday</span>
+                    <span class="date">September 23, 2025</span>
+                </div>
+                
+                <div class="regions-container">
+        
+                    <div class="region-block usa-block">
+                        <h3 class="region-title">🇺🇸 USA Companies</h3>
+                        <div class="companies-list">Alphabet Inc., Amazon.com Inc., Microsoft Corp.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• Despite the $100,000 fee, Amazon and Google could benefit strategically by affording higher fees for skilled candidates, while Microsoft sees potential in hiring laid-off H-1B holders.</div>
+                        </div>
+                    </div>
+            
+                    <div class="region-block india-block">
+                        <h3 class="region-title">🇮🇳 India Companies</h3>
+                        <div class="companies-list">Wipro Ltd., Infosys Ltd., Tata Consultancy Services Ltd.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• Wipro's annual immigration bills could escalate by $150-550 million, impacting operating margins by 7-15%.</div><div class="highlight-item">• TCS employs 5,505 H-1B visa holders, indicating its significant reliance on this visa category.</div>
+                        </div>
+                    </div>
+            
+                </div>
+            </div>
+        </div>
+        
+        <div class="timeline-item">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+                <div class="timeline-date">
+                    <span class="day">Wednesday</span>
+                    <span class="date">September 24, 2025</span>
+                </div>
+                
+                <div class="regions-container">
+        
+                    <div class="region-block usa-block">
+                        <h3 class="region-title">🇺🇸 USA Companies</h3>
+                        <div class="companies-list">Alphabet Inc., Amazon.com Inc., Microsoft Corp.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• Microsoft and Alphabet are proactively managing the impact of the $100,000 H-1B visa fee, with Microsoft advising employees to return to the U.S. and Alphabet reassessing HR strategies.</div>
+                        </div>
+                    </div>
+            
+                    <div class="region-block india-block">
+                        <h3 class="region-title">🇮🇳 India Companies</h3>
+                        <div class="companies-list">Wipro Ltd., Infosys Ltd., Tata Consultancy Services Ltd.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• The new H-1B visa fee deepens margin pressures for Infosys, Wipro, and TCS, which already face challenges from tighter client budgets and technological disruptions.</div><div class="highlight-item">• Over half of Wipro and TCS's revenue comes from the U.S., making the new fee regime particularly impactful on their margins.</div>
+                        </div>
+                    </div>
+            
+                </div>
+            </div>
+        </div>
+        
+        <div class="timeline-item">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+                <div class="timeline-date">
+                    <span class="day">Thursday</span>
+                    <span class="date">September 25, 2025</span>
+                </div>
+                
+                <div class="regions-container">
+        
+                    <div class="region-block usa-block">
+                        <h3 class="region-title">🇺🇸 USA Companies</h3>
+                        <div class="companies-list">Alphabet Inc., Amazon.com Inc., Microsoft Corp.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• Amazon, Microsoft, and Alphabet have not publicly commented on the $100,000 H-1B visa fee, indicating strategic silence or internal deliberation.</div>
+                        </div>
+                    </div>
+            
+                    <div class="region-block india-block">
+                        <h3 class="region-title">🇮🇳 India Companies</h3>
+                        <div class="companies-list">Wipro Ltd., Infosys Ltd., Tata Consultancy Services Ltd.</div>
+                        <div class="highlights">
+            <div class="highlight-item">• The new H-1B visa fee structure could increase visa costs to 1.0% of total employee costs for companies like Wipro and Infosys.</div><div class="highlight-item">• Infosys has decreased its reliance on H-1B visas by expanding offshore delivery and hiring locally in the US.</div>
+                        </div>
+                    </div>
+            
+                </div>
+            </div>
+        </div>
+        
+            </div>
+            
+            <div class="metadata">
+                <p>Report generated on September 25, 2025 at 12:50 PM</p>
+                <p>Timeline covers September 19 to September 25, 2025</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    
