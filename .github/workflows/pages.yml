@@ -21,6 +21,7 @@ jobs:
         run: |
           mkdir -p .public
           # Files for Build your own MCP workflow
+          mkdir -p .public/build_your_own_mcp/assets
           mv Build_Your_Own_MCP/assets/claude-ukraine-russia-conflict-dashboard.html .public/build_your_own_mcp/assets/claude-ukraine-russia-conflict-dashboard.html
           mv Build_Your_Own_MCP/assets/claude-visa-fees-dashboard.html .public/build_your_own_mcp/assets/claude-visa-fees-dashboard.html
 
