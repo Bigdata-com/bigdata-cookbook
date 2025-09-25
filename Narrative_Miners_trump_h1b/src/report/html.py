@@ -2249,7 +2249,121 @@ def generate_combined_dashboard_html(df_highlights, plotly_fig, output_file="com
     return output_file
 
 
-def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summaries, plotly_fig, output_file="interactive_dashboard.html"):
+def generate_entities_reports_html(df_entities_final_summary, countries_dict):
+    """
+    Generate HTML section for individual entity reports.
+    
+    Args:
+        df_entities_final_summary: DataFrame with columns 'Entity' and 'summary'
+        countries_dict: Dictionary with country names as keys and lists of companies as values
+    
+    Returns:
+        str: HTML content for entities reports section
+    """
+    def get_entity_region(entity_name):
+        """Classify entity by region using countries_dict"""
+        for country, company_list in countries_dict.items():
+            if any(company in entity_name for company in company_list):
+                return country
+        return 'Other'
+    
+    def get_country_flag(country_name):
+        """Get appropriate flag emoji for country"""
+        flag_map = {
+            'US': '🇺🇸',
+            'USA': '🇺🇸', 
+            'United States': '🇺🇸',
+            'India': '🇮🇳',
+            'IN': '🇮🇳',
+            'China': '🇨🇳',
+            'CN': '🇨🇳',
+            'UK': '🇬🇧',
+            'United Kingdom': '🇬🇧',
+            'Germany': '🇩🇪',
+            'DE': '🇩🇪',
+            'Japan': '🇯🇵',
+            'JP': '🇯🇵',
+            'Canada': '🇨🇦',
+            'CA': '🇨🇦',
+            'France': '🇫🇷',
+            'FR': '🇫🇷'
+        }
+        return flag_map.get(country_name, '🌍')
+    
+    # Add region classification
+    df_entities = df_entities_final_summary.copy()
+    df_entities['Region'] = df_entities['Entity'].apply(get_entity_region)
+    
+    html_content = f"""
+        <div class="content-section" id="entitiesSection">
+            <h2 class="section-title">📋 Entity Reports</h2>
+            <div class="entities-container">
+    """
+    
+    # Generate sections dynamically for each country in countries_dict
+    for country in countries_dict.keys():
+        country_entities = df_entities[df_entities['Region'] == country]
+        if len(country_entities) > 0:
+            # Get appropriate flag emoji for country
+            country_flag = get_country_flag(country)
+            html_content += f"""
+            <div class="region-section">
+                <h3 class="region-title">{country_flag} {country} Companies</h3>
+                <div class="entities-grid">
+            """
+            for _, row in country_entities.iterrows():
+                entity_name = row['Entity']
+                summary = row['summary']
+                html_content += f"""
+                <div class="entity-card">
+                    <div class="entity-header">
+                        <h4 class="entity-name">{entity_name}</h4>
+                    </div>
+                    <div class="entity-summary">
+                        <p>{summary}</p>
+                    </div>
+                </div>
+                """
+            html_content += """
+                </div>
+            </div>
+            """
+    
+    # Other Entities Section (entities not found in countries_dict)
+    other_entities = df_entities[df_entities['Region'] == 'Other']
+    if len(other_entities) > 0:
+        html_content += f"""
+            <div class="region-section">
+                <h3 class="region-title">🌍 Other Entities</h3>
+                <div class="entities-grid">
+        """
+        for _, row in other_entities.iterrows():
+            entity_name = row['Entity']
+            summary = row['summary']
+            html_content += f"""
+                <div class="entity-card">
+                    <div class="entity-header">
+                        <h4 class="entity-name">{entity_name}</h4>
+                    </div>
+                    <div class="entity-summary">
+                        <p>{summary}</p>
+                    </div>
+                </div>
+            """
+        html_content += """
+                </div>
+            </div>
+        """
+    
+    html_content += """
+            </div>
+        </div>
+    """
+    
+    return html_content
+
+
+def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summaries, plotly_fig, countries_dict, df_entities_final_summary=None, output_file="interactive_dashboard.html"):
     """
     Generate HTML report with interactive timeline that can switch between country mode and company mode.
     
@@ -2257,38 +2371,43 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
         df_highlights: DataFrame with highlights by countries
         df_company_summaries: DataFrame with Entity and enhanced_summary columns  
         plotly_fig: Plotly figure object
+        countries_dict: Dictionary with country names as keys and lists of companies as values
+        df_entities_final_summary: Optional DataFrame with entity summaries
         output_file: Output HTML file name
     """
     import pandas as pd
     from datetime import datetime
     import json
     
-    # Generate timeline data for countries mode (existing logic)
+    # Generate timeline data for countries mode using countries_dict
     df_timeline = df_highlights.copy()
     # Convert Date column to datetime (dates should already be in YYYY-MM-DD format)
     df_timeline['Date'] = pd.to_datetime(df_timeline['Date'])
     
-    us_companies = ['Alphabet Inc.', 'Amazon.com Inc.', 'Microsoft Corp.']
-    india_companies = ['Wipro Ltd.', 'Infosys Ltd.', 'Tata Consultancy Services Ltd.']
-    
     def get_region(companies_str):
-        if any(company in companies_str for company in us_companies):
-            return 'USA'
-        elif any(company in companies_str for company in india_companies):
-            return 'India'
-        else:
-            return 'Other'
+        """Classify highlights by region based on companies involved"""
+        for country, company_list in countries_dict.items():
+            if any(company in companies_str for company in company_list):
+                return country
+        return 'Other'
     
     df_timeline['Region'] = df_timeline['Companies'].apply(get_region)
     timeline_dates = sorted(df_timeline['Date'].unique())
     
-    # Generate countries timeline data
+    # Get available countries from the dict
+    available_countries = list(countries_dict.keys())
+    default_country = available_countries[0] if available_countries else 'USA'
+    
+    # Generate countries timeline data for all available countries
     countries_timeline_data = {}
     for date in timeline_dates:
-        countries_timeline_data[date.strftime('%Y-%m-%d')] = {
-            'USA': df_timeline[(df_timeline['Date'] == date) & (df_timeline['Region'] == 'USA')]['Highlight'].tolist(),
-            'India': df_timeline[(df_timeline['Date'] == date) & (df_timeline['Region'] == 'India')]['Highlight'].tolist()
-        }
+        date_data = {}
+        # Initialize all countries with their highlights for this date
+        for country in available_countries:
+            date_data[country] = df_timeline[
+                (df_timeline['Date'] == date) & (df_timeline['Region'] == country)
+            ]['Highlight'].tolist()
+        countries_timeline_data[date.strftime('%Y-%m-%d')] = date_data
     
     # Generate company summaries data using enhanced_summary field
     company_summaries_data = {}
@@ -2303,31 +2422,29 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
             company_date_content = {}
             
             if has_date_column:
-                # Use date-specific enhanced_summary
-                for _, row in entity_data.iterrows():
-                    row_date = pd.to_datetime(row['Date']).strftime('%Y-%m-%d')
-                    if row_date in [d.strftime('%Y-%m-%d') for d in timeline_dates]:
-                        company_date_content[row_date] = row['enhanced_summary']
-            else:
-                # Use same enhanced_summary for all timeline dates where company appears
-                enhanced_summary = entity_data.iloc[0]['enhanced_summary']
-                
-                # Find dates where this company appears in highlights 
+                # Use date-specific enhanced_summary for ALL timeline dates
                 for date in timeline_dates:
                     date_str = date.strftime('%Y-%m-%d')
-                    date_highlights = df_timeline[df_timeline['Date'] == date]
-                    
-                    # Check if company appears in any highlight for this date
-                    company_appears = any(entity in companies for companies in date_highlights['Companies'])
-                    
-                    if company_appears:
-                        company_date_content[date_str] = enhanced_summary
+                    # Find summary for this specific date
+                    date_rows = entity_data[pd.to_datetime(entity_data['Date']).dt.strftime('%Y-%m-%d') == date_str]
+                    if len(date_rows) > 0:
+                        company_date_content[date_str] = date_rows['enhanced_summary'].iloc[0]
+                    else:
+                        company_date_content[date_str] = "No summary available for this date"
+            else:
+                # Use same enhanced_summary for ALL timeline dates
+                enhanced_summary = entity_data.iloc[0]['enhanced_summary']
+                
+                # Add summary for ALL dates in timeline
+                for date in timeline_dates:
+                    date_str = date.strftime('%Y-%m-%d')
+                    company_date_content[date_str] = enhanced_summary
             
-            if company_date_content:  # Only include companies that have data
-                company_summaries_data[entity] = {
-                    'date_content': company_date_content,
-                    'general_summary': entity_data.iloc[0]['enhanced_summary']
-                }
+            # Include ALL companies with their data for all dates
+            company_summaries_data[entity] = {
+                'date_content': company_date_content,
+                'general_summary': entity_data.iloc[0]['enhanced_summary']
+            }
     
     # Get Plotly HTML
     plotly_html = plotly_fig.to_html(include_plotlyjs='cdn', div_id="plotly-chart")
@@ -2555,6 +2672,101 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 line-height: 1.4;
                 text-align: justify;
             }}
+            .entities-container {{
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 0 20px;
+            }}
+            .region-section {{
+                margin-bottom: 50px;
+            }}
+            .region-title {{
+                color: #2c3e50;
+                font-size: 1.8em;
+                margin-bottom: 30px;
+                text-align: center;
+                font-weight: 600;
+            }}
+            .entities-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                gap: 25px;
+                margin-bottom: 40px;
+            }}
+            .entity-card {{
+                background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+                border-radius: 15px;
+                padding: 25px;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+                border: 1px solid #e9ecef;
+                transition: all 0.3s ease;
+            }}
+            .entity-card:hover {{
+                transform: translateY(-5px);
+                box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            }}
+            .entity-header {{
+                border-bottom: 2px solid #ecf0f1;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+            }}
+            .entity-name {{
+                color: #2c3e50;
+                font-size: 1.3em;
+                font-weight: 600;
+                margin: 0;
+            }}
+            .entity-summary {{
+                color: #34495e;
+                line-height: 1.6;
+            }}
+            .entity-summary p {{
+                margin: 0;
+                text-align: justify;
+            }}
+            .highlight-item.empty {{
+                background: rgba(149, 165, 166, 0.08);
+                color: #7f8c8d;
+                font-style: italic;
+                border-left: 3px solid #bdc3c7;
+            }}
+            .checkbox-container {{
+                display: flex;
+                flex-wrap: wrap;
+                gap: 15px;
+                margin-top: 10px;
+            }}
+            .checkbox-item {{
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                background: #f8f9fa;
+                border-radius: 8px;
+                border: 2px solid transparent;
+                transition: all 0.3s ease;
+            }}
+            .checkbox-item:hover {{
+                background: #e9ecef;
+                border-color: #3498db;
+            }}
+            .checkbox-item input[type="checkbox"] {{
+                width: 18px;
+                height: 18px;
+                accent-color: #3498db;
+                cursor: pointer;
+            }}
+            .checkbox-item label {{
+                font-size: 0.9em;
+                font-weight: 500;
+                color: #2c3e50;
+                cursor: pointer;
+                margin: 0;
+            }}
+            .checkbox-item input[type="checkbox"]:checked + label {{
+                color: #3498db;
+                font-weight: 600;
+            }}
             .metadata {{
                 text-align: center;
                 color: #7f8c8d;
@@ -2590,9 +2802,15 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                     <div class="control-group">
                         <label class="control-label">Timeline Mode:</label>
                         <select id="modeSelect" onchange="changeTimelineMode()">
-                            <option value="countries">Countries Mode</option>
+                            <option value="country">Country Mode</option>
                             <option value="company">Company Mode</option>
                         </select>
+                    </div>
+                    <div class="control-group" id="countryGroup">
+                        <label class="control-label">Select Countries:</label>
+                        <div class="checkbox-container">
+                            {chr(10).join(f'<div class="checkbox-item"><input type="checkbox" id="country_{country}" value="{country}" {"checked" if country == default_country else ""} onchange="updateSelectedCountries()"><label for="country_{country}">{country}</label></div>' for country in available_countries)}
+                        </div>
                     </div>
                     <div class="control-group" id="companyGroup" style="display: none;">
                         <label class="control-label">Select Company:</label>
@@ -2616,27 +2834,52 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
             </div>
         </div>
         
+        {generate_entities_reports_html(df_entities_final_summary, countries_dict) if df_entities_final_summary is not None else ""}
+        
         <script>
             // Timeline data
             const countriesData = {json.dumps(countries_timeline_data)};
             const companiesData = {json.dumps(company_summaries_data)};
+            const availableCountries = {json.dumps(available_countries)};
             
-            let currentMode = 'countries';
+            let currentMode = 'country';
+            let selectedCountries = ['{default_country}'];
             let currentCompany = '{available_companies[0] if available_companies else ""}';
             
             function changeTimelineMode() {{
                 const mode = document.getElementById('modeSelect').value;
                 const companyGroup = document.getElementById('companyGroup');
+                const countryGroup = document.getElementById('countryGroup');
                 
                 currentMode = mode;
                 
                 if (mode === 'company') {{
                     companyGroup.style.display = 'inline-block';
+                    countryGroup.style.display = 'none';
                     updateTimelineCompany();
                 }} else {{
                     companyGroup.style.display = 'none';
+                    countryGroup.style.display = 'inline-block';
                     updateTimelineCountries();
                 }}
+            }}
+            
+            function updateSelectedCountries() {{
+                selectedCountries = [];
+                availableCountries.forEach(country => {{
+                    const checkbox = document.getElementById(`country_${{country}}`);
+                    if (checkbox && checkbox.checked) {{
+                        selectedCountries.push(country);
+                    }}
+                }});
+                
+                // Ensure at least one country is selected
+                if (selectedCountries.length === 0) {{
+                    selectedCountries = [availableCountries[0]];
+                    document.getElementById(`country_${{availableCountries[0]}}`).checked = true;
+                }}
+                
+                updateTimelineCountries();
             }}
             
             function changeCompany() {{
@@ -2647,20 +2890,23 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
             function updateTimelineCountries() {{
                 const container = document.getElementById('timelineContent');
                 let html = '';
-                let pointIndex = 0;
                 
                 const sortedDates = Object.keys(countriesData).sort();
                 const totalDays = sortedDates.length;
                 
                 sortedDates.forEach((dateStr, index) => {{
                     const data = countriesData[dateStr];
-                    const usaHighlights = data.USA || [];
-                    const indiaHighlights = data.India || [];
                     
-                    if (usaHighlights.length === 0 && indiaHighlights.length === 0) return;
+                    // Check if any selected country has highlights for this date
+                    let hasHighlights = false;
+                    selectedCountries.forEach(country => {{
+                        if (data[country] && data[country].length > 0) {{
+                            hasHighlights = true;
+                        }}
+                    }});
                     
                     const position = totalDays > 1 ? (index / (totalDays - 1)) * 100 : 50;
-                    const isAbove = pointIndex % 2 === 0;
+                    const isAbove = index % 2 === 0;
                     const positionClass = isAbove ? 'above' : 'below';
                     const dateDisplay = new Date(dateStr).toLocaleDateString('en-US', {{month: 'short', day: 'numeric'}});
                     
@@ -2670,26 +2916,24 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                             <div class="date-label">${{dateDisplay}}</div>
                             <div class="highlights-box">`;
                     
-                    if (usaHighlights.length > 0) {{
-                        html += '<div class="region-header">US Companies</div>';
-                        usaHighlights.forEach(highlight => {{
-                            html += `<div class="highlight-item">• ${{highlight}}</div>`;
-                        }});
-                    }}
-                    
-                    if (indiaHighlights.length > 0) {{
-                        html += '<div class="region-header">Indian Companies</div>';
-                        indiaHighlights.forEach(highlight => {{
-                            html += `<div class="highlight-item">• ${{highlight}}</div>`;
-                        }});
-                    }}
+                    // Show highlights for each selected country
+                    selectedCountries.forEach(country => {{
+                        const countryHighlights = data[country] || [];
+                        html += `<div class="region-header">${{country}} Companies</div>`;
+                        
+                        if (countryHighlights.length > 0) {{
+                            countryHighlights.forEach(highlight => {{
+                                html += `<div class="highlight-item">• ${{highlight}}</div>`;
+                            }});
+                        }} else {{
+                            html += `<div class="highlight-item empty">No highlights for this date</div>`;
+                        }}
+                    }});
                     
                     html += `
-                                <div class="arrow"></div>
                             </div>
+                            <div class="arrow"></div>
                         </div>`;
-                    
-                    pointIndex++;
                 }});
                 
                 container.innerHTML = html;
@@ -2730,7 +2974,7 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 container.innerHTML = html;
             }}
             
-            // Initialize with countries mode
+            // Initialize with country mode
             updateTimelineCountries();
         </script>
     </body>
