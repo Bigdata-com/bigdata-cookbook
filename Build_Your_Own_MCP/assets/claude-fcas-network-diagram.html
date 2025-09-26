@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>European FCAS Companies Network</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #4a9eff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(74, 158, 255, 0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #8892b0;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+        }
+
+        .filter-btn:hover {
+            background: rgba(74, 158, 255, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 158, 255, 0.3);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(45deg, #4a9eff, #00ff88);
+            border-color: transparent;
+            box-shadow: 0 5px 20px rgba(74, 158, 255, 0.4);
+        }
+
+        #network {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        #network::before {
+            content: "";
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #4a9eff, #00ff88, #ff006e, #4a9eff);
+            border-radius: 15px;
+            opacity: 0.2;
+            z-index: -1;
+        }
+
+        .node {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node:hover {
+            filter: brightness(1.3);
+        }
+
+        .node-label {
+            pointer-events: none;
+            font-size: 12px;
+            font-weight: 500;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8),
+                         0 0 20px rgba(0, 0, 0, 0.6);
+        }
+
+        .link {
+            fill: none;
+            stroke-opacity: 0.6;
+            transition: all 0.3s ease;
+        }
+
+        .link:hover {
+            stroke-opacity: 1;
+            stroke-width: 3;
+        }
+
+        .legend {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            max-width: 250px;
+            cursor: move;
+            user-select: none;
+            z-index: 100;
+        }
+
+        .legend:active {
+            cursor: grabbing;
+        }
+
+        .legend h3 {
+            margin-top: 0;
+            color: #4a9eff;
+            font-size: 1.1em;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 25px;
+            height: 25px;
+            margin-right: 10px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .info-panel {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #4a9eff;
+            display: none;
+            max-width: 300px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .info-panel h4 {
+            margin-top: 0;
+            color: #4a9eff;
+        }
+
+        .info-panel p {
+            margin: 5px 0;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px 20px;
+            border-radius: 10px;
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        .stat-card h3 {
+            color: #4a9eff;
+            margin: 0;
+            font-size: 2em;
+        }
+
+        .stat-card p {
+            margin: 5px 0 0 0;
+            color: #8892b0;
+            font-size: 0.9em;
+        }
+
+        .source-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border-left: 3px solid #4a9eff;
+            font-size: 14px;
+            color: #8892b0;
+        }
+
+        .source-info a {
+            color: #4a9eff;
+            text-decoration: none;
+        }
+
+        .source-info a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>European Future Combat Air System (FCAS)</h1>
+        <p class="subtitle">Interactive Network of Participating Companies and Organizations</p>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3 id="companyCount">0</h3>
+                <p>Companies</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="countryCount">0</h3>
+                <p>Countries</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="componentCount">0</h3>
+                <p>Components</p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="filter-btn active" onclick="filterByType('all')">All</button>
+            <button class="filter-btn" onclick="filterByType('fighter')">Next Gen Fighter</button>
+            <button class="filter-btn" onclick="filterByType('remote')">Remote Carriers</button>
+            <button class="filter-btn" onclick="filterByType('cloud')">Combat Cloud</button>
+            <button class="filter-btn" onclick="filterByType('engine')">Engine</button>
+            <button class="filter-btn" onclick="filterByType('sensors')">Sensors & Avionics</button>
+            <button class="filter-btn" onclick="filterByType('weapons')">Weapons</button>
+        </div>
+
+        <div id="network"></div>
+
+        <div class="legend">
+            <h3>Legend</h3>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff6b6b;"></div>
+                <span>Prime Contractors</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #4ecdc4;"></div>
+                <span>Major Partners</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #45b7d1;"></div>
+                <span>Engine Partners</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #96ceb4;"></div>
+                <span>Sensors & Avionics</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #dda15e;"></div>
+                <span>Weapons Systems</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #bc6c25;"></div>
+                <span>Remote Carriers</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #f4a261;"></div>
+                <span>Support Systems</span>
+            </div>
+        </div>
+
+        <div class="info-panel" id="infoPanel"></div>
+
+        <div class="source-info">
+            <strong>Data Sources:</strong> **Bigdata – Multiple sources (2022-2025)**
+            <br>• Phase 1B contract signed December 2022 | **Bigdata – Airbus SE Q4 2023 Report (Feb 2024)**
+            <br>• Companies identified through European Defence Fund documentation | **Bigdata – Various aerospace reports (2024-2025)**
+            <br>• Network relationships based on official FCAS program structure | **Bigdata – Industry announcements (2022-2025)**
+            <br><em>Note: This visualization represents publicly disclosed partnerships and may not include all subcontractors.</em>
+        </div>
+    </div>
+
+    <script>
+        // Data structure for FCAS network
+        const nodesData = [
+            // Core FCAS Program
+            { id: "FCAS", name: "FCAS Program", type: "program", country: "EU", role: "System of Systems", size: 35 },
+            
+            // Prime Contractors - Next Generation Fighter
+            { id: "Dassault", name: "Dassault Aviation", type: "prime", country: "France", role: "NGF Prime Contractor", component: ["fighter"], size: 30 },
+            { id: "Airbus_DS", name: "Airbus Defence & Space", type: "prime", country: "Germany/Spain", role: "Remote Carriers Lead", component: ["fighter", "remote", "cloud"], size: 30 },
+            
+            // Engine Consortium
+            { id: "EUMET", name: "EUMET JV", type: "engine", country: "France/Germany", role: "Engine Consortium", component: ["engine"], size: 25 },
+            { id: "Safran", name: "Safran Aircraft Engines", type: "engine", country: "France", role: "Engine Hot Parts", component: ["engine"], size: 22 },
+            { id: "MTU", name: "MTU Aero Engines", type: "engine", country: "Germany", role: "Engine Compressors", component: ["engine"], size: 22 },
+            { id: "ITP", name: "ITP Aero", type: "engine", country: "Spain", role: "Engine Turbine", component: ["engine"], size: 20 },
+            
+            // Sensors and Avionics
+            { id: "Thales", name: "Thales", type: "sensors", country: "France", role: "Sensors & Avionics", component: ["sensors", "cloud"], size: 22 },
+            { id: "Indra", name: "Indra", type: "sensors", country: "Spain", role: "Sensors & Mission Systems", component: ["sensors", "cloud"], size: 20 },
+            { id: "FCMS", name: "FCMS", type: "sensors", country: "Germany", role: "Sensors Consortium", component: ["sensors"], size: 18 },
+            { id: "Hensoldt", name: "Hensoldt", type: "sensors", country: "Germany", role: "Radar & Electronics", component: ["sensors"], size: 18 },
+            
+            // Weapons Systems
+            { id: "MBDA", name: "MBDA", type: "weapons", country: "EU", role: "Missile Systems", component: ["weapons"], size: 20 },
+            
+            // Remote Carriers
+            { id: "Satnus", name: "Satnus JV", type: "remote", country: "Spain", role: "Remote Carrier Tech", component: ["remote"], size: 18 },
+            { id: "GMV", name: "GMV", type: "remote", country: "Spain", role: "RC Systems", component: ["remote"], size: 15 },
+            { id: "Sener", name: "Sener Aeroespacial", type: "remote", country: "Spain", role: "RC Systems", component: ["remote"], size: 15 },
+            { id: "Tecnobit", name: "Tecnobit-Grupo Oesía", type: "remote", country: "Spain", role: "RC Systems", component: ["remote"], size: 15 },
+            { id: "Diehl", name: "Diehl Defence", type: "remote", country: "Germany", role: "Light Remote Carriers", component: ["remote"], size: 18 },
+            
+            // Support and Communications
+            { id: "Rohde", name: "Rohde & Schwarz", type: "support", country: "Germany", role: "Communications", component: ["cloud"], size: 15 },
+            { id: "Naval", name: "Naval Group", type: "support", country: "France", role: "Naval Integration", component: ["cloud"], size: 15 },
+            
+            // AI and Technology Partners
+            { id: "NeuralAgent", name: "NeuralAgent", type: "support", country: "Germany", role: "AI Systems", component: ["cloud"], size: 12 },
+            
+            // National Nodes
+            { id: "France", name: "France MoD", type: "nation", country: "France", role: "Partner Nation (Ministry of Defence)", size: 25 },
+            { id: "Germany", name: "Germany MoD", type: "nation", country: "Germany", role: "Partner Nation (Ministry of Defence)", size: 25 },
+            { id: "Spain", name: "Spain MoD", type: "nation", country: "Spain", role: "Partner Nation (Ministry of Defence)", size: 25 },
+            { id: "Belgium", name: "Belgium MoD", type: "nation", country: "Belgium", role: "Observer Nation (Ministry of Defence)", size: 18 }
+        ];
+
+        const linksData = [
+            // Program to Nations
+            { source: "FCAS", target: "France", type: "government" },
+            { source: "FCAS", target: "Germany", type: "government" },
+            { source: "FCAS", target: "Spain", type: "government" },
+            { source: "FCAS", target: "Belgium", type: "observer" },
+            
+            // Prime Contractors
+            { source: "FCAS", target: "Dassault", type: "prime" },
+            { source: "FCAS", target: "Airbus_DS", type: "prime" },
+            
+            // Engine Development
+            { source: "FCAS", target: "EUMET", type: "engine" },
+            { source: "EUMET", target: "Safran", type: "partnership" },
+            { source: "EUMET", target: "MTU", type: "partnership" },
+            { source: "EUMET", target: "ITP", type: "partnership" },
+            
+            // Sensors and Avionics
+            { source: "FCAS", target: "Thales", type: "sensors" },
+            { source: "FCAS", target: "Indra", type: "sensors" },
+            { source: "FCAS", target: "FCMS", type: "sensors" },
+            { source: "FCMS", target: "Hensoldt", type: "partnership" },
+            { source: "Thales", target: "Indra", type: "collaboration" },
+            
+            // Weapons
+            { source: "FCAS", target: "MBDA", type: "weapons" },
+            { source: "Dassault", target: "MBDA", type: "integration" },
+            
+            // Remote Carriers
+            { source: "Airbus_DS", target: "Satnus", type: "remote" },
+            { source: "Satnus", target: "GMV", type: "partnership" },
+            { source: "Satnus", target: "Sener", type: "partnership" },
+            { source: "Satnus", target: "Tecnobit", type: "partnership" },
+            { source: "Airbus_DS", target: "Diehl", type: "remote" },
+            
+            // Support Systems
+            { source: "FCAS", target: "Rohde", type: "support" },
+            { source: "FCAS", target: "Naval", type: "support" },
+            { source: "Airbus_DS", target: "NeuralAgent", type: "ai" },
+            
+            // National Links
+            { source: "France", target: "Dassault", type: "national" },
+            { source: "France", target: "Safran", type: "national" },
+            { source: "France", target: "Thales", type: "national" },
+            { source: "Germany", target: "Airbus_DS", type: "national" },
+            { source: "Germany", target: "MTU", type: "national" },
+            { source: "Germany", target: "Hensoldt", type: "national" },
+            { source: "Spain", target: "Indra", type: "national" },
+            { source: "Spain", target: "ITP", type: "national" },
+            { source: "Spain", target: "Satnus", type: "national" }
+        ];
+
+        // Color scheme
+        const colorScale = {
+            prime: "#ff6b6b",
+            program: "#ffd93d",
+            engine: "#45b7d1",
+            sensors: "#96ceb4",
+            weapons: "#dda15e",
+            remote: "#bc6c25",
+            support: "#f4a261",
+            nation: "#6c5ce7"
+        };
+
+        // Initialize visualization
+        const width = 1200;
+        const height = 700;
+
+        const svg = d3.select("#network")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        // Add gradients
+        const defs = svg.append("defs");
+        
+        Object.entries(colorScale).forEach(([key, color]) => {
+            const gradient = defs.append("radialGradient")
+                .attr("id", `gradient-${key}`);
+            gradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", color)
+                .attr("stop-opacity", 1);
+            gradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", color)
+                .attr("stop-opacity", 0.6);
+        });
+
+        // Create simulation
+        const simulation = d3.forceSimulation(nodesData)
+            .force("link", d3.forceLink(linksData).id(d => d.id).distance(100))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("collision", d3.forceCollide().radius(d => d.size + 10));
+
+        // Create links
+        const link = svg.append("g")
+            .selectAll("line")
+            .data(linksData)
+            .enter().append("line")
+            .attr("class", "link")
+            .attr("stroke", "#4a9eff")
+            .attr("stroke-width", d => d.type === "prime" ? 3 : 2)
+            .attr("stroke-dasharray", d => d.type === "observer" ? "5,5" : "none");
+
+        // Create nodes
+        const node = svg.append("g")
+            .selectAll("g")
+            .data(nodesData)
+            .enter().append("g")
+            .attr("class", "node")
+            .call(d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended));
+
+        node.append("circle")
+            .attr("r", d => d.size)
+            .attr("fill", d => `url(#gradient-${d.type})`);
+
+        node.append("text")
+            .attr("class", "node-label")
+            .attr("dy", d => d.size + 15)
+            .attr("text-anchor", "middle")
+            .attr("fill", "white")
+            .text(d => d.name);
+
+        // Add interactivity
+        node.on("mouseover", function(event, d) {
+            showInfoPanel(event, d);
+        })
+        .on("mouseout", function() {
+            hideInfoPanel();
+        });
+
+        // Update positions on tick
+        simulation.on("tick", () => {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+        });
+
+        // Drag functions
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Info panel functions
+        function showInfoPanel(event, d) {
+            const panel = document.getElementById("infoPanel");
+            panel.innerHTML = `
+                <h4>${d.name}</h4>
+                <p><strong>Role:</strong> ${d.role}</p>
+                <p><strong>Country:</strong> ${d.country}</p>
+                <p><strong>Type:</strong> ${d.type.charAt(0).toUpperCase() + d.type.slice(1)}</p>
+                ${d.component ? `<p><strong>Components:</strong> ${d.component.join(", ")}</p>` : ""}
+            `;
+            panel.style.display = "block";
+            panel.style.left = (event.pageX + 10) + "px";
+            panel.style.top = (event.pageY - 10) + "px";
+        }
+
+        function hideInfoPanel() {
+            document.getElementById("infoPanel").style.display = "none";
+        }
+
+        // Filter function
+        function filterByType(type) {
+            // Update button states
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Filter nodes and links
+            if (type === 'all') {
+                node.style("opacity", 1);
+                link.style("opacity", 0.6);
+            } else {
+                node.style("opacity", d => {
+                    if (d.type === 'program' || d.type === 'nation') return 1;
+                    return (d.component && d.component.includes(type)) ? 1 : 0.2;
+                });
+                
+                link.style("opacity", l => {
+                    const sourceVisible = nodesData.find(n => n.id === l.source.id).component?.includes(type);
+                    const targetVisible = nodesData.find(n => n.id === l.target.id).component?.includes(type);
+                    return (sourceVisible || targetVisible) ? 0.6 : 0.1;
+                });
+            }
+        }
+
+        // Update statistics
+        document.getElementById("companyCount").textContent = nodesData.filter(n => n.type !== 'program' && n.type !== 'nation').length;
+        document.getElementById("countryCount").textContent = [...new Set(nodesData.map(n => n.country))].filter(c => c !== 'EU').length;
+        document.getElementById("componentCount").textContent = 6;
+
+        // Make legend draggable
+        const legend = document.querySelector('.legend');
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        legend.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            if (e.target.closest('.legend')) {
+                initialX = e.clientX - xOffset;
+                initialY = e.clientY - yOffset;
+                isDragging = true;
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+                xOffset = currentX;
+                yOffset = currentY;
+
+                legend.style.transform = `translate(${currentX}px, ${currentY}px)`;
+            }
+        }
+
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+    </script>
+</body>
+</html>
