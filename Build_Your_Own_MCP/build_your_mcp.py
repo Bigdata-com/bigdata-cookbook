@@ -29,7 +29,7 @@ LLM_MODEL = "openai::gpt-4o-mini"
 # LLM_MODEL = "bedrock::anthropic.claude-3-sonnet-20240229-v1:0"
 
 # Use streamable-http for better compatibility with various clients, unless you want to connect to ChatGPT developer mode
-TRANSPORT: Literal["sse", "streamable-http"] = "sse"
+TRANSPORT: Literal["sse", "streamable-http"] = "streamable-http"
 
 nest_asyncio.apply()
 
