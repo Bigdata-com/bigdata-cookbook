@@ -24,6 +24,7 @@ jobs:
           mv Build_Your_Own_MCP/assets/claude-ukraine-russia-conflict-dashboard.html .public/build_your_own_mcp/assets/claude-ukraine-russia-conflict-dashboard.html
           mv Build_Your_Own_MCP/assets/claude-visa-fees-dashboard.html .public/build_your_own_mcp/assets/claude-visa-fees-dashboard.html
           mv Build_Your_Own_MCP/assets/claude-fcas-network-diagram.html .public/build_your_own_mcp/assets/claude-fcas-network-diagram.html
+          mv Build_Your_Own_MCP/assets/pharma_tariff_analysis.html .public/build_your_own_mcp/assets/pharma_tariff_analysis.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
