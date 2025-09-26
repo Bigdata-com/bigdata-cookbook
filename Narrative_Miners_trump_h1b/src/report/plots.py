@@ -126,7 +126,7 @@ def create_enhanced_interactive_chart(df_narrative, df_citation, df_top3, df_com
                 x=dates_with_data,
                 y=entity_counts,
                 mode='lines+markers',
-                name=f'{entity} (avg: {entity_avg[entity]:.1f})',
+                name=f'{entity}',
                 line=dict(color=colors[i % len(colors)], width=3),
                 marker=dict(size=8, symbol=symbols[i % len(symbols)], 
                            line=dict(width=2, color='white')),
@@ -141,26 +141,6 @@ def create_enhanced_interactive_chart(df_narrative, df_citation, df_top3, df_com
             row=1, col=1
         )
         
-        # Add smoothed trend line
-        if len(entity_counts) > 2:
-            from scipy.signal import savgol_filter
-            try:
-                smoothed = savgol_filter(entity_counts, window_length=min(5, len(entity_counts)), polyorder=2)
-                fig.add_trace(
-                    go.Scatter(
-                        x=dates_with_data,
-                        y=smoothed,
-                        mode='lines',
-                        name=f'{entity} (trend)',
-                        line=dict(color=colors[i % len(colors)], width=1, dash='dash'),
-                        opacity=0.6,
-                        showlegend=False,
-                        hoverinfo='skip'
-                    ),
-                    row=1, col=1
-                )
-            except:
-                pass  # Skip if smoothing fails
     
     # Add annotations for peak dates
     max_dates = {}
@@ -245,6 +225,156 @@ def create_enhanced_interactive_chart(df_narrative, df_citation, df_top3, df_com
         showgrid=True,
         gridcolor='rgba(128,128,128,0.2)',
         row=2, col=1
+    )
+    
+    # Add range selector
+    fig.update_layout(
+        xaxis=dict(
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1, label="1d", step="day", stepmode="backward"),
+                    dict(count=3, label="3d", step="day", stepmode="backward"),
+                    dict(step="all")
+                ])
+            ),
+            rangeslider=dict(visible=False),
+            type="date"
+        )
+    )
+    
+    return fig
+
+
+def create_company_document_coverage_chart(company_stats, relative_overall=False):
+    """
+    Create an interactive line chart showing daily document coverage for companies.
+    Shows the number of unique documents mentioning each company per day.
+    
+    Args:
+        company_stats: DataFrame with company statistics by date
+        relative_overall: If True, plot percentages instead of absolute numbers
+    """
+    
+    # Get unique dates and companies
+    dates = sorted(company_stats['Date'].unique())
+    companies = company_stats['Company'].unique()
+    
+    # Enhanced color palette
+    colors = [
+        '#f39c12',  # Orange
+        '#27ae60',  # Green
+        '#9b59b6',  # Purple
+        '#e67e22',  # Dark Orange
+        '#2c3e50',  # Dark Blue
+        '#16a085',  # Teal
+        '#c0392b',  # Dark Red
+        '#8e44ad',  # Dark Purple
+        '#f1c40f',  # Yellow
+        '#e74c3c'   # Red
+    ]
+    
+    # Symbols for better differentiation
+    symbols = ['circle', 'square', 'diamond', 'triangle-up', 'triangle-down', 'cross', 'x', 'star', 'pentagon', 'hexagon']
+    
+    # Create figure
+    fig = go.Figure()
+    
+    # Calculate average document coverage for sorting
+    company_avg = {}
+    for company in companies:
+        company_data = company_stats[company_stats['Company'] == company]
+        if relative_overall:
+            avg_value = company_data['Percentage_Documents'].mean()
+        else:
+            avg_value = company_data['Unique_Documents'].mean()
+        company_avg[company] = avg_value
+    
+    # Sort companies by average document coverage
+    companies_sorted = sorted(companies, key=lambda x: company_avg[x], reverse=True)
+    
+    # Add traces for each company
+    for i, company in enumerate(companies_sorted):
+        company_data = company_stats[company_stats['Company'] == company].sort_values('Date')
+        
+        # Choose what to plot based on relative_overall parameter
+        if relative_overall:
+            y_values = company_data['Percentage_Documents']
+            hover_metric = 'Percentage: %{y:.2f}%<br>'
+            hover_extra = f'Unique Documents: %{{customdata}}<br>'
+            customdata_values = company_data['Unique_Documents']
+        else:
+            y_values = company_data['Unique_Documents']
+            hover_metric = 'Unique Documents: %{y}<br>'
+            hover_extra = 'Percentage: %{customdata:.2f}%<br>'
+            customdata_values = company_data['Percentage_Documents']
+        
+        fig.add_trace(
+            go.Scatter(
+                x=company_data['Date'],
+                y=y_values,
+                mode='lines+markers',
+                name=f'{company}',
+                line=dict(color=colors[i % len(colors)], width=3),
+                marker=dict(size=8, symbol=symbols[i % len(symbols)], 
+                           line=dict(width=2, color='white')),
+                customdata=customdata_values,
+                hovertemplate='<b>%{fullData.name}</b><br>' +
+                              'Date: %{x|%Y-%m-%d}<br>' +
+                              hover_metric +
+                              hover_extra +
+                              '<extra></extra>',
+                connectgaps=True
+            )
+        )
+    
+    # Update layout
+    title_text = '<b>News Document Coverage by Company</b><br><sub>'
+    if relative_overall:
+        title_text += 'Daily Percentage of Documents Mentioning Each Company</sub>'
+    else:
+        title_text += 'Daily Number of Unique Documents Mentioning Each Company</sub>'
+    
+    fig.update_layout(
+        title={
+            'text': title_text,
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 20, 'color': '#2c3e50'},
+            'y': 0.95
+        },
+        width=1400,
+        height=600,
+        template='plotly_white',
+        hovermode='closest',
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=0.98,
+            xanchor="left",
+            x=1.02,
+            bgcolor="rgba(255,255,255,0.95)",
+            bordercolor="rgba(0,0,0,0.2)",
+            borderwidth=1,
+            font=dict(size=11)
+        ),
+        margin=dict(r=200, t=100, b=80, l=80),
+        showlegend=True
+    )
+    
+    # Update axes
+    fig.update_xaxes(
+        title_text="Date",
+        showgrid=True,
+        gridcolor='rgba(128,128,128,0.2)',
+        tickformat='%m/%d',
+        tickangle=45
+    )
+    
+    y_axis_title = "Percentage (%)" if relative_overall else "Number of Unique Documents"
+    fig.update_yaxes(
+        title_text=y_axis_title,
+        showgrid=True,
+        gridcolor='rgba(128,128,128,0.2)'
     )
     
     # Add range selector

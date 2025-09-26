@@ -52,39 +52,57 @@ def prepare_narrative_data(df, freq='W'):
     return smoothed_df
 
 
-def calculate_source_scores(df):
+def calculate_source_scores(df, freq='W'):
     """
     Calculate overall narrative scores (z-scores) across all narratives by source.
     """
     date_counts = df.groupby('Date').size()
-    weekly_counts = date_counts.resample('W').sum().fillna(0)
-    mean = weekly_counts.mean()
-    std = weekly_counts.std()
+    resampled_counts = date_counts.resample(freq).sum().fillna(0)
+    mean = resampled_counts.mean()
+    std = resampled_counts.std()
     if std == 0:
-        zscore = weekly_counts * 0
+        zscore = resampled_counts * 0
     else:
-        zscore = (weekly_counts - mean) / std
+        zscore = (resampled_counts - mean) / std
     smoothed = gaussian_filter1d(zscore.fillna(0).values, sigma=2)
     return pd.Series(smoothed, index=zscore.index)
 
 
-def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, interactive=True):
+def visualize_cross_source_narratives(news_df, transcripts_df=None, filings_df=None, interactive=True, frequency='W'):
     """Create a comparative visualization of narrative prevalence across sources with fixed annotation arrows"""
     # Prepare data for each source
-    news_score = calculate_source_scores(news_df)
-    transcript_score = calculate_source_scores(transcripts_df)
-    filing_score = calculate_source_scores(filings_df)
+    news_score = calculate_source_scores(news_df, freq=frequency)
+    
+    # Initialize with news dates
+    all_dates = set(news_score.index)
+    
+    # Add transcript dates if provided
+    if transcripts_df is not None:
+        transcript_score = calculate_source_scores(transcripts_df, freq=frequency)
+        all_dates |= set(transcript_score.index)
+    else:
+        transcript_score = None
+    
+    # Add filing dates if provided
+    if filings_df is not None:
+        filing_score = calculate_source_scores(filings_df, freq=frequency)
+        all_dates |= set(filing_score.index)
+    else:
+        filing_score = None
 
-    # Align indices across all sources
-    all_dates = sorted(set(news_score.index) |
-                       set(transcript_score.index) |
-                       set(filing_score.index))
+    # Sort all dates
+    all_dates = sorted(all_dates)
 
     # Create dataframe with aligned dates
     comparison_df = pd.DataFrame(index=all_dates)
     comparison_df['News Media'] = pd.Series(news_score)
-    comparison_df['Earnings Calls'] = pd.Series(transcript_score)
-    comparison_df['SEC Filings'] = pd.Series(filing_score)
+    
+    if transcript_score is not None:
+        comparison_df['Earnings Calls'] = pd.Series(transcript_score)
+    
+    if filing_score is not None:
+        comparison_df['SEC Filings'] = pd.Series(filing_score)
+    
     comparison_df = comparison_df.sort_index().fillna(method='ffill').fillna(0)
 
     # Define colors
@@ -96,8 +114,8 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
 
     # Find important points for annotations
     peak_news = comparison_df['News Media'].idxmax()
-    peak_earnings = comparison_df['Earnings Calls'].idxmax()
-    peak_filings = comparison_df['SEC Filings'].idxmax()
+    peak_earnings = comparison_df['Earnings Calls'].idxmax() if 'Earnings Calls' in comparison_df.columns else None
+    peak_filings = comparison_df['SEC Filings'].idxmax() if 'SEC Filings' in comparison_df.columns else None
 
     # Use matplotlib for interactive=False, Plotly for interactive=True
     if not interactive:
@@ -106,8 +124,9 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
         
         # Plot lines for each source
         for source, color in source_colors.items():
-            ax.plot(comparison_df.index, comparison_df[source], 
-                    color=color, linewidth=3, label=source, alpha=0.9)
+            if source in comparison_df.columns:
+                ax.plot(comparison_df.index, comparison_df[source], 
+                        color=color, linewidth=3, label=source, alpha=0.9)
         
         # Add annotations
         ax.annotate('Peak news coverage\nof AI bubble concerns',
@@ -117,19 +136,21 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
                    fontsize=10, ha='center', va='bottom',
                    bbox=dict(boxstyle="round,pad=0.3", facecolor='white', edgecolor='#FF6B6B', alpha=0.8))
         
-        ax.annotate('Executives address\nbubble concerns on\nearnings calls',
-                   xy=(peak_earnings, comparison_df.loc[peak_earnings, 'Earnings Calls']),
-                   xytext=(peak_earnings, comparison_df.loc[peak_earnings, 'Earnings Calls'] + 0.8),
-                   arrowprops=dict(arrowstyle='->', color='#4ECDC4', lw=2),
-                   fontsize=10, ha='center', va='bottom',
-                   bbox=dict(boxstyle="round,pad=0.3", facecolor='white', edgecolor='#4ECDC4', alpha=0.8))
+        if peak_earnings is not None:
+            ax.annotate('Executives address\nbubble concerns on\nearnings calls',
+                       xy=(peak_earnings, comparison_df.loc[peak_earnings, 'Earnings Calls']),
+                       xytext=(peak_earnings, comparison_df.loc[peak_earnings, 'Earnings Calls'] + 0.8),
+                       arrowprops=dict(arrowstyle='->', color='#4ECDC4', lw=2),
+                       fontsize=10, ha='center', va='bottom',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', edgecolor='#4ECDC4', alpha=0.8))
         
-        ax.annotate('Peak mentions in\nSEC filings',
-                   xy=(peak_filings, comparison_df.loc[peak_filings, 'SEC Filings']),
-                   xytext=(peak_filings, comparison_df.loc[peak_filings, 'SEC Filings'] - 0.5),
-                   arrowprops=dict(arrowstyle='->', color='#6A0572', lw=2),
-                   fontsize=10, ha='center', va='top',
-                   bbox=dict(boxstyle="round,pad=0.3", facecolor='white', edgecolor='#6A0572', alpha=0.8))
+        if peak_filings is not None:
+            ax.annotate('Peak mentions in\nSEC filings',
+                       xy=(peak_filings, comparison_df.loc[peak_filings, 'SEC Filings']),
+                       xytext=(peak_filings, comparison_df.loc[peak_filings, 'SEC Filings'] - 0.5),
+                       arrowprops=dict(arrowstyle='->', color='#6A0572', lw=2),
+                       fontsize=10, ha='center', va='top',
+                       bbox=dict(boxstyle="round,pad=0.3", facecolor='white', edgecolor='#6A0572', alpha=0.8))
         
         # Add horizontal reference line at y=0
         ax.axhline(y=0, color='#666666', linestyle='--', alpha=0.7, linewidth=1)
@@ -140,10 +161,15 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
         ax.set_ylabel('Narrative Intensity (z-score)', fontsize=12, fontweight='bold')
         ax.set_xlabel('Date', fontsize=12, fontweight='bold')
         
-        # Format x-axis dates
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
-        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+        # Format x-axis dates based on frequency
+        if frequency == 'D':
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+            plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+        else:
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+            plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
         
         # Set y-axis limits
         ax.set_ylim(-1.5, 3.5)
@@ -177,30 +203,31 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
         fig = go.Figure()
 
         for source, color in source_colors.items():
-            # Configure hover template based on interactive mode
-            hover_template = (
-                f"<b>{source}</b><br>" +
-                "Date: %{x|%B %d, %Y}<br>" +
-                "Intensity: %{y:.2f}<extra></extra>"
-            ) if interactive else None
-            
-            fig.add_trace(
-                go.Scatter(
-                    x=comparison_df.index,
-                    y=comparison_df[source],
-                    mode='lines',
-                    name=source,
-                    line=dict(width=3, color=color),
-                    hovertemplate=hover_template,
-                    hoverinfo='none' if not interactive else 'all'
+            if source in comparison_df.columns:
+                # Configure hover template based on interactive mode
+                hover_template = (
+                    f"<b>{source}</b><br>" +
+                    "Date: %{x|%B %d, %Y}<br>" +
+                    "Intensity: %{y:.2f}<extra></extra>"
+                ) if interactive else None
+                
+                fig.add_trace(
+                    go.Scatter(
+                        x=comparison_df.index,
+                        y=comparison_df[source],
+                        mode='lines',
+                        name=source,
+                        line=dict(width=3, color=color),
+                        hovertemplate=hover_template,
+                        hoverinfo='none' if not interactive else 'all'
+                    )
                 )
-            )
 
         # Create annotations with fixed arrows (only if interactive)
         annotations = []
         if interactive:
-            annotations = [
-                # Peak news annotation
+            # Always add news annotation
+            annotations.append(
                 dict(
                     x=peak_news,
                     y=comparison_df.loc[peak_news, 'News Media'],
@@ -214,41 +241,47 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
                     borderwidth=2,
                     font=dict(size=10),
                     xanchor="right"
-                ),
-
-                # Earnings calls annotation
-                dict(
-                    x=peak_earnings,
-                    y=comparison_df.loc[peak_earnings, 'Earnings Calls'],
-                    text="Executives address<br>bubble concerns on<br>earnings calls",
-                    showarrow=True,
-                    arrowhead=2,
-                    ax=90,
-                    ay=-20,
-                    bgcolor="rgba(255, 255, 255, 0.8)",
-                    bordercolor="#4ECDC4",
-                    borderwidth=2,
-                    font=dict(size=10),
-                    xanchor="right"
-                ),
-                
-                # SEC filings annotation
-                dict(
-                    x=peak_filings,
-                    y=comparison_df.loc[peak_filings, 'SEC Filings'],
-                    text="Peak mentions in<br>SEC filings",
-                    showarrow=True,
-                    arrowhead=2,
-                    ax=0,
-                    ay=60,
-                    bgcolor="rgba(255, 255, 255, 0.8)",
-                    bordercolor="#6A0572",
-                    borderwidth=2,
-                    font=dict(size=10),
-                    xanchor="center",
-                    yanchor="top"
                 )
-            ]
+            )
+
+            # Add earnings calls annotation if data exists
+            if peak_earnings is not None:
+                annotations.append(
+                    dict(
+                        x=peak_earnings,
+                        y=comparison_df.loc[peak_earnings, 'Earnings Calls'],
+                        text="Executives address<br>bubble concerns on<br>earnings calls",
+                        showarrow=True,
+                        arrowhead=2,
+                        ax=90,
+                        ay=-20,
+                        bgcolor="rgba(255, 255, 255, 0.8)",
+                        bordercolor="#4ECDC4",
+                        borderwidth=2,
+                        font=dict(size=10),
+                        xanchor="right"
+                    )
+                )
+                
+            # Add SEC filings annotation if data exists
+            if peak_filings is not None:
+                annotations.append(
+                    dict(
+                        x=peak_filings,
+                        y=comparison_df.loc[peak_filings, 'SEC Filings'],
+                        text="Peak mentions in<br>SEC filings",
+                        showarrow=True,
+                        arrowhead=2,
+                        ax=0,
+                        ay=60,
+                        bgcolor="rgba(255, 255, 255, 0.8)",
+                        bordercolor="#6A0572",
+                        borderwidth=2,
+                        font=dict(size=10),
+                        xanchor="center",
+                        yanchor="top"
+                    )
+                )
 
         # Customize the layout
         fig.update_layout(
@@ -264,7 +297,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
                 title='',
                 gridcolor='rgba(100, 100, 100, 0.2)',
                 tickangle=-45,
-                tickformat='%b %Y',
+                tickformat='%m-%d' if frequency == 'D' else '%b %Y',
                 tickfont=dict(color='#1f1f1f', size=10),
                 showgrid=True,
                 fixedrange=not interactive  # Disable zoom/pan when not interactive
@@ -334,14 +367,14 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
         return fig
 
 
-def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filings_df, interactive=False):
+def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filings_df, interactive=False, frequency='W'):
     """
     Create a comparative visualization using matplotlib (lightweight alternative to Plotly)
     """
     # Prepare data for each source
-    news_score = calculate_source_scores(news_df)
-    transcript_score = calculate_source_scores(transcripts_df)
-    filing_score = calculate_source_scores(filings_df)
+    news_score = calculate_source_scores(news_df, freq=frequency)
+    transcript_score = calculate_source_scores(transcripts_df, freq=frequency)
+    filing_score = calculate_source_scores(filings_df, freq=frequency)
 
     # Align indices across all sources
     all_dates = sorted(set(news_score.index) |
@@ -410,10 +443,15 @@ def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filing
     ax.set_ylabel('Narrative Intensity (z-score)', fontsize=12, fontweight='bold')
     ax.set_xlabel('Date', fontsize=12, fontweight='bold')
     
-    # Format x-axis dates
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
-    plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+    # Format x-axis dates based on frequency
+    if frequency == 'D':
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+    else:
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
     
     # Set y-axis limits
     ax.set_ylim(-1.5, 3.5)
@@ -432,10 +470,10 @@ def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filing
     return fig
 
 
-def visualize_news_narrative_breakdown(news_df, interactive=True):
+def visualize_news_narrative_breakdown(news_df, interactive=True, frequency='W'):
     """Create a stacked area chart showing the breakdown of specific narratives in news with unique colors"""
     # Prepare news narrative data
-    news_narratives = prepare_narrative_data(news_df, freq='W')
+    news_narratives = prepare_narrative_data(news_df, freq=frequency)
 
     # Filter to only include the top narratives
     max_values = news_narratives.max()
@@ -475,10 +513,15 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
         ax.set_ylabel('Narrative Prevalence (z-score)', fontsize=12, fontweight='bold')
         ax.set_xlabel('Date', fontsize=12, fontweight='bold')
         
-        # Format x-axis dates
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
-        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+        # Format x-axis dates based on frequency
+        if frequency == 'D':
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+            ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+            plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+        else:
+            ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+            ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+            plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
         
         # Add grid
         ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
@@ -547,7 +590,7 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
                 title='',
                 gridcolor='rgba(100, 100, 100, 0.2)',
                 tickangle=-45,
-                tickformat='%b %Y',
+                tickformat='%m-%d' if frequency == 'D' else '%b %Y',
                 tickfont=dict(color='#1f1f1f', size=11),
                 showgrid=True,
                 fixedrange=not interactive  # Disable zoom/pan when not interactive
@@ -606,12 +649,12 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
         return fig
 
 
-def visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False):
+def visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False, frequency='W'):
     """
     Create a stacked area chart showing breakdown of news narratives using matplotlib
     """
     # Prepare news narrative data
-    news_narratives = prepare_narrative_data(news_df, freq='W')
+    news_narratives = prepare_narrative_data(news_df, freq=frequency)
     
     # Filter to only include the top narratives
     max_values = news_narratives.max()
@@ -640,10 +683,15 @@ def visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False):
     ax.set_ylabel('Narrative Prevalence (z-score)', fontsize=12, fontweight='bold')
     ax.set_xlabel('Date', fontsize=12, fontweight='bold')
     
-    # Format x-axis dates
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
-    plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+    # Format x-axis dates based on frequency
+    if frequency == 'D':
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%m-%d'))
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
+    else:
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %Y'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+        plt.setp(ax.get_xticklabels(), rotation=45, ha='right')
     
     # Add grid
     ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
@@ -659,15 +707,15 @@ def visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False):
     return fig
 
 
-def create_lightweight_plots(news_df, transcripts_df, filings_df, save_plots=True):
+def create_lightweight_plots(news_df, transcripts_df, filings_df, save_plots=True, frequency='W'):
     """
     Create both plots using matplotlib and optionally save them
     """
     print("📊 Creating lightweight matplotlib plots...")
     
     # Create plots
-    fig1 = visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filings_df, interactive=False)
-    fig2 = visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False)
+    fig1 = visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filings_df, interactive=False, frequency=frequency)
+    fig2 = visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False, frequency=frequency)
     
     if save_plots:
         # Save plots
@@ -683,13 +731,13 @@ def create_lightweight_plots(news_df, transcripts_df, filings_df, save_plots=Tru
     return fig1, fig2
 
 
-def extract_narrative_insights(news_df, transcripts_df, filings_df):
+def extract_narrative_insights(news_df, transcripts_df, filings_df, frequency='W'):
     """
     Extract key insights from narrative mining data.
     """
-    news_score = calculate_source_scores(news_df)
-    transcript_score = calculate_source_scores(transcripts_df)
-    filing_score = calculate_source_scores(filings_df)
+    news_score = calculate_source_scores(news_df, freq=frequency)
+    transcript_score = calculate_source_scores(transcripts_df, freq=frequency)
+    filing_score = calculate_source_scores(filings_df, freq=frequency)
 
     peak_news_month = news_score.idxmax().strftime('%B %Y')
     peak_transcript_month = transcript_score.idxmax().strftime('%B %Y')

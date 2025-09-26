@@ -1717,8 +1717,10 @@ def generate_companies_line_chart_html(df_highlights, output_file="companies_lin
                 background: #e74c3c;
                 border: 3px solid white;
                 border-radius: 50%;
-                position: relative;
-                transform: translateX(-50%);
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
                 box-shadow: 0 3px 10px rgba(0,0,0,0.2);
                 z-index: 20;
             }}
@@ -1766,7 +1768,7 @@ def generate_companies_line_chart_html(df_highlights, output_file="companies_lin
             }}
             /* Below positioning */
             .chart-point.below .highlights-box {{
-                top: 60px;
+                top: 85px;
             }}
             .chart-point.below .arrow {{
                 position: absolute;
@@ -2119,8 +2121,10 @@ def generate_combined_dashboard_html(df_highlights, plotly_fig, output_file="com
                 background: #e74c3c;
                 border: 3px solid white;
                 border-radius: 50%;
-                position: relative;
-                transform: translateX(-50%);
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
                 box-shadow: 0 3px 10px rgba(0,0,0,0.2);
                 z-index: 20;
             }}
@@ -2164,9 +2168,10 @@ def generate_combined_dashboard_html(df_highlights, plotly_fig, output_file="com
                 border-left: 10px solid transparent;
                 border-right: 10px solid transparent;
                 border-top: 10px solid #3498db;
+                z-index: 15;
             }}
             .chart-point.below .highlights-box {{
-                top: 60px;
+                top: 85px;
             }}
             .chart-point.below .arrow {{
                 position: absolute;
@@ -2178,6 +2183,7 @@ def generate_combined_dashboard_html(df_highlights, plotly_fig, output_file="com
                 border-left: 10px solid transparent;
                 border-right: 10px solid transparent;
                 border-bottom: 10px solid #3498db;
+                z-index: 15;
             }}
             .region-header {{
                 font-size: 0.9em;
@@ -2249,7 +2255,7 @@ def generate_combined_dashboard_html(df_highlights, plotly_fig, output_file="com
     return output_file
 
 
-def generate_entities_reports_html(df_entities_final_summary, countries_dict):
+def generate_entities_reports_html(df_entities_final_summary, countries_dict, company_stats=None, unique_sentences_count=None):
     """
     Generate HTML section for individual entity reports.
     
@@ -2290,6 +2296,42 @@ def generate_entities_reports_html(df_entities_final_summary, countries_dict):
         }
         return flag_map.get(country_name, '🌍')
     
+    def clean_entity_name(entity_name):
+        """Remove country prefixes from entity names"""
+        # Common country prefixes to remove
+        prefixes_to_remove = ['US ', 'IN ', 'CA ', 'UK ', 'AU ', 'DE ', 'FR ', 'JP ', 'CN ', 'SG ', 'NL ', 'CH ', 'SE ', 'NO ', 'DK ', 'FI ', 'IE ', 'AT ', 'BE ', 'LU ', 'ES ', 'IT ', 'PT ', 'GR ', 'IL ', 'KR ', 'TW ', 'HK ', 'MY ', 'TH ', 'ID ', 'PH ', 'VN ', 'BR ', 'MX ', 'AR ', 'CL ', 'CO ', 'PE ', 'ZA ', 'EG ', 'AE ', 'SA ', 'TR ', 'RU ', 'PL ', 'CZ ', 'HU ', 'RO ', 'BG ', 'HR ', 'SI ', 'SK ', 'EE ', 'LV ', 'LT ']
+        
+        for prefix in prefixes_to_remove:
+            if entity_name.startswith(prefix):
+                return entity_name[len(prefix):]
+        return entity_name
+    
+    def get_company_stats(entity_name, company_stats, unique_sentences_count):
+        """Get company statistics for display"""
+        if company_stats is None or unique_sentences_count is None:
+            return None
+        
+        # Find company in stats (first occurrence should have the overall totals)
+        company_data = company_stats[company_stats['Company'] == entity_name]
+        if len(company_data) == 0:
+            return None
+        
+        # Get overall totals (same for all dates)
+        row = company_data.iloc[0]
+        overall_sentences = row['Overall_Total_Sentences']
+        overall_documents = row['Overall_Unique_Documents']
+        overall_percentage = row['Overall_Percentage_Documents']
+        
+        # Calculate sentence percentage
+        sentence_percentage = round((overall_sentences / unique_sentences_count * 100), 2) if unique_sentences_count > 0 else 0
+        
+        return {
+            'overall_sentences': overall_sentences,
+            'sentence_percentage': sentence_percentage,
+            'overall_documents': overall_documents,
+            'overall_percentage': overall_percentage
+        }
+    
     # Add region classification
     df_entities = df_entities_final_summary.copy()
     df_entities['Region'] = df_entities['Entity'].apply(get_entity_region)
@@ -2300,24 +2342,42 @@ def generate_entities_reports_html(df_entities_final_summary, countries_dict):
             <div class="entities-container">
     """
     
-    # Generate sections dynamically for each country in countries_dict
+    # Generate sections dynamically for each country in countries_dict (exclude China)
     for country in countries_dict.keys():
         country_entities = df_entities[df_entities['Region'] == country]
         if len(country_entities) > 0:
-            # Get appropriate flag emoji for country
-            country_flag = get_country_flag(country)
             html_content += f"""
             <div class="region-section">
-                <h3 class="region-title">{country_flag} {country} Companies</h3>
+                <h3 class="region-title">{country} Companies</h3>
                 <div class="entities-grid">
             """
             for _, row in country_entities.iterrows():
-                entity_name = row['Entity']
+                entity_name = clean_entity_name(row['Entity'])
+                original_entity_name = row['Entity']
                 summary = row['summary']
+                
+                # Get company statistics
+                stats = get_company_stats(original_entity_name, company_stats, unique_sentences_count)
+                stats_html = ""
+                if stats:
+                    stats_html = f"""
+                        <div class="entity-stats">
+                            <div class="stat-item">
+                                <span class="stat-label">News Relevance:</span> 
+                                <span class="stat-value">{stats['overall_sentences']} / {stats['sentence_percentage']}%</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">News Coverage:</span> 
+                                <span class="stat-value">{stats['overall_documents']} / {stats['overall_percentage']}%</span>
+                            </div>
+                        </div>
+                    """
+                
                 html_content += f"""
                 <div class="entity-card">
                     <div class="entity-header">
                         <h4 class="entity-name">{entity_name}</h4>
+                        {stats_html}
                     </div>
                     <div class="entity-summary">
                         <p>{summary}</p>
@@ -2334,21 +2394,41 @@ def generate_entities_reports_html(df_entities_final_summary, countries_dict):
     if len(other_entities) > 0:
         html_content += f"""
             <div class="region-section">
-                <h3 class="region-title">🌍 Other Entities</h3>
+                <h3 class="region-title">Other Entities</h3>
                 <div class="entities-grid">
         """
         for _, row in other_entities.iterrows():
-            entity_name = row['Entity']
+            entity_name = clean_entity_name(row['Entity'])
+            original_entity_name = row['Entity']
             summary = row['summary']
+            
+            # Get company statistics
+            stats = get_company_stats(original_entity_name, company_stats, unique_sentences_count)
+            stats_html = ""
+            if stats:
+                stats_html = f"""
+                    <div class="entity-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">News Relevance:</span> 
+                            <span class="stat-value">{stats['overall_sentences']} / {stats['sentence_percentage']}%</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">News Coverage:</span> 
+                            <span class="stat-value">{stats['overall_documents']} / {stats['overall_percentage']}%</span>
+                        </div>
+                    </div>
+                """
+            
             html_content += f"""
-                <div class="entity-card">
-                    <div class="entity-header">
-                        <h4 class="entity-name">{entity_name}</h4>
-                    </div>
-                    <div class="entity-summary">
-                        <p>{summary}</p>
-                    </div>
+            <div class="entity-card">
+                <div class="entity-header">
+                    <h4 class="entity-name">{entity_name}</h4>
+                    {stats_html}
                 </div>
+                <div class="entity-summary">
+                    <p>{summary}</p>
+                </div>
+            </div>
             """
         html_content += """
                 </div>
@@ -2363,7 +2443,7 @@ def generate_entities_reports_html(df_entities_final_summary, countries_dict):
     return html_content
 
 
-def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summaries, plotly_fig, countries_dict, df_entities_final_summary=None, output_file="interactive_dashboard.html"):
+def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summaries, plotly_fig, countries_dict, df_entities_final_summary=None, company_stats=None, unique_sentences_count=None, output_file="interactive_dashboard.html"):
     """
     Generate HTML report with interactive timeline that can switch between country mode and company mode.
     
@@ -2373,6 +2453,8 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
         plotly_fig: Plotly figure object
         countries_dict: Dictionary with country names as keys and lists of companies as values
         df_entities_final_summary: Optional DataFrame with entity summaries
+        company_stats: Optional DataFrame with company statistics (for metrics display)
+        unique_sentences_count: Optional total count of unique sentences (for percentage calculations)
         output_file: Output HTML file name
     """
     import pandas as pd
@@ -2583,8 +2665,10 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 background: #e74c3c;
                 border: 3px solid white;
                 border-radius: 50%;
-                position: relative;
-                transform: translateX(-50%);
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
                 box-shadow: 0 3px 10px rgba(0,0,0,0.2);
                 z-index: 20;
             }}
@@ -2628,9 +2712,10 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 border-left: 10px solid transparent;
                 border-right: 10px solid transparent;
                 border-top: 10px solid #3498db;
+                z-index: 15;
             }}
             .chart-point.below .highlights-box {{
-                top: 60px;
+                top: 85px;
             }}
             .chart-point.below .arrow {{
                 position: absolute;
@@ -2642,6 +2727,7 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 border-left: 10px solid transparent;
                 border-right: 10px solid transparent;
                 border-bottom: 10px solid #3498db;
+                z-index: 15;
             }}
             .region-header {{
                 font-size: 0.9em;
@@ -2689,7 +2775,7 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
             }}
             .entities-grid {{
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                grid-template-columns: 1fr;
                 gap: 25px;
                 margin-bottom: 40px;
             }}
@@ -2709,6 +2795,26 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 border-bottom: 2px solid #ecf0f1;
                 padding-bottom: 15px;
                 margin-bottom: 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+            }}
+            .entity-stats {{
+                text-align: right;
+                font-size: 0.8em;
+                color: #666;
+                line-height: 1.4;
+            }}
+            .stat-item {{
+                margin-bottom: 5px;
+            }}
+            .stat-label {{
+                font-weight: 600;
+                color: #2c3e50;
+            }}
+            .stat-value {{
+                color: #e67e22;
+                font-weight: 700;
             }}
             .entity-name {{
                 color: #2c3e50;
@@ -2834,7 +2940,7 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
             </div>
         </div>
         
-        {generate_entities_reports_html(df_entities_final_summary, countries_dict) if df_entities_final_summary is not None else ""}
+        {generate_entities_reports_html(df_entities_final_summary, countries_dict, company_stats, unique_sentences_count) if df_entities_final_summary is not None else ""}
         
         <script>
             // Timeline data
@@ -2911,7 +3017,7 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                     const dateDisplay = new Date(dateStr).toLocaleDateString('en-US', {{month: 'short', day: 'numeric'}});
                     
                     html += `
-                        <div class="chart-point ${{positionClass}}" style="left: ${{position}}%; top: 50%;">
+                        <div class="chart-point ${{positionClass}}" style="left: ${{position}}%;">
                             <div class="point-marker"></div>
                             <div class="date-label">${{dateDisplay}}</div>
                             <div class="highlights-box">`;
@@ -2931,8 +3037,8 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                     }});
                     
                     html += `
+                                <div class="arrow"></div>
                             </div>
-                            <div class="arrow"></div>
                         </div>`;
                 }});
                 
@@ -2960,7 +3066,7 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                     const dateContent = companyData.date_content[dateStr];
                     
                     html += `
-                        <div class="chart-point ${{positionClass}}" style="left: ${{position}}%; top: 50%;">
+                        <div class="chart-point ${{positionClass}}" style="left: ${{position}}%;">
                             <div class="point-marker"></div>
                             <div class="date-label">${{dateDisplay}}</div>
                             <div class="highlights-box">
