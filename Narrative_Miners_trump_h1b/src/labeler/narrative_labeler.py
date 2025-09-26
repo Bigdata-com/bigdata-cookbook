@@ -257,6 +257,12 @@ class NarrativeSummarizerFlex(Labeler):
                 main_theme, df, max_workers, additional_parameters
             )
         
+        # Special handling for final_summary_general_report mode
+        if mode == "final_summary_general_report":
+            return self._handle_final_summary_general_report(
+                main_theme, df, max_workers, additional_parameters
+            )
+        
         # Set default data fields if not provided
         if data_fields is None:
             data_fields = ["quotes"]
@@ -788,3 +794,70 @@ class NarrativeSummarizerFlex(Labeler):
                 return DataFrame(columns=['Date', 'Highlight', 'Companies'])
         else:
             return DataFrame(columns=['Date', 'Highlight', 'Companies'])
+    
+    def _handle_final_summary_general_report(
+        self, 
+        main_theme: str, 
+        df: DataFrame, 
+        max_workers: int,
+        additional_parameters: Dict[str, str] = {}
+    ) -> str:
+        """
+        Handle final_summary_general_report mode.
+        
+        Args:
+            main_theme: The main theme to analyze
+            df: DataFrame with Index(['Entity', 'summary', 'key_points', 'quotes', 'country', 'quote_count'])
+            max_workers: Maximum number of concurrent workers
+            additional_parameters: Additional parameters for the prompt
+            
+        Returns:
+            String with the final general report
+        """
+        from json import dumps
+        
+        # Create the JSON structure: "Entity name": "summary"
+        entities_dict = {}
+        for _, row in df.iterrows():
+            entity_name = row['Entity']
+            summary = row['summary']
+            entities_dict[entity_name] = summary
+        
+        # Convert to JSON string for the prompt
+        entities_json = dumps(entities_dict, indent=2)
+        
+        # Create single prompt following the pattern from other methods
+        prompt = entities_json
+        prompts = [prompt]
+        
+        # Get system prompt for this mode
+        system_prompt = self.summary_prompt or self._get_summarizer_system_prompt(
+            main_theme, 
+            mode="final_summary_general_report", 
+            entity_track="", 
+            previous_narrative="", 
+            additional_parameters=additional_parameters
+        )
+        
+        # DEBUG: Print prompts (following the same pattern as get_summaries)
+        print("=" * 80)
+        print("DEBUG: FINAL SUMMARY GENERAL REPORT SYSTEM PROMPT")
+        print("=" * 80)
+        print(system_prompt[:1000])
+        print("=" * 80)
+        
+        print("DEBUG: FINAL SUMMARY GENERAL REPORT USER PROMPT")
+        print("=" * 80)
+        print(prompt[:1000])
+        print("=" * 80)
+        
+        # Run prompt using the same method as other handlers
+        responses = self._run_labeling_prompts(
+            prompts, system_prompt, max_workers=max_workers
+        )
+        
+        # Return the response directly (it's a string, not parsed like normal summaries)
+        if responses and len(responses) > 0:
+            return responses[0]
+        else:
+            return "No response generated"

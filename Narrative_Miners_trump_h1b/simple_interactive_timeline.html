@@ -176,7 +176,7 @@
                 z-index: 15;
             }
             .chart-point.below .highlights-box {
-                top: 60px;
+                top: 85px;
             }
             .chart-point.below .arrow {
                 position: absolute;
@@ -371,6 +371,7 @@
                         <select id="modeSelect" onchange="changeTimelineMode()">
                             <option value="country">Country Mode</option>
                             <option value="company">Company Mode</option>
+                            <option value="people">People Mode</option>
                         </select>
                     </div>
                     <div class="control-group" id="countryGroup">
@@ -399,6 +400,19 @@
 <option value="Wipro Ltd.">Wipro Ltd.</option>
                         </select>
                     </div>
+                    <div class="control-group" id="peopleGroup" style="display: none;">
+                        <label class="control-label">Select Person:</label>
+                        <select id="personSelect" onchange="changePerson()">
+                            <!-- Will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="control-group" id="contentGroup" style="display: none;">
+                        <label class="control-label">Content Type:</label>
+                        <select id="contentTypeSelect" onchange="updateTimelinePeople()">
+                            <option value="summary">Summary</option>
+                            <option value="keypoints">Key Points</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="chart-container">
@@ -409,7 +423,7 @@
                 </div>
                 
                 <div class="metadata">
-                    <p>Interactive dashboard generated on September 26, 2025 at 09:10 AM</p>
+                    <p>Interactive dashboard generated on September 26, 2025 at 09:52 AM</p>
                     <p>Timeline covers September 19 to September 25, 2025</p>
                 </div>
             </div>
@@ -426,21 +440,35 @@
             let currentMode = 'country';
             let selectedCountries = ['Canada'];
             let currentCompany = 'Alphabet Inc.';
+            let currentPerson = '';
+            let currentContentType = 'summary';
             
             function changeTimelineMode() {
                 const mode = document.getElementById('modeSelect').value;
                 const companyGroup = document.getElementById('companyGroup');
                 const countryGroup = document.getElementById('countryGroup');
+                const peopleGroup = document.getElementById('peopleGroup');
+                const contentGroup = document.getElementById('contentGroup');
                 
                 currentMode = mode;
                 
                 if (mode === 'company') {
                     companyGroup.style.display = 'inline-block';
                     countryGroup.style.display = 'none';
+                    peopleGroup.style.display = 'none';
+                    contentGroup.style.display = 'none';
                     updateTimelineCompany();
+                } else if (mode === 'people') {
+                    companyGroup.style.display = 'none';
+                    countryGroup.style.display = 'none';
+                    peopleGroup.style.display = 'inline-block';
+                    contentGroup.style.display = 'inline-block';
+                    initializePeopleMode();
                 } else {
                     companyGroup.style.display = 'none';
                     countryGroup.style.display = 'inline-block';
+                    peopleGroup.style.display = 'none';
+                    contentGroup.style.display = 'none';
                     updateTimelineCountries();
                 }
             }
@@ -512,8 +540,8 @@
                     });
                     
                     html += `
+                                <div class="arrow"></div>
                             </div>
-                            <div class="arrow"></div>
                         </div>`;
                 });
                 

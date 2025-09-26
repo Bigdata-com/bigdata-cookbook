@@ -103,11 +103,34 @@ def create_enhanced_interactive_chart(df_narrative, df_citation, df_top3, df_com
                 enhanced_summary = company_data['enhanced_summary'].iloc[0]
                 
                 # Better formatting for hover text
-                if isinstance(enhanced_key_points, list) and enhanced_key_points:
-                    key_points_text = '<br>📌 '.join([str(point)[:100] + '...' if len(str(point)) > 100 else str(point) 
-                                                     for point in enhanced_key_points if point])
-                    if key_points_text:
+                import ast
+                
+                # Try to parse enhanced_key_points if it's a string representation of a list
+                key_points_list = None
+                
+                if isinstance(enhanced_key_points, list):
+                    key_points_list = enhanced_key_points
+                elif isinstance(enhanced_key_points, str) and enhanced_key_points.strip():
+                    # Check if it looks like a list representation
+                    if enhanced_key_points.strip().startswith('[') and enhanced_key_points.strip().endswith(']'):
+                        try:
+                            key_points_list = ast.literal_eval(enhanced_key_points.strip())
+                        except (ValueError, SyntaxError):
+                            # If parsing fails, treat as single string
+                            key_points_list = [enhanced_key_points.strip()]
+                    else:
+                        key_points_list = [enhanced_key_points.strip()]
+                
+                # Format the key points
+                if key_points_list:
+                    # Filter out empty strings and None values
+                    valid_points = [str(point).strip() for point in key_points_list if point and str(point).strip()]
+                    if valid_points:
+                        key_points_text = '<br>📌 '.join([point[:100] + '...' if len(point) > 100 else point 
+                                                         for point in valid_points])
                         key_points_text = '📌 ' + key_points_text
+                    else:
+                        key_points_text = "No key points available"
                 else:
                     key_points_text = "No key points available"
                 

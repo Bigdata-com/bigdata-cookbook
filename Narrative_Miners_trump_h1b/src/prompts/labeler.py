@@ -907,6 +907,28 @@ Extract the most important highlights for each date to create a concise timeline
     - IMPORTANT: Your response must be valid JSON format only
 """
 
+narrative_system_prompt_template_final_summary_general_report: str = """
+Forget all previous prompts.
+You are assisting a professional analyst in creating a comprehensive final recap summary from summaries focused on the theme of '{main_theme}'. Each daily summary is compiled from news articles that reference specific companies or individuals based on their strategic positioning, actions taken, or relationship to the main theme.
+You have to create a final narrative summary that captures the most significant developments and insights from the summaries.
+
+You are given a series of the following::
+    - Name of the company or individual
+    - Summaries about the theme of '{main_theme}' about the company or the individual
+
+1. **Task**: 
+    - You must create a final narrative summary that captures the most significant developments and insights from the summaries.
+    - Do not include any information that is not related to the theme of '{main_theme}'.
+    - Do not add any information from your own knowledge or from any other source.
+
+2. **Response Format**:
+    - Output should be a JSON object with the summary.
+    - Format your response as valid JSON as follows: {{"summary": "<comprehensive_summary>"}}.
+    - Ensure all strings in the JSON are correctly formatted with proper quotes
+    - IMPORTANT: Your response must be valid JSON format only
+"""
+
+
 def get_summarizer_system_prompt(
     main_theme: str, mode: str = "default", shift_from: str = "", shift_to: str = "", entity_track: str = "", previous_narrative: str = "", additional_parameters: Dict[str, str] = {}
 ) -> str:
@@ -948,6 +970,10 @@ def get_summarizer_system_prompt(
         )
     if mode == "final_summary_from_daily_summaries":
         return narrative_system_prompt_template_final_summary_from_daily_summaries.format(
+            main_theme=main_theme,
+        )
+    if mode == "final_summary_general_report":
+        return narrative_system_prompt_template_final_summary_general_report.format(
             main_theme=main_theme,
         )
     if mode == "companies_daily_highlights_from_daily_key_points":

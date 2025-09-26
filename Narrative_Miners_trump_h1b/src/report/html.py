@@ -2342,8 +2342,81 @@ def generate_entities_reports_html(df_entities_final_summary, countries_dict, co
             <div class="entities-container">
     """
     
-    # Generate sections dynamically for each country in countries_dict (exclude China)
+    # Calculate total percentage for each country and sort by it
+    country_totals = {}
     for country in countries_dict.keys():
+        country_entities = df_entities[df_entities['Region'] == country]
+        if len(country_entities) > 0:
+            # Get company stats for this country
+            total_percentage = 0
+            for _, row in country_entities.iterrows():
+                entity_name = row['Entity']
+                stats = get_company_stats(entity_name, company_stats, unique_sentences_count)
+                if stats:
+                    total_percentage += stats['overall_percentage']
+            country_totals[country] = total_percentage
+        else:
+            country_totals[country] = 0
+    
+    # Get all companies from countries_dict
+    all_companies = []
+    for company_list in countries_dict.values():
+        all_companies.extend(company_list)
+    all_companies = set(all_companies)
+    
+    # People Section (entities not found in countries_dict - only people, not companies)
+    other_entities = df_entities[df_entities['Region'] == 'Other']
+    people_entities = other_entities[~other_entities['Entity'].isin(all_companies)]
+    
+    if len(people_entities) > 0:
+        html_content += f"""
+            <div class="region-section">
+                <h3 class="region-title">People</h3>
+                <div class="entities-grid">
+        """
+        for _, row in people_entities.iterrows():
+            entity_name = clean_entity_name(row['Entity'])
+            original_entity_name = row['Entity']
+            summary = row['summary']
+            
+            # Get company statistics
+            stats = get_company_stats(original_entity_name, company_stats, unique_sentences_count)
+            stats_html = ""
+            if stats:
+                stats_html = f"""
+                    <div class="entity-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">News Relevance:</span> 
+                            <span class="stat-value">{stats['overall_sentences']} / {stats['sentence_percentage']}%</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">News Coverage:</span> 
+                            <span class="stat-value">{stats['overall_documents']} / {stats['overall_percentage']}%</span>
+                        </div>
+                    </div>
+                """
+            
+            html_content += f"""
+            <div class="entity-card">
+                <div class="entity-header">
+                    <h4 class="entity-name">{entity_name}</h4>
+                    {stats_html}
+                </div>
+                <div class="entity-summary">
+                    <p>{summary}</p>
+                </div>
+            </div>
+            """
+        html_content += """
+                </div>
+            </div>
+        """
+
+    # Sort countries by total percentage (descending)
+    sorted_countries = sorted(country_totals.keys(), key=lambda x: country_totals[x], reverse=True)
+    
+    # Generate sections dynamically for each country in sorted order
+    for country in sorted_countries:
         country_entities = df_entities[df_entities['Region'] == country]
         if len(country_entities) > 0:
             html_content += f"""
@@ -2389,52 +2462,6 @@ def generate_entities_reports_html(df_entities_final_summary, countries_dict, co
             </div>
             """
     
-    # Other Entities Section (entities not found in countries_dict)
-    other_entities = df_entities[df_entities['Region'] == 'Other']
-    if len(other_entities) > 0:
-        html_content += f"""
-            <div class="region-section">
-                <h3 class="region-title">Other Entities</h3>
-                <div class="entities-grid">
-        """
-        for _, row in other_entities.iterrows():
-            entity_name = clean_entity_name(row['Entity'])
-            original_entity_name = row['Entity']
-            summary = row['summary']
-            
-            # Get company statistics
-            stats = get_company_stats(original_entity_name, company_stats, unique_sentences_count)
-            stats_html = ""
-            if stats:
-                stats_html = f"""
-                    <div class="entity-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">News Relevance:</span> 
-                            <span class="stat-value">{stats['overall_sentences']} / {stats['sentence_percentage']}%</span>
-                        </div>
-                        <div class="stat-item">
-                            <span class="stat-label">News Coverage:</span> 
-                            <span class="stat-value">{stats['overall_documents']} / {stats['overall_percentage']}%</span>
-                        </div>
-                    </div>
-                """
-            
-            html_content += f"""
-            <div class="entity-card">
-                <div class="entity-header">
-                    <h4 class="entity-name">{entity_name}</h4>
-                    {stats_html}
-                </div>
-                <div class="entity-summary">
-                    <p>{summary}</p>
-                </div>
-            </div>
-            """
-        html_content += """
-                </div>
-            </div>
-        """
-    
     html_content += """
             </div>
         </div>
@@ -2443,7 +2470,39 @@ def generate_entities_reports_html(df_entities_final_summary, countries_dict, co
     return html_content
 
 
-def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summaries, plotly_fig, countries_dict, df_entities_final_summary=None, company_stats=None, unique_sentences_count=None, output_file="interactive_dashboard.html"):
+def _generate_summary_section(final_summary):
+    """Helper function to generate the summary section HTML with proper newline handling."""
+    import json
+    
+    # Handle different input types
+    if isinstance(final_summary, dict):
+        summary_text = final_summary.get("summary", "No general summary available.")
+    elif isinstance(final_summary, str):
+        # Check if it's a JSON string that looks like a dict
+        if final_summary.strip().startswith('{"summary":'):
+            try:
+                parsed_dict = json.loads(final_summary)
+                summary_text = parsed_dict.get("summary", "No general summary available.")
+            except json.JSONDecodeError:
+                summary_text = final_summary
+        else:
+            summary_text = final_summary
+    else:
+        summary_text = str(final_summary)
+    
+    # Replace newlines with HTML breaks
+    summary_html = summary_text.replace("\n", "<br>").replace("\\n", "<br>")
+    
+    return f'''
+            <div class="summary-section">
+                <div class="summary-title">📰 H-1B Visa Narrative Overview</div>
+                <div class="summary-content">
+                    {summary_html}
+                </div>
+            </div>
+            '''
+
+def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summaries, plotly_fig, countries_dict, df_entities_final_summary=None, company_stats=None, unique_sentences_count=None, df_summaries_entities=None, final_summary=None, output_file="interactive_dashboard.html"):
     """
     Generate HTML report with interactive timeline that can switch between country mode and company mode.
     
@@ -2455,6 +2514,8 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
         df_entities_final_summary: Optional DataFrame with entity summaries
         company_stats: Optional DataFrame with company statistics (for metrics display)
         unique_sentences_count: Optional total count of unique sentences (for percentage calculations)
+        df_summaries_entities: Optional DataFrame with columns ['Entity', 'Date', 'Summary', 'Key Points'] for people timeline data
+        final_summary: Optional dictionary with 'summary' key containing general narrative summary
         output_file: Output HTML file name
     """
     import pandas as pd
@@ -2536,6 +2597,92 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
     
     # Get list of available companies
     available_companies = list(company_summaries_data.keys())
+    
+    # Extract people (entities that are not companies) using same logic as Entity Reports
+    people_summaries_data = {}
+    available_people = []
+    
+    if df_entities_final_summary is not None:
+        # Get all companies from countries_dict (same logic as Entity Reports)
+        all_companies_from_countries = []
+        for company_list in countries_dict.values():
+            all_companies_from_countries.extend(company_list)
+        all_companies_from_countries = set(all_companies_from_countries)
+        
+        # Get entity region for classification
+        def get_entity_region_timeline(entity_name):
+            for country, company_list in countries_dict.items():
+                if entity_name in company_list:
+                    return country
+            return 'Other'
+        
+        # Apply region classification
+        df_entities_timeline = df_entities_final_summary.copy()
+        df_entities_timeline['Region'] = df_entities_timeline['Entity'].apply(get_entity_region_timeline)
+        
+        # Get people entities (same logic as Entity Reports)
+        other_entities = df_entities_timeline[df_entities_timeline['Region'] == 'Other']
+        people_entities = other_entities[~other_entities['Entity'].isin(all_companies_from_countries)]
+        
+        if len(people_entities) > 0:
+            available_people = sorted(people_entities['Entity'].unique())
+            
+            # For each person, get data from df_summaries_entities for timeline
+            for person in available_people:
+                if df_summaries_entities is not None:
+                    person_timeline_data = df_summaries_entities[df_summaries_entities['Entity'] == person]
+                    
+                    if len(person_timeline_data) > 0 and 'Date' in df_summaries_entities.columns:
+                        dates = sorted(person_timeline_data['Date'].unique())
+                        people_summaries_data[person] = {
+                            'dates': [date.strftime('%Y-%m-%d') for date in dates],
+                            'date_content': {}
+                        }
+                        
+                        for date in dates:
+                            date_str = date.strftime('%Y-%m-%d')
+                            day_data = person_timeline_data[person_timeline_data['Date'] == date]
+                            if len(day_data) > 0:
+                                row = day_data.iloc[0]
+                                summary = row.get('Summary', '') or row.get('summary', '')
+                                key_points = row.get('Key Points', '') or row.get('key_points', '')
+                                
+                                people_summaries_data[person]['date_content'][date_str] = {
+                                    'summary': summary,
+                                    'key_points': key_points
+                                }
+                    else:
+                        # No timeline data available, use entity summary data
+                        entity_data = people_entities[people_entities['Entity'] == person]
+                        if len(entity_data) > 0:
+                            row = entity_data.iloc[0]
+                            summary = row.get('summary', '')
+                            
+                            people_summaries_data[person] = {
+                                'dates': [],
+                                'date_content': {
+                                    'general': {
+                                        'summary': summary,
+                                        'key_points': ''
+                                    }
+                                }
+                            }
+                else:
+                    # Fallback: No df_summaries_entities provided, use entity summary data
+                    entity_data = people_entities[people_entities['Entity'] == person]
+                    if len(entity_data) > 0:
+                        row = entity_data.iloc[0]
+                        summary = row.get('summary', '')
+                        
+                        people_summaries_data[person] = {
+                            'dates': [],
+                            'date_content': {
+                                'general': {
+                                    'summary': summary,
+                                    'key_points': ''
+                                }
+                            }
+                        }
     
     html_content = f"""
     <!DOCTYPE html>
@@ -2881,6 +3028,29 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 padding-top: 30px;
                 border-top: 2px solid #ecf0f1;
             }}
+            .summary-section {{
+                background-color: #f8f9fa;
+                margin: 0;
+                padding: 40px;
+                border-bottom: 1px solid #e9ecef;
+            }}
+            .summary-title {{
+                color: #2c3e50;
+                font-size: 1.8em;
+                font-weight: 600;
+                margin-bottom: 20px;
+                text-align: center;
+                border-bottom: 2px solid #3498db;
+                padding-bottom: 10px;
+            }}
+            .summary-content {{
+                color: #34495e;
+                font-size: 1.1em;
+                line-height: 1.8;
+                text-align: justify;
+                max-width: 1200px;
+                margin: 0 auto;
+            }}
         </style>
     </head>
     <body>
@@ -2889,6 +3059,8 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 <h1>📊 Interactive H-1B Visa Timeline Dashboard</h1>
                 <p>Switch between country highlights and individual company summaries</p>
             </div>
+            
+            {_generate_summary_section(final_summary) if final_summary else ""}
             
             <div class="content-section">
                 <div class="section-title">📈 Interactive Data Analysis</div>
@@ -2901,7 +3073,7 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 
                 <div class="section-title">⏱️ Interactive Timeline</div>
                 <div class="section-description">
-                    Choose between country highlights or individual company summaries
+                    Choose between country highlights, individual company summaries, or people insights
                 </div>
                 
                 <div class="timeline-controls">
@@ -2910,6 +3082,7 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                         <select id="modeSelect" onchange="changeTimelineMode()">
                             <option value="country">Country Mode</option>
                             <option value="company">Company Mode</option>
+                            <option value="people" selected>People Mode</option>
                         </select>
                     </div>
                     <div class="control-group" id="countryGroup">
@@ -2922,6 +3095,19 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                         <label class="control-label">Select Company:</label>
                         <select id="companySelect" onchange="changeCompany()">
                             {chr(10).join(f'<option value="{company}">{company}</option>' for company in available_companies)}
+                        </select>
+                    </div>
+                    <div class="control-group" id="peopleGroup" style="display: none;">
+                        <label class="control-label">Select Person:</label>
+                        <select id="personSelect" onchange="changePerson()">
+                            <!-- Will be populated by JavaScript -->
+                        </select>
+                    </div>
+                    <div class="control-group" id="contentGroup" style="display: none;">
+                        <label class="control-label">Content Type:</label>
+                        <select id="contentTypeSelect" onchange="updateTimelinePeople()">
+                            <option value="summary">Summary</option>
+                            <option value="keypoints">Key Points</option>
                         </select>
                     </div>
                 </div>
@@ -2947,25 +3133,40 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
             const countriesData = {json.dumps(countries_timeline_data)};
             const companiesData = {json.dumps(company_summaries_data)};
             const availableCountries = {json.dumps(available_countries)};
+            const peopleData = {json.dumps(people_summaries_data)};
             
-            let currentMode = 'country';
+            let currentMode = 'people';
             let selectedCountries = ['{default_country}'];
             let currentCompany = '{available_companies[0] if available_companies else ""}';
+            let currentPerson = '';
+            let currentContentType = 'summary';
             
             function changeTimelineMode() {{
                 const mode = document.getElementById('modeSelect').value;
                 const companyGroup = document.getElementById('companyGroup');
                 const countryGroup = document.getElementById('countryGroup');
+                const peopleGroup = document.getElementById('peopleGroup');
+                const contentGroup = document.getElementById('contentGroup');
                 
                 currentMode = mode;
                 
                 if (mode === 'company') {{
                     companyGroup.style.display = 'inline-block';
                     countryGroup.style.display = 'none';
+                    peopleGroup.style.display = 'none';
+                    contentGroup.style.display = 'none';
                     updateTimelineCompany();
+                }} else if (mode === 'people') {{
+                    companyGroup.style.display = 'none';
+                    countryGroup.style.display = 'none';
+                    peopleGroup.style.display = 'inline-block';
+                    contentGroup.style.display = 'inline-block';
+                    initializePeopleMode();
                 }} else {{
                     companyGroup.style.display = 'none';
                     countryGroup.style.display = 'inline-block';
+                    peopleGroup.style.display = 'none';
+                    contentGroup.style.display = 'none';
                     updateTimelineCountries();
                 }}
             }}
@@ -3080,8 +3281,112 @@ def generate_interactive_timeline_dashboard_html(df_highlights, df_company_summa
                 container.innerHTML = html;
             }}
             
-            // Initialize with country mode
-            updateTimelineCountries();
+            function initializePeopleMode() {{
+                const personSelect = document.getElementById('personSelect');
+                const availablePeople = Object.keys(peopleData);
+                
+                // Clear and populate person select
+                personSelect.innerHTML = '';
+                availablePeople.forEach(person => {{
+                    const option = document.createElement('option');
+                    option.value = person;
+                    option.textContent = person;
+                    if (person === 'Donald Trump') {{
+                        option.selected = true;
+                    }}
+                    personSelect.appendChild(option);
+                }});
+                
+                // Set Donald Trump as default if available, otherwise first person
+                if (availablePeople.includes('Donald Trump')) {{
+                    currentPerson = 'Donald Trump';
+                    personSelect.value = 'Donald Trump';
+                }} else if (availablePeople.length > 0) {{
+                    currentPerson = availablePeople[0];
+                    personSelect.value = availablePeople[0];
+                }}
+                
+                updateTimelinePeople();
+            }}
+            
+            function changePerson() {{
+                currentPerson = document.getElementById('personSelect').value;
+                updateTimelinePeople();
+            }}
+            
+            function updateTimelinePeople() {{
+                const container = document.getElementById('timelineContent');
+                const personData = peopleData[currentPerson];
+                const contentType = document.getElementById('contentTypeSelect').value;
+                
+                if (!personData) {{
+                    container.innerHTML = '<p>No data available for this person.</p>';
+                    return;
+                }}
+                
+                let html = '';
+                const dates = personData.dates || [];
+                const totalDays = dates.length;
+                
+                dates.forEach((dateStr, index) => {{
+                    const position = totalDays > 1 ? (index / (totalDays - 1)) * 100 : 50;
+                    const isAbove = index % 2 === 0;
+                    const positionClass = isAbove ? 'above' : 'below';
+                    const dateDisplay = new Date(dateStr).toLocaleDateString('en-US', {{month: 'short', day: 'numeric'}});
+                    const dateContent = personData.date_content[dateStr];
+                    
+                    if (dateContent) {{
+                        if (contentType === 'summary') {{
+                            // Summary structure: use company-summary div
+                            const content = dateContent.summary || 'No summary available';
+                            html += `
+                                <div class="chart-point ${{positionClass}}" style="left: ${{position}}%;">
+                                    <div class="point-marker"></div>
+                                    <div class="date-label">${{dateDisplay}}</div>
+                                    <div class="highlights-box">
+                                        <div class="region-header">${{currentPerson}}</div>
+                                        <div class="company-summary">${{content}}</div>
+                                        <div class="arrow"></div>
+                                    </div>
+                                </div>`;
+                        }} else {{
+                            // Key points structure: use multiple highlight-item divs
+                            const keyPoints = dateContent.key_points || '';
+                            let keyPointsContent = '';
+                            if (keyPoints) {{
+                                const points = keyPoints.split('\\n').filter(point => point.trim());
+                                keyPointsContent = points.map(point => `<div class="highlight-item">• ${{point.trim()}}</div>`).join('');
+                            }} else {{
+                                keyPointsContent = '<div class="highlight-item">No key points available</div>';
+                            }}
+                            
+                            html += `
+                                <div class="chart-point ${{positionClass}}" style="left: ${{position}}%;">
+                                    <div class="point-marker"></div>
+                                    <div class="date-label">${{dateDisplay}}</div>
+                                    <div class="highlights-box">
+                                        <div class="region-header">${{currentPerson}}</div>
+                                        ${{keyPointsContent}}
+                                        <div class="arrow"></div>
+                                    </div>
+                                </div>`;
+                        }}
+                    }}
+                }});
+                
+                container.innerHTML = html;
+            }}
+            
+            // Initialize with people mode
+            window.onload = function() {{
+                const availablePeople = Object.keys(peopleData);
+                if (availablePeople.includes('Donald Trump')) {{
+                    currentPerson = 'Donald Trump';
+                }} else if (availablePeople.length > 0) {{
+                    currentPerson = availablePeople[0];
+                }}
+                changeTimelineMode();
+            }};
         </script>
     </body>
     </html>
