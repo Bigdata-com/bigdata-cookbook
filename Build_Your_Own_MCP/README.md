@@ -1,4 +1,4 @@
-# Research Tools Integration with MCP
+# Build Your Own Bigdata.com MCP
 
 This project showcases how to integrate the Bigdata research tools with an MCP server, enabling the creation of watchlists and thematic screening of companies.
 
@@ -9,24 +9,25 @@ This project showcases how to integrate the Bigdata research tools with an MCP s
 
 #### Prerequisites
 - Docker installed on your system
+- Bigdata.com API key (get yours at [bigdata.com/account/api-keys](https://bigdata.com/account/api-keys))
+- OpenAI API key (get yours at [platform.openai.com/api-keys](https://platform.openai.com/api-keys))
 
 #### Setup and Run with Docker
 
 1. **Clone and navigate to the project**:
    ```bash
-   cd "Research_Tools_MCP_Integration"
+   cd "Build_Your_Own_MCP"
    ```
 
 2. **Set up credentials**:
-   - Copy the example environment file:
+   - Create a `.env` file with your API credentials:
      ```bash
-     cp .env.example .env
+     cat > .env << EOF
+     BIGDATA_API_KEY=your_bigdata_api_key_here
+     OPENAI_API_KEY=your_openai_api_key_here
+     EOF
      ```
-   - Edit the `.env` file and add your credentials:
-     ```
-     BIGDATA_API_KEY=your_api_key
-     OPENAI_API_KEY=your_openai_api_key
-     ```
+   - Replace `your_bigdata_api_key_here` and `your_openai_api_key_here` with your actual API keys
 
 3. **Build and run the Docker container**:
    ```bash
@@ -40,8 +41,8 @@ This project showcases how to integrate the Bigdata research tools with an MCP s
 4. **Configure the MCP**:
 In cursor: Go to File > Preferences > Cursor Preferences > MCP -> New MCP Server and add the following configuration:
 ```
-"mcp-thematic-screener: {
-    "url": "http://10.2.1.130:8000/mcp/"
+"mcp-thematic-screener": {
+    "url": "http://localhost:8000/mcp/"
 }
 ```
 ![](./assets/cursor-mcp.png)
@@ -67,7 +68,7 @@ Create a watchlist called Next Generation Defense with the following companies: 
 
 2. **Clone and navigate to the project**:
    ```bash
-   cd "Research_Tools_MCP_Integration"
+   cd "Build_Your_Own_MCP"
    ```
 
 
@@ -82,23 +83,26 @@ Create a watchlist called Next Generation Defense with the following companies: 
      OPENAI_API_KEY=your_openai_api_key
      ```
 
-    > **Note:** To configure a different LLM model, edit the `LLM_MODEL` variable in `MCP_Integration.py`. You can find supported models in the [LLM Integration documentation](https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration).
+    > **Note:** To configure a different LLM model, edit the `LLM_MODEL` variable in `build_your_mcp.py`. You can find supported models in the [LLM Integration documentation](https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration).
 
-3. **Run the MCP server**:
+4. **Run the MCP server**:
    ```bash
-   uv run MCP_Integration.py
+   uv run build_your_mcp.py
    ```
 
-4. **Configure the MCP**:
+5. **Configure the MCP**:
 In cursor: Go to File > Preferences > Cursor Preferences > MCP -> New MCP Server and add the following configuration:
 ```
-"mcp-thematic-screener: {
-    "url": "http://10.2.1.130:8000/mcp/"
+"mcp-thematic-screener": {
+    "url": "http://localhost:8000/mcp/"
 }
 ```
 ![](./assets/cursor-mcp.png)
 
-5. **Ask the agent to create a watchlist or generate a screening report for you**
+For instructions on configuring other MCP clients, such as Claude Desktop or ChatGPT, please refer to the bigdata documentation:
+https://docs.bigdata.com/use-cases/research-tools/build-your-own-mcp
+
+6. **Ask the agent to create a watchlist or generate a screening report for you**
 For example, you can use the following prompt:
 ```
 Create a watchlist called Next Generation Defense with the following companies: 3M Co., Accenture PLC, Alphabet Inc., BAE Systems PLC, Cisco Systems Inc., Elbit System Ltd., Gen Digital Inc., General Dynamics Corp., GM (General Motors Co.), and IBM Corp. Then, screen the companies in this watchlist for the theme Next Generation Defense for fiscal year 2024

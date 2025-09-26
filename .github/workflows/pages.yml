@@ -1,0 +1,35 @@
+name: Publish hosted resources via pages
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      pages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Move HTML to public directories
+        run: |
+          mkdir -p .public
+          # Files for Build your own MCP workflow
+          mkdir -p .public/build_your_own_mcp/assets
+          mv Build_Your_Own_MCP/assets/claude-ukraine-russia-conflict-dashboard.html .public/build_your_own_mcp/assets/claude-ukraine-russia-conflict-dashboard.html
+          mv Build_Your_Own_MCP/assets/claude-visa-fees-dashboard.html .public/build_your_own_mcp/assets/claude-visa-fees-dashboard.html
+          mv Build_Your_Own_MCP/assets/claude-fcas-network-diagram.html .public/build_your_own_mcp/assets/claude-fcas-network-diagram.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./.public
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

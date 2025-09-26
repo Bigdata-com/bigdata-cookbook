@@ -28,7 +28,7 @@ RUN find / -perm +6000 -type f -exec chmod a-s {} \; || true
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # Add code
-ADD MCP_Integration.py /app/MCP_Integration.py
+ADD build_your_mcp.py /app/build_your_mcp.py
 
 # Switch to non-root user
 USER bigdata
@@ -38,4 +38,4 @@ WORKDIR /app
 EXPOSE 8000
 
 # Set the default command to start MCP
-CMD ["uv", "run", "MCP_Integration.py"]
+CMD ["uv", "run", "build_your_mcp.py"]
