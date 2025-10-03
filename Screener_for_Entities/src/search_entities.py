@@ -10,11 +10,12 @@ from bigdata_research_tools.search.search_utils import filter_search_results
 from typing import List, Optional, Dict
 
 from bigdata_client.document import Document
+from bigdata_client.query import SentimentRange
 from bigdata_client.models.advanced_search_query import ListQueryComponent
 from pandas import DataFrame
 from tqdm import tqdm
 from bigdata_research_tools.search.screener_search import mask_sentences
-from bigdata_research_tools.labeler.screener_labeler import (
+from bigdata_research_tools.labeler.risk_labeler import (
     replace_company_placeholders,
 )
 
@@ -86,6 +87,18 @@ def process_search_results(
                         if entity.key in chunks_entity_key_map
                         else None
                     ),
+                    "country": (
+                        getattr(chunks_entity_key_map[entity.key], 'country', None) or 
+                        getattr(chunks_entity_key_map[entity.key], 'country_code', None)
+                        if entity.key in chunks_entity_key_map
+                        else None
+                    ),
+                    "type": (
+                        getattr(chunks_entity_key_map[entity.key], 'entity_type', None) or 
+                        getattr(chunks_entity_key_map[entity.key], 'type', None)
+                        if entity.key in chunks_entity_key_map
+                        else None
+                    ),
                     "start": entity.start,
                     "end": entity.end,
                 }
@@ -120,12 +133,13 @@ def process_search_results(
                             "sentence_id": f"{result.id}-{chunk.chunk}",
                             "headline": result.headline,
                             "entity_id": chunk_entity["key"],
+                            "entity_country": entity_key.country,
                             "document_type": document_type.value,
                             "entity_name": entity_key.name,
                             "text": chunk.text,
-                            "other_entities": ", ".join(
-                                e["name"] for e in other_entities
-                            ),
+                            "other_entities_name": [e["name"] for e in other_entities],
+                            "other_entities_id": [e["key"] for e in other_entities],
+                            "other_entities_type": [e["type"] for e in other_entities],
                             "entities": chunk_entities,
                         }
                     
@@ -174,6 +188,7 @@ def search_by_entities(entities: list,
     freq: str = "3M",
     sort_by: SortBy = SortBy.RELEVANCE,
     rerank_threshold: Optional[float] = None,
+    sentiment_range: SentimentRange = None,
     document_limit: int = 50,
     batch_size: int = 10,
     **kwargs,
@@ -256,6 +271,8 @@ def search_by_entities(entities: list,
         scope=scope,
     )
 
+    batched_query = [bq&sentiment_range for bq in batched_query] if sentiment_range else batched_query
+
     # Create list of date ranges
     date_ranges = create_date_ranges(start_date, end_date, freq)
 
@@ -291,7 +308,16 @@ def search_by_entities(entities: list,
 
         return df
 
-def post_process_dataframe(df: DataFrame) -> DataFrame:
+def filter_company_entities(
+        entities: List[ListQueryComponent]
+) -> List[ListQueryComponent]:
+    return [entity for entity in entities
+            if hasattr(entity, 'entity_type') and
+            entity.entity_type == 'COMP'], [entity for entity in entities
+            if hasattr(entity, 'entity_type') and
+            entity.entity_type != 'COMP']
+
+def post_process_dataframe(df: DataFrame, extra_fields: dict, extra_columns: List[str]) -> DataFrame:
         """
         Post-process the labeled DataFrame.
 
@@ -305,16 +331,12 @@ def post_process_dataframe(df: DataFrame) -> DataFrame:
                     - headline: str
                     - entity_id: str
                     - entity_name: str
-                    - entity_sector: str
-                    - entity_industry: str
                     - entity_country: str
-                    - entity_ticker: str
                     - text: str
                     - other_entities: str
                     - entities: List[Dict[str, Any]]
                         - key: str
                         - name: str
-                        - ticker: str
                         - start: int
                         - end: int
                     - masked_text: str
@@ -327,11 +349,8 @@ def post_process_dataframe(df: DataFrame) -> DataFrame:
             - Columns:
                 - Time Period
                 - Date
-                - Company
-                - Sector
-                - Industry
+                - Entity
                 - Country
-                - Ticker
                 - Document ID
                 - Headline
                 - Quote
@@ -339,8 +358,9 @@ def post_process_dataframe(df: DataFrame) -> DataFrame:
                 - Theme
         """
         # Filter unlabeled sentences
-        df = df.loc[df["label"] != 'unclear'].copy()
+        df = df.loc[df["label"] != "unclear"].copy()
         if df.empty:
+            print(f"Empty dataframe: all rows labelled unclear")
             return df
 
         # Process timestamps
@@ -350,7 +370,6 @@ def post_process_dataframe(df: DataFrame) -> DataFrame:
         sort_columns = ["entity_name", "timestamp_utc", "label"]
         df = df.sort_values(by=sort_columns).reset_index(drop=True)
 
-
         # Replace company placeholders
         df["motivation"] = df.apply(replace_company_placeholders, axis=1)
 
@@ -358,15 +377,30 @@ def post_process_dataframe(df: DataFrame) -> DataFrame:
         df["Time Period"] = df["timestamp_utc"].dt.strftime("%b %Y")
         df["Date"] = df["timestamp_utc"].dt.strftime("%Y-%m-%d")
 
-        df = df.rename(
-            columns={
-                "document_id": "Document ID",
+        df["Document ID"] = df["document_id"] if "document_id" in df.columns else df["rp_document_id"]
+        
+        columns_map = {
                 "entity_name": "Entity",
+                "entity_country": "Country",
                 "headline": "Headline",
                 "text": "Quote",
                 "motivation": "Motivation",
-                "label": "Theme",
+                "label": "Sub-Scenario",
+                "other_entities_name": "Other Entities",
+                "other_entities_id": "Other Entities IDs",
+                "other_entities_type": "Other Entities Types"
             }
+
+        if extra_fields:
+            columns_map.update(extra_fields)
+            if "quotes" in extra_fields.keys():
+                if "quotes" in df.columns:
+                    df["quotes"] = df.apply(replace_company_placeholders, axis=1, col_name = 'quotes')
+                else:
+                    print("quotes column not in df")
+
+        df = df.rename(
+            columns=columns_map
         )
 
         # Select and order columns
@@ -374,14 +408,18 @@ def post_process_dataframe(df: DataFrame) -> DataFrame:
             "Time Period",
             "Date",
             "Entity",
+            "Country",
             "Document ID",
             "Headline",
             "Quote",
             "Motivation",
-            "Theme",
+            "Sub-Scenario",
+            "Other Entities",
+            "Other Entities IDs",
+            "Other Entities Types"
         ]
-
-        sort_columns = ["Date", "Time Period", "Entity", "Document ID", "Headline", "Quote"]
-        df = df[export_columns].sort_values(sort_columns).reset_index(drop=True)        
         
-        return df
+        if extra_columns:
+            export_columns += extra_columns
+
+        return df[export_columns]
