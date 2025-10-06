@@ -13,6 +13,7 @@ from bigdata_client.document import Document
 from bigdata_client.query import SentimentRange
 from bigdata_client.models.advanced_search_query import ListQueryComponent
 from pandas import DataFrame
+import pandas as pd
 from tqdm import tqdm
 from bigdata_research_tools.search.screener_search import mask_sentences
 from bigdata_research_tools.labeler.risk_labeler import (
@@ -35,12 +36,59 @@ def entity_type_checker(entities):
         return type_field_map[unique_types.pop()]
     else:
         raise ValueError("Multiple entity types found in the provided watchlist.")
+    
+def extract_chunks_entities_from_annotated_dict(annotated_dict):
+    """
+    Given a document dict from download_annotated_dict(), returns a DataFrame
+    with columns: 'chunk_number', 'text'
+    Assumes 'content' > 'body' is a list of chunks in order.
+    """
+    entities = annotated_dict.get('analytics', {}).get('entities', [])
+    if not entities:
+        print(f"Warning: No entities found in annotated_dict {annotated_dict['document']}")
+        return pd.DataFrame(columns=['rp_entity_id', 'entity_sentiment'])
+        
+    # Process chunks into DataFrame rows
+    entity_sentiments = [
+        {'rp_entity_id': entity.get('rp_entity_id', ''), 'entity_sentiment': entity.get('entity_sentiment', 0.0), "entity_text_sentiment": entity.get('entity_text_sentiment', 0.0)}
+        for entity in entities
+    ]
+    
+    # Create DataFrame with proper types
+    df = pd.DataFrame(entity_sentiments)
+    if not df.empty:
+        df['entity_sentiment'] = df['entity_sentiment'].astype(float)
+        df['entity_text_sentiment'] = df['entity_text_sentiment'].astype(float)
+    
+    return df
+
+def get_entity_sentiment(entities_df, entity_id):
+    """
+    Helper function to safely retrieve sentiment for a given entity ID
+    from a DataFrame of entities.
+
+    Args:
+        entities_df: DataFrame with columns 'rp_entity_id', 'entity_sentiment', 'entity_text_sentiment'
+        entity_id: The ID of the entity to retrieve sentiment for
+
+    Returns:
+        tuple: (entity_sentiment, entity_text_sentiment) - The sentiment values for the entity or None
+    """
+    entity_row = entities_df[entities_df['rp_entity_id'] == entity_id]
+    if len(entity_row)>1:
+        print(f"Warning: Multiple entries found for entity_id {entity_id}. Using the first entry.")
+    if not entity_row.empty:
+        entity_sentiment = entity_row.iloc[0]['entity_sentiment']
+        entity_text_sentiment = entity_row.iloc[0]['entity_text_sentiment']
+        return entity_sentiment, entity_text_sentiment
+    return None, None
 
 def process_search_results(
     results: List[Document],
     chunks_entities: List[ListQueryComponent],
     watchlist: list,
     document_type: DocumentType = DocumentType.NEWS,
+    enhance_sentiment: bool = False
 ) -> DataFrame:
     """
     Build a unified DataFrame from search results for any document type.
@@ -63,6 +111,7 @@ def process_search_results(
             - document_type: str (metadata field showing the document type)
             - entity_name: str
             - text: str
+            - sentiment: float (if available)
             - other_entities: str
             - entities: List[Dict[str, Any]]
             - masked_text: str
@@ -75,8 +124,36 @@ def process_search_results(
     """
     chunks_entity_key_map = {entity.id: entity for entity in chunks_entities}
 
+    # Only download annotated dict if we need sentiment enhancement
+    document_chunks_cache = {}
+    
     rows = []
+
+    if enhance_sentiment:
+
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        document_chunks_cache = {}
+
+        def fetch_annotated(result):
+            try:
+                annotated_dict = result.download_annotated_dict()
+                if annotated_dict:
+                    return result.id, extract_chunks_entities_from_annotated_dict(annotated_dict)
+            except Exception as e:
+                print(f"Warning: Could not download annotated dict for document {result.id}: {e}")
+            return result.id, None
+
+        from tqdm import tqdm
+        with ThreadPoolExecutor(max_workers=18) as executor:
+            futures = {executor.submit(fetch_annotated, result): result for result in results}
+            for future in tqdm(as_completed(futures), total=len(futures), desc="Downloading annotated dicts"):
+                doc_id, df = future.result()
+                if df is not None:
+                    document_chunks_cache[doc_id] = df
+    
     for result in tqdm(results, desc=f"Processing {document_type} results..."):
+        
         for chunk in result.chunks:
             # Build a list of entities present in the chunk
             chunk_entities = [
@@ -137,11 +214,24 @@ def process_search_results(
                             "document_type": document_type.value,
                             "entity_name": entity_key.name,
                             "text": chunk.text,
+                            "sentiment": chunk.sentiment if chunk.sentiment else None,
                             "other_entities_name": [e["name"] for e in other_entities],
                             "other_entities_id": [e["key"] for e in other_entities],
                             "other_entities_type": [e["type"] for e in other_entities],
                             "entities": chunk_entities,
                         }
+
+                # If enhance_sentiment is enabled, add entity sentiment from chunk metadata
+                if enhance_sentiment and result.id in document_chunks_cache:
+                    entities_df = document_chunks_cache[result.id]
+                    entity_sentiment, entity_text_sentiment = get_entity_sentiment(entities_df, chunk_entity["key"])
+
+                    # Add entity sentiment
+                    row_dict["entity_sentiment"] = entity_sentiment
+                    row_dict["entity_text_sentiment"] = entity_text_sentiment
+
+                # Collect information in standard format
+                rows.append(row_dict)
                     
                 # Handle differently based on document type
                 if document_type in (DocumentType.FILINGS, DocumentType.TRANSCRIPTS):
@@ -191,6 +281,7 @@ def search_by_entities(entities: list,
     sentiment_range: SentimentRange = None,
     document_limit: int = 50,
     batch_size: int = 10,
+    enhance_sentiment: bool = False,
     **kwargs,
 ) -> DataFrame:
     """
@@ -304,7 +395,8 @@ def search_by_entities(entities: list,
             results=results,
             chunks_entities=chunks_entities,
             watchlist=entities,
-            document_type=scope)
+            document_type=scope,
+            enhance_sentiment=enhance_sentiment)
 
         return df
 
@@ -356,6 +448,7 @@ def post_process_dataframe(df: DataFrame, extra_fields: dict, extra_columns: Lis
                 - Quote
                 - Motivation
                 - Theme
+                - Sentiment
         """
         # Filter unlabeled sentences
         df = df.loc[df["label"] != "unclear"].copy()
@@ -384,12 +477,19 @@ def post_process_dataframe(df: DataFrame, extra_fields: dict, extra_columns: Lis
                 "entity_country": "Country",
                 "headline": "Headline",
                 "text": "Quote",
+                "sentiment": "Sentiment",
                 "motivation": "Motivation",
                 "label": "Sub-Scenario",
                 "other_entities_name": "Other Entities",
                 "other_entities_id": "Other Entities IDs",
-                "other_entities_type": "Other Entities Types"
+                "other_entities_type": "Other Entities Types",
             }
+
+        if 'entity_sentiment' in df.columns:
+            columns_map.update({
+                "entity_sentiment": "Entity Sentiment",
+                "entity_text_sentiment": "Entity Text Sentiment"
+            })
 
         if extra_fields:
             columns_map.update(extra_fields)
@@ -412,13 +512,18 @@ def post_process_dataframe(df: DataFrame, extra_fields: dict, extra_columns: Lis
             "Document ID",
             "Headline",
             "Quote",
+            "Sentiment",
             "Motivation",
             "Sub-Scenario",
             "Other Entities",
             "Other Entities IDs",
             "Other Entities Types"
         ]
-        
+
+        if 'Entity Sentiment' in df.columns:
+            print("Including entity sentiment columns in export")
+            export_columns += ["Entity Sentiment", "Entity Text Sentiment"]
+
         if extra_columns:
             export_columns += extra_columns
 
