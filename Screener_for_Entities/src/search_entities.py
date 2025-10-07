@@ -15,6 +15,7 @@ from bigdata_client.models.advanced_search_query import ListQueryComponent
 from pandas import DataFrame
 import pandas as pd
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from bigdata_research_tools.search.screener_search import mask_sentences
 from bigdata_research_tools.labeler.risk_labeler import (
     replace_company_placeholders,
@@ -83,6 +84,15 @@ def get_entity_sentiment(entities_df, entity_id):
         return entity_sentiment, entity_text_sentiment
     return None, None
 
+def fetch_annotated(result):
+            try:
+                annotated_dict = result.download_annotated_dict()
+                if annotated_dict:
+                    return result.id, extract_chunks_entities_from_annotated_dict(annotated_dict)
+            except Exception as e:
+                print(f"Warning: Could not download annotated dict for document {result.id}: {e}")
+            return result.id, None
+
 def process_search_results(
     results: List[Document],
     chunks_entities: List[ListQueryComponent],
@@ -130,21 +140,8 @@ def process_search_results(
     rows = []
 
     if enhance_sentiment:
-
-        from concurrent.futures import ThreadPoolExecutor, as_completed
-
+        
         document_chunks_cache = {}
-
-        def fetch_annotated(result):
-            try:
-                annotated_dict = result.download_annotated_dict()
-                if annotated_dict:
-                    return result.id, extract_chunks_entities_from_annotated_dict(annotated_dict)
-            except Exception as e:
-                print(f"Warning: Could not download annotated dict for document {result.id}: {e}")
-            return result.id, None
-
-        from tqdm import tqdm
         with ThreadPoolExecutor(max_workers=18) as executor:
             futures = {executor.submit(fetch_annotated, result): result for result in results}
             for future in tqdm(as_completed(futures), total=len(futures), desc="Downloading annotated dicts"):
@@ -477,6 +474,7 @@ def post_process_dataframe(df: DataFrame, extra_fields: dict, extra_columns: Lis
                 "entity_country": "Country",
                 "headline": "Headline",
                 "text": "Quote",
+                "bigdata_sentiment": "Bigdata Sentiment",
                 "sentiment": "Sentiment",
                 "motivation": "Motivation",
                 "label": "Sub-Scenario",
@@ -513,6 +511,7 @@ def post_process_dataframe(df: DataFrame, extra_fields: dict, extra_columns: Lis
             "Headline",
             "Quote",
             "Sentiment",
+            "Bigdata Sentiment",
             "Motivation",
             "Sub-Scenario",
             "Other Entities",

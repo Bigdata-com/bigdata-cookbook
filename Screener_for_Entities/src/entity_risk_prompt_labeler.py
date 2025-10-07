@@ -201,14 +201,25 @@ If direct exposure of {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')} is c
 - Extract full sentences or phrases that clearly indicate, as standalone statements, how "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}" is affected by the Risk Scenario "{main_theme}" and the Sub-Scenario label assigned.
 </verbatim_quotes_extraction>
 
+<sentiment_analysis>
+- If the text does explicitly link "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}" with the Risk Scenario "{main_theme}", classify the exposure with a sentiment label speficied as follows:
+    - "negative" if the text indicates that "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}" is facing or will face negative consequences due to the Risk Scenario "{main_theme}".
+    - "positive" if the text indicates that "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}" is well positioned in the face of the Risk Scenario "{main_theme}", or is in a better position with respect to the past, intended as previous occurrences of the Risk Scenario from which the situation has improved, or if the text indicates that it is doing better than its peers, or than the {os.environ.get('BIGDATA_OTHER_ENTITY_PLACEHOLDER')}.
+    - "neutral" if the text indicates that "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}" is neither positively nor negatively affected by the Risk Scenario "{main_theme}".
+- If the exposure is unclear, assign the sentiment label as "neutral".
+</sentiment_analysis>
+
 <response_format>
-Structure your response as a JSON object containing:
-"sentence_id": "<sentence_id>"
-"motivation": : A concise explanation describing the link between "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}" and the Risk Sub-Scenario.
+Structure your response as a JSON object with the sentence ID as the key containing:
+"motivation": A concise explanation describing the link between "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}" and the Risk Sub-Scenario.
 "label": State the specific risk Sub-Scenario label or 'unclear'.
 "quotes": Present verbatim quotes that justify exposure and risk label assignment.
+"sentiment": State the sentiment label as 'negative', 'positive', or 'neutral'.
 
-{{"<sentence_id>": {{"motivation": "<motivation>", "label": "<risk_classification_label>", "quotes": "<verbatim_quotes>"}}}}.
+Format: {{"<sentence_id>": 
+{{"motivation": "<motivation>", "label": "<risk_classification_label>",
+ "quotes": "<verbatim_quotes>", "sentiment": "<sentiment_label>"}}
+}}.
 </response_format>
 
 <examples>
@@ -221,7 +232,8 @@ Output:
 {{3:{{
   "motivation": "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}'s supply operations are directly impacted by new tariffs due to their reliance on raw materials sourced from China.",
   "label": "Supply Chain Disruption",
-  "quotes": ["New tariffs against China will significantly impact {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}'s operations", "reliance on raw materials from Chinese suppliers"]}}
+  "quotes": ["New tariffs against China will significantly impact {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}'s operations", "reliance on raw materials from Chinese suppliers"],
+  "sentiment": "negative"}}
 }}
 
 ID: 5
@@ -233,8 +245,9 @@ Output:
 {{5:{{
   "motivation": "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}'s analysts are forecasting higher risks associated with potential interest rate changes.",
   "label": "unclear",
-  "quotes": []
-}}}}
+  "quotes": [],
+  "sentiment": "neutral"}}
+}}
 
 ID: 2
 Headline: "Economic Challenges Ahead Due to Tariffs on China"
@@ -245,19 +258,21 @@ Output:
 {{2:{{
   "motivation": "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}'s analysts are assessing the potential economic impact of new tariffs against China.",
   "label": "Economic Downturns",
-  "quotes": ["{os.environ.get('BIGDATA_OTHER_ENTITY_PLACEHOLDER')}'s analysts report a potential economic downturn in {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}"]}}
+  "quotes": ["{os.environ.get('BIGDATA_OTHER_ENTITY_PLACEHOLDER')}'s analysts report a potential economic downturn in {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}"],
+  "sentiment": "negative"}}
 }}
 
 ID: 3
 Headline: "Analyzing External Factors in Business Strategy"
-Text: "{os.environ.get('BIGDATA_OTHER_ENTITY_PLACEHOLDER')} is studying external factors such as tariffs to gauge potential risks in {os.environ.get('BIGDATA_OTHER_ENTITY_PLACEHOLDER')}'s analysts report a potential economic downturn in {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}."
+Text: "{os.environ.get('BIGDATA_OTHER_ENTITY_PLACEHOLDER')} is studying external factors such as tariffs to gauge potential risks. {os.environ.get('BIGDATA_OTHER_ENTITY_PLACEHOLDER')}'s analysts report a potential economic downturn in {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}."
 Risk Scenario: "New Tariffs on Semiconductors"
 Output:
 
 {{3:{{
-  "motivation": "{os.environ.get('BIGDATA_OTHER_ENTITY_PLACEHOLDER')}'s analysts are studying external factors such as tariffs to gauge potential risks in {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}."
+  "motivation": "{os.environ.get('BIGDATA_OTHER_ENTITY_PLACEHOLDER')}'s analysis of external factors does not establish a direct link to {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}.",
   "label": "unclear",
-  "quotes": []}}
+  "quotes": [],
+  "sentiment": "neutral"}}
 }}
 
 ID: 4
@@ -269,7 +284,8 @@ Output:
 {{4:{{
   "motivation": "The text does not related to the Risk Scenario and it does not mention any specific risk sub-scenario affecting {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')}.",
   "label": "unclear",
-  "quotes": []}}
+  "quotes": [],
+  "sentiment": "neutral"}}
 }}
 
 ID: 5
@@ -282,7 +298,8 @@ Output:
 {{5:{{
   "motivation": "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')} is not linked with any specific risk sub-scenario or any tangible effect of the Risk Scenario.",
   "label": "unclear",
-  "quotes": []}}
+  "quotes": [],
+  "sentiment": "neutral"}}
 }}
 
 ID: 2
@@ -297,7 +314,8 @@ Output:
   "quotes": [
     "{os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')} is heavily dependent on China",
     "The recent tariffs against China have forced {os.environ.get('BIGDATA_TARGET_ENTITY_PLACEHOLDER')} to reconsider its supply chain, potentially leading to increased logistics costs."
-  ]}}
+  ],
+  "sentiment": "negative"}}
 }}
 </examples>
 

@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 from IPython.display import HTML, display
+import warnings
+warnings.filterwarnings('ignore')
 
 # Optional imports for unified dashboard approach
 try:
@@ -423,104 +425,6 @@ def display_figures_cookbooks(df_entity, interactive=True, n_entities=10):
             if i < len(figures) - 1:
                 print("\n")
 
-
-# ===== LEGACY CODE (TO BE REMOVED) =====
-# This complex approach is being replaced by the simplified approach below
-
-def create_unified_entity_dashboard_OLD(df_entity, n_entities=10, dashboard_type="thematic", config=None):
-    """
-    Creates a unified dashboard for analyzing entity exposure (thematic or risk).
-    
-    Parameters:
-    -----------
-    df_entity : pandas.DataFrame
-        DataFrame with Entity, Country, Composite Score, and exposure columns.
-        Note: Industry/Sector columns are not required for entities.
-    n_entities : int, default=10
-        Number of entities to include in the analysis.
-    dashboard_type : str, default="thematic"
-        Type of dashboard: "thematic" or "risk"
-    config : dict, optional
-        Configuration dictionary to customize the dashboard
-    
-    Returns:
-    --------
-    tuple
-        A tuple containing two Plotly figures:
-        - Main dashboard with exposure analysis
-        - Country-level analysis (replaces industry analysis for entities)
-    """
-    if not UNIFIED_VISUALS_AVAILABLE:
-        raise ImportError(
-            "bigdata_research_tools.visuals is not available. "
-            "Please ensure the package is installed."
-        )
-    
-    # Create entity-specific configuration
-    if dashboard_type.lower() == "risk":
-        entity_config = {
-            "company_column": "Entity",
-            "industry_column": "Country",  # Use Country instead of Sector/Industry
-            "theme_start_col": 2,        # Start after Entity, Country
-            "theme_end_col": -1,         # End before Composite Score
-            "main_title": "Entity Risk Exposure Analysis Dashboard",
-            "industry_title": "Country-Level Risk Exposure (Average Scores)",
-            "subplot_titles": [
-                "Entity Risk Exposure Heatmap (Raw Scores)",
-                "Total Entity Risk Exposure Score",
-                "Top Risk Exposures by Entity", 
-                "Risk Exposure Scores across Sub-Scenarios",
-            ],
-            "axis_titles": {
-                "company": "Entity",
-                "theme": "Sub-Scenario",
-                "total_score": "Total Risk Score",
-                "total_score_across": "Total Risk Score Across Entities",
-            },
-        }
-        dashboard_func = create_risk_exposure_dashboard
-    else:
-        entity_config = {
-            "company_column": "Entity",
-            "industry_column": "Country",  # Use Country instead of Sector/Industry  
-            "theme_start_col": 2,        # Start after Entity, Country
-            "theme_end_col": -1,         # End before Composite Score
-            "main_title": "Entity Thematic Exposure Analysis Dashboard",
-            "industry_title": "Country-Level Thematic Exposure (Average Scores)",
-            "subplot_titles": [
-                "Entity Thematic Exposure Heatmap (Raw Scores)",
-                "Total Entity Thematic Exposure Score",
-                "Top Thematic Exposures by Entity",
-                "Thematic Exposure Scores across Sub-Themes",
-            ],
-            "axis_titles": {
-                "company": "Entity",
-                "theme": "Theme",
-                "total_score": "Total Thematic Score", 
-                "total_score_across": "Total Thematic Score Across Entities",
-            },
-        }
-        dashboard_func = create_thematic_exposure_dashboard
-    
-    # Merge with user config if provided
-    if config:
-        entity_config.update(config)
-    
-    # Adapt DataFrame for compatibility with company-focused dashboards
-    df_adapted = df_entity.copy()
-    
-    # Rename Entity to Company (required by the underlying dashboard)
-    if 'Entity' in df_adapted.columns and 'Company' not in df_adapted.columns:
-        df_adapted = df_adapted.rename(columns={'Entity': 'Company'})
-    
-    # Add Industry column using Country if it doesn't exist (some charts may need it)
-    if 'Industry' not in df_adapted.columns and 'Country' in df_adapted.columns:
-        df_adapted['Industry'] = df_adapted['Country']
-    
-    # Call the appropriate dashboard function
-    return dashboard_func(df_adapted, n_entities, entity_config)
-
-
 def display_entity_dashboard(df_entity, dashboard_type="thematic", interactive=True, n_entities=10, config=None, for_cookbooks=False):
     """
     Unified function to display entity dashboards (thematic or risk).
@@ -634,7 +538,6 @@ def display_risk_figures(df_entity, interactive=True, n_entities=10, config=None
     config : dict, optional
         Configuration dictionary (currently unused but kept for API consistency)
     """
-    print("Displaying Entity Risk Exposure Dashboard...")
     
     # Create dashboard using existing working functions
     figures = create_thematic_exposure_dashboard(df_entity, n_entities=n_entities, interactive=interactive)
@@ -692,8 +595,6 @@ def display_risk_figures_cookbooks(df_entity, interactive=True, n_entities=10, c
     except ImportError:
         is_colab = False
     
-    print("Displaying Entity Risk Exposure Dashboard...")
-    
     # Create dashboard using risk-focused functions  
     figures = create_risk_exposure_dashboard(df_entity, n_entities=n_entities, interactive=interactive)
     
@@ -711,7 +612,6 @@ def display_risk_figures_cookbooks(df_entity, interactive=True, n_entities=10, c
             if hasattr(fig, 'update_layout'):
                 fig.update_layout(title=title)
                 
-            print(f"\n{title}:")
             html_str = fig.to_html(
                 include_plotlyjs='cdn',
                 div_id=f"risk_plot_{i}",
@@ -731,7 +631,6 @@ def display_risk_figures_cookbooks(df_entity, interactive=True, n_entities=10, c
             if hasattr(fig, 'update_layout'):
                 fig.update_layout(title=title)
             
-            print(f"\n{title}:")
             if hasattr(fig, 'show'):
                 fig.show()
             else:
