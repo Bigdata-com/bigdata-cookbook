@@ -126,32 +126,43 @@ Format response as a JSON object with this schema:
 """,
 }
 narrative_system_prompt_template_entity_reference: str = """
- Forget all previous prompts.   
- You are assisting a professional analyst in evaluating a piece sentence regarding the theme '{main_theme}'.
- Your task is to evaluate if the sentence is strictly quoting something that '{entity_track}' has said, in order to track what '{entity_track}' has said, and not if he has done something.
- You are given a sentence that comes from a news article and the title of the news article in order to give you a context of the sentence.
+Forget all previous prompts.   
+You are assisting a professional analyst in evaluating a chunk of text regarding the theme '{main_theme}'.
 
- Please adhere strictly to the following guidelines:
+Your task is to evaluate if the sentence is either:
+- DIRECT: directly quoting something that '{entity_track}' has said
+- MENTION: indirectly quoting something that '{entity_track}' has said, mentioning specific actions from '{entity_track}', or when others talk substantively about '{entity_track}'
+- NOT_RELEVANT: '{entity_track}' is not mentioned, or is only mentioned as temporal/contextual reference without meaningful content about the entity itself
 
- 1. **Analyze the Sentence**:
-    - Each input consists of a sentence ID, the title of the news article and the sentence text.
-    - Assign the label '{known_label}' to the sentence related to '{entity_track}' when it contains something that '{entity_track}' has explicitly said, and not if he has done something.
-    - Assign the label '{unknown_label}' to the sentence related to '{entity_track}' when it does not relate to strictly quoting something that '{entity_track}' has said.
-    - Assign the label '{unknown_label}' to the sentence related to '{entity_track}' when it contains something that '{entity_track}' has done, and not something he has said.
-    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
-    - Use only the information contained within the sentence and the title of the news article for your label assignment.
+You are given a chunk of text that comes from a news article and the title of the news article in order to give you a context of the sentence.
 
- 2. **Response Format**:
-    - Your output should be structured as a JSON object that includes:
-          1. A brief motivation for your choice.
-          2. The assigned label.
-    - Each entry must start with the sentence ID and contain a clear motivation that begins with '{entity_track}'.
-    - The motivation should explain why the label was related or not related to '{entity_track}'.
-    - Ensure that the exact context is understood and labels are based only on the information in the sentence (use the title of the news article for more context). 
-    - The assigned label should be only the string that precedes the character ':'.
-    - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>"}}, ...}}.
-    - Ensure that all strings in the JSON are correctly formatted with proper quotes.
- """
+Please adhere strictly to the following guidelines:
+
+1. **Analyze the Sentence**:
+   - Each input consists of a sentence ID, the title of the news article and the chunk of text against the theme '{main_theme}'.
+   - Assign the label DIRECT when '{entity_track}' directly says or declares something.
+   - Assign the label MENTION when:
+     * '{entity_track}' performs or performed a specific action
+     * Others discuss or criticize '{entity_track}' substantively
+     * The text refers to specific policies, decisions, or statements from '{entity_track}'
+   - Assign the label NOT_RELEVANT when:
+     * '{entity_track}' is not mentioned at all
+     * '{entity_track}' is only used as a temporal reference (e.g., "during the {entity_track} administration", "dating back to {entity_track} era")
+     * '{entity_track}' is mentioned only in passing without substantive content about their actions or statements
+   - Evaluate each chunk of text independently, focusing solely on the context provided within that specific chunk of text.
+   - Use only the information contained within the chunk of text and the title of the news article for your label assignment.
+
+2. **Response Format**:
+   - Your output should be structured as a JSON object that includes:
+         1. A brief motivation for your choice.
+         2. The assigned label.
+   - Each entry must start with the sentence ID and contain a clear motivation that begins with '{entity_track}'.
+   - The motivation should explain why the label was related or not related to '{entity_track}'.
+   - Ensure that the exact context is understood and labels are based only on the information in the chunk of text (use the title of the news article for more context). 
+   - The assigned label should be only the string that precedes the character ':'.
+   - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>"}}, ...}}.
+   - Ensure that all strings in the JSON are correctly formatted with proper quotes.
+"""
 narrative_system_prompt_template_theme_matching: str = """
  Forget all previous prompts.
  You are assisting a professional analyst in evaluating if a sentence is related to the theme '{main_theme}'.
@@ -637,101 +648,99 @@ Please adhere strictly to the following guidelines:
    - IMPORTANT: Your response must be valid JSON format only
 """
 
-
 narrative_system_prompt_template_companies_impact_with_main_entity: str = """
 Forget all previous prompts.
-You are assisting a professional analyst in creating comprehensive company summaries, bullet points and direct quotes about the '{main_theme}' introduced by '{main_entity}'.
-Your task is to analyze multiple piece of sentences coming from news for a single company about a single day.
+You are assisting a professional analyst in creating comprehensive summaries and tracking key events about '{main_theme}'.
+Your task is to analyze multiple piece chunks of text coming from news for a single entity about a single day.
+The entity can be a company or a person.
 
-You will receive company data including:
-- Company name
+You will receive entity data including:
+- Entity name
 - Multiple sentences from news articles
 
-Your primary task is to synthesize this information into a comprehensive summary on how the company is positioned regarding the '{main_theme}' and to extract only direct quotes coming from people of the given company.
-Put a lot of attention and highlight any reposne or action or comment from the given company about the '{main_theme}'.
-If some part of the information does not relate to '{main_theme}' or does not come from the given company, do not include it in the summary or in the bullet points.
+Your primary task is to synthesize this information into a comprehensive summary on how the entity is positioned regarding the '{main_theme}'.
+The summary should be a concise highlight with '{entity_track}' as the main subject, clearly explaining how the entity is positioned within the '{main_theme}' narrative - direct and focused, without adding unnecessary details.
+
+Your second task is to create a prioritized list of key events and statements that track what happens to, what is said by, and what impacts '{entity_track}' regarding '{main_theme}'.
+These key points should capture concrete events, actions, statements, and impacts in a clear and direct manner that can be used to track the entity's activity and positioning over time.
 
 Please adhere strictly to the following guidelines:
 
-1. **Company Analysis**:
-   - Analyze all provided quotes
-   - Identify the company's overall position and involvement with '{main_theme}'
-   - Put a lot of attention and highlight any reposne or action or comment from the given company about the '{main_theme}'.
-   - Consider the sector and industry context for your analysis
+1. **Entity Analysis**:
+   - Analyze all provided sentences
+   - Identify the entity's overall position and involvement with '{main_theme}'
+   - Pay close attention to what '{entity_track}' says, does, and how it is impacted regarding '{main_theme}'
+   - Consider the context for your analysis
 
 2. **Summary Creation**:
-   - Create a coherent narrative that connects all the individual quote-level insights
-   - Highlight the most significant aspects of the company's relationship with '{main_theme}'
-   - Focus on concrete evidence from the provided quotes and themes, not speculation
-   - Do not makeup information or use any prior knowledge, only use information from the quotes
+   - Create a coherent narrative that connects all the individual sentence-level insights in a direct and focused manner, without adding unnecessary details
+   - Highlight the most significant aspects of the entity's relationship with '{main_theme}'
+   - Give special emphasis to direct statements and quotes from '{entity_track}'
+   - Focus on concrete evidence from the provided sentences and do not make up information or use any prior knowledge
 
-3. **Key Points Extraction**:
-   - Identify bullet points that capture the most important insights specific to this company that relate to '{main_theme}'
-   - Each point must be directly supported by evidence from the provided quotes that relate to '{main_theme}'
+3. **Key Points Extraction - Event Tracking**:
+   - Extract all relevant information about '{entity_track}' related to '{main_theme}', including:
+     * Direct quotes and explicit statements FROM '{entity_track}'
+     * Concrete actions taken BY '{entity_track}'
+     * Events and developments INVOLVING '{entity_track}'
+     * Impacts, benefits, or consequences TO '{entity_track}'
+     * Predictions or expectations ABOUT '{entity_track}'
+   - Order the bullet points by priority:
+     * FIRST: Direct quotes and explicit statements from '{entity_track}'
+     * SECOND: Concrete actions taken by '{entity_track}'
+     * THIRD: Events, impacts, and developments involving or affecting '{entity_track}'
+   - Each point must capture a specific, trackable event, statement, or impact
+   - CRITICAL: NEVER include '{entity_track}' name or any reference to the entity by name in the bullet points
+   - Write bullet points as direct actions or statements without mentioning who performed them (the entity is implicit)
+   - Format: "Warned about X", "Announced Y", "Criticized Z" (NOT "[Entity] warned", "[Entity]'s warning")
+   - Write each point in a clear, direct, and factual manner
+   - CONSOLIDATION RULES:
+     * Aim for 3-5 consolidated bullet points maximum - prioritize quality over quantity
+     * Before finalizing, actively look for points that can be merged together
+     * Merge points discussing the same topic, event, or category (e.g., all economic impacts together, all employee impacts together)
+     * Each final point can contain multiple related pieces of information combined into one comprehensive statement
+     * Avoid creating separate points for slightly different phrasings of the same message or topic
+     * If two points discuss related aspects of the same issue, combine them into one point
    - Only include bullet points that are explicitly mentioned in the sentences - do not invent or extrapolate
-   - If there are few quotes, do not worry about the length - quality over quantity
-   - Prioritize unique or distinctive aspects of this company's approach to '{main_theme}'
-   - Do not makeup information or use any prior knowledge, only use information from the quotes
-
-
-4. **Direct Quotes Extraction**:
-   - Identify explicit exact quotes from company representatives, spokespersons, executives, or official company statements that capture the most important insights specific to that company that relate to '{main_theme}'. Include comments, actions, or responses from company officials.
-   - Each quote must be directly supported by evidence from the provided quotes that relate to '{main_theme}' and that come from the given company
-   - Only include quotes that are explicitly mentioned in the sentences - do not invent or extrapolate
-   - If there are few quotes do not worry about the length - quality over quantity
-   - If there are no quotes, do not include any bullet points here but type "no quotes"
-   - Do not makeup information or use any prior knowledge, only use information from the quotes
+   - Include as many relevant consolidated points as needed (typically 3-5)
 
 4. **Response Format**:
    - Output should be a JSON object with both a summary and bullet points
-   - Format your response as valid JSON as follows: {{"summary": "<comprehensive_summary>", "bullet_points": ["<point1>", "<point2>", "<point3>"], "quotes": ["<quote1>", "<quote2>", "<quote3>"]}}.
-   - Each bullet point should be a complete, standalone statement
+   - Format your response as valid JSON as follows: {{"summary": "<comprehensive_summary>", "bullet_points": ["<point1>", "<point2>", "<point3>"]}}.
+   - Bullet points should be ordered by priority (direct quotes first, then actions, then events/impacts)
    - Ensure all strings in the JSON are correctly formatted with proper quotes
    - IMPORTANT: Your response must be valid JSON format only
 """
 narrative_system_prompt_template_companies_impact_no_main_entity: str = """ PLACEHOLDER"""
 
 narrative_system_prompt_template_companies_temporal_narrative_from_summaries: str = """
-Forget all previous prompts.
-You are assisting a professional analyst in creating comprehensive summaries based on some daily summaries, bullet points and quotes about the theme of '{main_theme}' created from news articles.
-You are also given a cumulative narrative summary from recent past days about '{main_theme}'. That summary was generated by previous iterations of this same prompt and represent the historical context that you can use to analyze and recognize the new additional information.
-Your goal is to create a new summary only on the new information that has not been mentioned in the previous summaries, in order to keep track of the new information that has not been mentioned in the previous summaries.
+You are tracking developments about '{main_theme}' for '{entity_track}'.
 
+Historical summary: what was previously documented
+Today's information: what is being reported today
 
-You will receive:
-    - Historical narrative summary from recent past days about '{main_theme}'
-    - Summaries, bullet points and quotes of the current day about the theme of '{main_theme}' coming from news articles
+CRITICAL INSTRUCTION: Unless today's information is WORD-FOR-WORD repetition of the historical summary, there is new information to document. Added details, specifications, named solutions, or concrete proposals are NEW even if the general theme existed before.
 
-Please adhere strictly to the following guidelines:
+Your task:
 
-1. **Task**: 
-    - Your task is to analyze today's summaries, bullet points and quotes about '{main_theme}' against the historical narrative to distinguish between:
-    - NEW information: themes, positions, and statements that have not been mentioned in previous summaries. You must emphasize on the new information that has not been mentioned in the previous summaries.
-    - REPEATED information: themes or positions and statements that confirm or reiterate what was already stated in the past narrative. This is secondary, do not focus too much on this.
-    - Only focus on the company position about '{main_theme}'.
+1. **Identify what's new today**:
+   - Any specific detail, mechanism, or solution not explicitly stated in history = NEW
+   - Any concrete proposal or action-oriented language not in history = NEW
+   - Only classify as repetition if statements are essentially identical
 
-2. **Create an updated summary that**:
-    - Primarily focuses on the new information emerged today
-    - Explicitly notes when information reinforces or repeats previous statements, but do not focus too much on this. 
-    - Integrates new developments with the existing narrative context
+2. **Create summary**:
+   - Document what's new or evolved in today's information
+   - If genuinely nothing new: "No new developments. [Brief note]" (use this rarely)
 
-3. **Generate bullet points that**:
-    - You have to generate up to 2 bullet points
-    - The bullet point must highlight the new and most important information that has not been mentioned in the previous summary.
-    - The bullet point should represent what is new and important in the new information.
+3. **Highlights** (up to 2 bullet points):
+   - Extract key new information from today
+   - News-style, substantive takeaways
+   - Empty array only if truly nothing new
 
-4. **Rules**:
-   - Only include information that is related to '{main_theme}', if some part of the information does not relate to '{main_theme}', do not include it in the summary or in the bullet points.
-   - Focus on concrete evidence from the provided quotes and themes, not speculation
-   - If there are few quotes or no news quotes, do not worry about the length - quality over quantity
-   - Do not makeup information or use any prior knowledge, only use information from the quotes
+4. **Output format**:
+   Valid JSON: {{"summary": "<summary>", "bullet_points": ["<point1>", "<point2>"]}}
 
-5. **Response Format**:
-   - Output should be a JSON object with both a summary and bullet points
-   - Format your response as valid JSON as follows: {{"summary": "<comprehensive_summary>", "bullet_points": ["<point1>", "<point2>"]}}.
-   - Each bullet point should be a complete, standalone statement
-   - Ensure all strings in the JSON are correctly formatted with proper quotes
-   - IMPORTANT: Your response must be valid JSON format only
+Focus only on '{entity_track}' and '{main_theme}'. Do not invent information.
 """
 
 narrative_system_prompt_template_companies_temporal_narrative_from_summaries_no_previous_narrative: str = """
@@ -770,7 +779,7 @@ Please adhere strictly to the following guidelines:
 """
 
 
-narrative_system_prompt_template_company_narrative_consolidation: str = """
+LEGACY_narrative_system_prompt_template_company_narrative_consolidation_LEGACY: str = """
 Forget all previous prompts.
 You are assisting a professional analyst in extracting and creating information from a series of info about the theme of '{main_theme}' coming from news articles.
 Your are given summarized infomation about the theme of '{main_theme}' coming from news articles about past days.
@@ -790,7 +799,46 @@ You are also given a summarized version of the information about the theme of '{
     - Ensure all strings in the JSON are correctly formatted with proper quotes
     - IMPORTANT: Your response must be valid JSON format only
 """
+narrative_system_prompt_template_company_narrative_consolidation: str = """
+Forget all previous prompts.
+You are assisting a professional analyst in identifying new information to add to an evolving narrative about '{main_theme}' for the entity '{entity_track}'.
 
+You will receive:
+- Previous cumulative summary: comprehensive narrative built from past days' information about '{main_theme}'
+- Today summary: summary of news about '{main_theme}' from today's news articles. IMPORTANT: This summary can contains old information that is already present in the previous summary.
+
+Your task is to extract ONLY the new information from today's summary that should be appended to the existing narrative. Do NOT rewrite or include the existing summary content.
+
+Please adhere strictly to the following guidelines:
+
+1. **New Information Extraction**:
+   - Read and understand the existing cumulative summary
+   - Identify information from today's summary that is genuinely NEW and not already covered
+   - Extract only the new elements that add value to the narrative
+   - If today's information only repeats what is already in the cumulative summary, return an empty string
+   - The extracted information should be ready to append directly to the existing summary
+
+2. **Content Rules**:
+   - Only extract information directly related to '{entity_track}' involvement with '{main_theme}'
+   - Do not elaborate, interpret, or add commentary
+   - Extract factual information only
+   - CRITICAL: Do NOT use words like "reiterated", "repeated", "confirmed again", "restated" or similar unless these exact words appear in today's summary information
+   - Maintain consistency in tone and style with the existing summary
+   - Write the new content so it flows naturally when appended to the existing text
+
+3. **Output Format**:
+   - Return ONLY the text to be appended, not the full summary
+   - If there is new information, write it as a continuation of the existing narrative
+   - If there is no new information, return an empty string in the summary field
+   - The output will be directly concatenated to the existing summary
+
+4. **Response Format**:
+   - Output should be a JSON object with the new content to append
+   - Format your response as valid JSON as follows: {{"summary": "<new_content_to_append>"}}.
+   - If no new information exists, use: {{"summary": ""}}
+   - Ensure all strings in the JSON are correctly formatted with proper quotes
+   - IMPORTANT: Your response must be valid JSON format only
+"""
 
 narrative_system_prompt_template_final_summary_from_daily_summaries: str = """
 Forget all previous prompts.
@@ -955,6 +1003,7 @@ def get_summarizer_system_prompt(
     if mode == "company_narrative_consolidation":
         return narrative_system_prompt_template_company_narrative_consolidation.format(
             main_theme=main_theme,
+            entity_track=entity_track,
         )
     if mode == "temporal_company_narrative_from_summaries":
         if previous_narrative:
@@ -987,7 +1036,7 @@ def get_summarizer_system_prompt(
                 main_entity=additional_parameters["main_entity"]
                 )
         else:
-            return narrative_system_prompt_template_companies_impact_no_main_entity.format(
+            return narrative_system_prompt_template_companies_impact_with_main_entity.format(
                 main_theme=main_theme,
                 entity_track=entity_track,
             )

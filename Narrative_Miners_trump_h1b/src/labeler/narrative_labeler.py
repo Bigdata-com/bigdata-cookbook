@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Union
 
 #from risk_labeler import replace_company_placeholders
 from pandas import DataFrame
+import pandas as pd
 
 from bigdata_research_tools.labeler.labeler import (
     Labeler,
@@ -248,7 +249,7 @@ class NarrativeSummarizerFlex(Labeler):
         # Special handling for company_narrative_consolidation mode
         if mode == "company_narrative_consolidation":
             return self._handle_narrative_consolidation(
-                main_theme, previous_summary, today_summary, max_workers, additional_parameters
+                main_theme, previous_summary, today_summary, entity_track, max_workers, additional_parameters
             )
         
         # Special handling for companies_daily_highlights_from_daily_key_points mode
@@ -281,8 +282,7 @@ class NarrativeSummarizerFlex(Labeler):
         # DEBUG: Print system prompt
         print("=" * 80)
         print("DEBUG: SYSTEM PROMPT")
-        print("=" * 80)
-        print(system_prompt[:1000])
+        print(system_prompt[:100])
         print("=" * 80)
         import sys
         sys.stdout.flush()
@@ -293,7 +293,7 @@ class NarrativeSummarizerFlex(Labeler):
         for i, prompt in enumerate(prompts):
             print(f"PROMPT {i+1}:")
             print("-" * 40)
-            print(prompt[:1000])
+            print(prompt)
             print("-" * 40)
         print("=" * 80)
         sys.stdout.flush()
@@ -335,7 +335,6 @@ class NarrativeSummarizerFlex(Labeler):
             # Aggregate data for this entity using new column names
             entity_data = {
                 'entity_name': entity_name,
-                'quotes': entity_df['Chunk Text'].tolist() if 'Chunk Text' in entity_df.columns else [],
                 'themes': entity_df['Label'].tolist() if 'Label' in entity_df.columns else [],
                 'motivations': entity_df['Motivation'].tolist() if 'Motivation' in entity_df.columns else [],
                 'country': entity_df['Country Code'].iloc[0] if 'Country Code' in entity_df.columns else '',
@@ -343,19 +342,37 @@ class NarrativeSummarizerFlex(Labeler):
             }
             
             # Add Summary, Key_points, Quotes if they exist (for temporal_company_narrative_from_summaries mode)
+            # Support both old and new column names
             if 'Summary' in entity_df.columns:
                 entity_data['summary'] = entity_df['Summary'].iloc[0]  # Take first value since it should be the same for all rows of the same entity
+            elif 'Daily Summary' in entity_df.columns:
+                entity_data['summary'] = entity_df['Daily Summary'].iloc[0]
+                
             if 'Key_points' in entity_df.columns:
                 entity_data['key_points'] = entity_df['Key_points'].iloc[0]
+            elif 'Daily Key Points' in entity_df.columns:
+                entity_data['key_points'] = entity_df['Daily Key Points'].iloc[0]
+                
+            # Handle quotes: prefer 'Quotes' column, fallback to 'Chunk Text' only if 'Quotes' doesn't exist
             if 'Quotes' in entity_df.columns:
-                entity_data['quotes'] = entity_df['Quotes'].iloc[0]  # Override the Chunk Text quotes if this exists
+                entity_data['quotes'] = entity_df['Quotes'].iloc[0]
+
                 
             # Add Date and Summary lists for final_summary_from_daily_summaries mode
-            if 'Date' in entity_df.columns and 'Summary' in entity_df.columns:
-                # Sort by date to ensure chronological order
-                entity_df_sorted = entity_df.sort_values('Date')
+            # Support both old and new column names
+            summary_col = None
+            if 'Summary' in entity_df.columns:
+                summary_col = 'Summary'
+            elif 'Daily Summary' in entity_df.columns:
+                summary_col = 'Daily Summary'
+                
+            if 'Date' in entity_df.columns and summary_col:
+                # Sort by date and ensure datetime format
+                entity_df_sorted = entity_df.sort_values('Date').copy()
+                entity_df_sorted['Date'] = pd.to_datetime(entity_df_sorted['Date'])
+                
                 entity_data['dates'] = entity_df_sorted['Date'].dt.strftime('%Y-%m-%d').tolist()
-                entity_data['daily_summaries'] = entity_df_sorted['Summary'].tolist()
+                entity_data['daily_summaries'] = entity_df_sorted[summary_col].tolist()
                 
             grouped_data[entity_name] = entity_data
         
@@ -385,8 +402,10 @@ class NarrativeSummarizerFlex(Labeler):
             prompt_data = {}
             
             # For companies_impact and temporal_company_narrative_from_summaries modes, always add Company field
-            if mode == "companies_impact" or mode == "temporal_company_narrative_from_summaries":
-                prompt_data['Company'] = entity_name
+            if mode == "companies_impact":
+                prompt_data['Entity'] = entity_name
+            elif mode == "temporal_company_narrative_from_summaries":
+                prompt_data['Entity'] = entity_name
             elif mode == "final_summary_from_daily_summaries":
                 prompt_data['Company or Person'] = entity_name
             elif not entity_track:
@@ -399,12 +418,16 @@ class NarrativeSummarizerFlex(Labeler):
                     entity_previous = {}
                     
                     for key, narrative in previous_narrative.items():
-                        # If key contains entity name, extract the date part
-                        if f"{entity_name}_" in key:
+                        # If key contains entity name with dash format, extract the date part
+                        if f"{entity_name} - " in key:
+                            date_part = key.replace(f"{entity_name} - ", "")
+                            entity_previous[date_part] = narrative
+                        # If key contains entity name with underscore (legacy), extract the date part
+                        elif f"{entity_name}_" in key:
                             date_part = key.replace(f"{entity_name}_", "")
                             entity_previous[date_part] = narrative
                         # If key doesn't contain entity name, it's a legacy format, use as is
-                        elif "_" not in key:
+                        elif "_" not in key and " - " not in key:
                             entity_previous[key] = narrative
                     
                     # For temporal_company_narrative_from_summaries mode, use consolidated approach
@@ -631,6 +654,7 @@ class NarrativeSummarizerFlex(Labeler):
         main_theme: str, 
         previous_summary: str, 
         today_summary: str, 
+        entity_track: str,
         max_workers: int,
         additional_parameters: Dict[str, str] = {}
     ) -> str:
@@ -641,6 +665,7 @@ class NarrativeSummarizerFlex(Labeler):
             main_theme: The main theme to analyze
             previous_summary: Previous summary string
             today_summary: Today's summary string
+            entity_track: Entity track
             max_workers: Maximum number of concurrent workers
             additional_parameters: Additional parameters for the prompt
             
@@ -661,19 +686,17 @@ class NarrativeSummarizerFlex(Labeler):
         
         # Get system prompt for consolidation
         system_prompt = self.summary_prompt or self._get_summarizer_system_prompt(
-            main_theme, mode="company_narrative_consolidation", entity_track="", previous_narrative="", additional_parameters=additional_parameters
+            main_theme, mode="company_narrative_consolidation", entity_track=entity_track, previous_narrative="", additional_parameters=additional_parameters
         )
         
         # DEBUG: Print system prompt
         print("=" * 80)
         print("DEBUG: CONSOLIDATION SYSTEM PROMPT")
-        print("=" * 80)
-        print(system_prompt)
+        print(system_prompt[:100])
         print("=" * 80)
         
         # DEBUG: Print prompt
         print("DEBUG: CONSOLIDATION USER PROMPT")
-        print("=" * 80)
         print(prompt)
         print("=" * 80)
         
@@ -842,13 +865,12 @@ class NarrativeSummarizerFlex(Labeler):
         # DEBUG: Print prompts (following the same pattern as get_summaries)
         print("=" * 80)
         print("DEBUG: FINAL SUMMARY GENERAL REPORT SYSTEM PROMPT")
-        print("=" * 80)
-        print(system_prompt[:1000])
+        print(system_prompt[:100])
         print("=" * 80)
         
         print("DEBUG: FINAL SUMMARY GENERAL REPORT USER PROMPT")
         print("=" * 80)
-        print(prompt[:1000])
+        print(prompt)
         print("=" * 80)
         
         # Run prompt using the same method as other handlers
