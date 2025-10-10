@@ -121,21 +121,26 @@ def create_enhanced_interactive_chart(df_narrative, df_citation, df_top3, df_com
                     else:
                         key_points_list = [enhanced_key_points.strip()]
                 
-                # Format the key points
+                # Adjust summary and key points to ensure compact hover text
                 if key_points_list:
-                    # Filter out empty strings and None values
+                    # Limit characters to reduce width
                     valid_points = [str(point).strip() for point in key_points_list if point and str(point).strip()]
                     if valid_points:
-                        key_points_text = '<br>📌 '.join([point[:100] + '...' if len(point) > 100 else point 
-                                                         for point in valid_points])
-                        key_points_text = '📌 ' + key_points_text
+                        # Shorten each point to 20 characters
+                        key_points_text = '<br>• '.join([
+                            point[:20] + '...' if len(point) > 20 else point 
+                            for point in valid_points[:2]
+                        ])
+                        key_points_text = '• ' + key_points_text
+                        if len(valid_points) > 2:
+                            key_points_text += f'<br>• ... and {len(valid_points) - 2} more'
                     else:
-                        key_points_text = "No key points available"
+                        key_points_text = "No highlights available"
                 else:
-                    key_points_text = "No key points available"
+                    key_points_text = "No highlights available"
                 
-                # Add summary preview
-                summary_preview = str(enhanced_summary)[:150] + '...' if len(str(enhanced_summary)) > 150 else str(enhanced_summary)
+                # Shorten summary to 30 characters
+                summary_preview = str(enhanced_summary)[:30] + '...' if len(str(enhanced_summary)) > 30 else str(enhanced_summary)
                 
                 hover_text = f"<b>Summary:</b><br>{summary_preview}<br><br><b>Key Points:</b><br>{key_points_text}"
             else:
@@ -413,6 +418,278 @@ def create_company_document_coverage_chart(company_stats, relative_overall=False
             rangeslider=dict(visible=False),
             type="date"
         )
+    )
+    
+    return fig
+
+
+def create_entity_temporal_coverage_chart(df):
+    """
+    Create an interactive line chart showing temporal evolution of entity coverage.
+    
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        DataFrame with columns:
+        - Date: date of the coverage
+        - Entity: name of the entity
+        - Entity Type: type of entity (COMP, PEOP, ORGA)
+        - Novel Daily Summary: summary text for that date
+        - Highlights: key points for that date (fallback to Daily Highlights or enhanced_key_points)
+    
+    Returns:
+    --------
+    plotly.graph_objects.Figure
+        Interactive plotly figure
+    """
+    import ast
+    
+    # Ensure Date is datetime
+    df = df.copy()
+    df['Date'] = pd.to_datetime(df['Date'])
+    
+    # Get all unique dates sorted
+    all_dates = sorted(df['Date'].unique())
+    
+    # Get all unique entities
+    entities = df['Entity'].unique()
+    
+    # Calculate average occurrences for each entity to sort them
+    entity_avg = {}
+    for entity in entities:
+        entity_data = df[df['Entity'] == entity]
+        daily_counts = entity_data.groupby('Date').size()
+        entity_avg[entity] = daily_counts.mean()
+    
+    # Sort entities by average occurrence (descending)
+    entities_sorted = sorted(entities, key=lambda x: entity_avg[x], reverse=True)
+    
+    # Sort entities by total occurrences before adding traces
+    entities_sorted_by_occurrences = sorted(entities_sorted, key=lambda entity: df[df['Entity'] == entity].shape[0], reverse=True)
+
+    # Define color schemes for different entity types
+    color_scheme = {
+        'COMP': ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E'],  # Blues/teals for companies
+        'PEOP': ['#E63946', '#F77F00', '#D62828', '#F4A261', '#E76F51'],  # Reds/oranges for people
+        'ORGA': ['#06A77D', '#118AB2', '#073B4C', '#3A6351', '#06D6A0']   # Greens/cyans for organizations
+    }
+    
+    # Marker symbols
+    symbols = ['circle', 'diamond', 'square', 'cross', 'x', 'triangle-up', 'triangle-down', 'star']
+    
+    # Create figure
+    fig = go.Figure()
+    
+    # Add separate traces to figure for each entity type
+    for i, entity in enumerate(entities_sorted_by_occurrences):
+        # Get entity type
+        entity_type = df[df['Entity'] == entity]['Entity Type'].iloc[0]
+        
+        # Get total occurrences for the entity
+        total_count = df[df['Entity'] == entity].shape[0]
+        
+        # Skip entity if total count is zero
+        if total_count == 0:
+            continue
+        
+        # Select color based on entity type
+        type_colors = color_scheme.get(entity_type, color_scheme['COMP'])
+        color_idx = sum(1 for e in entities_sorted_by_occurrences[:i] if df[df['Entity'] == e]['Entity Type'].iloc[0] == entity_type)
+        color = type_colors[color_idx % len(type_colors)]
+        
+        entity_counts = []
+        hover_texts = []
+        dates_with_data = []
+        
+        for date in all_dates:
+            # Count occurrences for this entity on this date
+            date_data = df[(df['Date'] == date) & (df['Entity'] == entity)]
+            count = len(date_data)
+            
+            entity_counts.append(count)
+            dates_with_data.append(date)
+            
+            # Build hover text
+            if len(date_data) > 0:
+                # Get Novel Daily Summary for summary
+                summary = date_data['Novel Daily Summary'].iloc[0] if 'Novel Daily Summary' in date_data.columns else ""
+                
+                # Get highlights - try Highlights first, then fallback to old column names
+                highlights = None
+                if 'Highlights' in date_data.columns and pd.notna(date_data['Highlights'].iloc[0]):
+                    highlights = date_data['Highlights'].iloc[0]
+                elif 'Daily Highlights' in date_data.columns and pd.notna(date_data['Daily Highlights'].iloc[0]):
+                    highlights = date_data['Daily Highlights'].iloc[0]
+                elif 'enhanced_key_points' in date_data.columns and pd.notna(date_data['enhanced_key_points'].iloc[0]):
+                    highlights = date_data['enhanced_key_points'].iloc[0]
+                
+                # Parse highlights if it's a list or string representation of a list
+                key_points_list = None
+                
+                if highlights is not None:
+                    if isinstance(highlights, list):
+                        key_points_list = highlights
+                    elif isinstance(highlights, str) and highlights.strip():
+                        # Check if it looks like a list representation
+                        if highlights.strip().startswith('[') and highlights.strip().endswith(']'):
+                            try:
+                                key_points_list = ast.literal_eval(highlights.strip())
+                            except (ValueError, SyntaxError):
+                                # If parsing fails, treat as single string
+                                key_points_list = [highlights.strip()]
+                        else:
+                            key_points_list = [highlights.strip()]
+                
+                # Adjust summary and key points to ensure compact hover text
+                if key_points_list:
+                    # Limit characters to reduce width
+                    valid_points = [str(point).strip() for point in key_points_list if point and str(point).strip()]
+                    if valid_points:
+                        # Shorten each point to 20 characters
+                        key_points_text = '<br>• '.join([
+                            point[:20] + '...' if len(point) > 20 else point 
+                            for point in valid_points[:2]
+                        ])
+                        key_points_text = '• ' + key_points_text
+                        if len(valid_points) > 2:
+                            key_points_text += f'<br>• ... and {len(valid_points) - 2} more'
+                    else:
+                        key_points_text = "No highlights available"
+                else:
+                    key_points_text = "No highlights available"
+                
+                # Format summary to wrap at 100 characters, breaking at spaces
+                summary_words = str(summary).split()
+                summary_preview = ''
+                summary_line = ''
+                for word in summary_words:
+                    if len(summary_line) + len(word) + 1 <= 100:
+                        summary_line += (' ' + word if summary_line else word)
+                    else:
+                        summary_preview += (summary_line + '<br>')
+                        summary_line = word
+                summary_preview += summary_line
+
+                # Correct bullet list formatting to wrap text properly within a single bullet point, avoiding extra bullets
+                key_points_text = ''
+                for point in valid_points:
+                    wrapped_point = ' • '  # Single bullet per point
+                    char_count = 0
+                    for word in point.split():
+                        if char_count + len(word) + 1 > 100:  # Wrap line if it exceeds 100 characters
+                            wrapped_point += '<br>'
+                            char_count = 0
+                        wrapped_point += (' ' + word)
+                        char_count += len(word) + 1
+                    key_points_text += (wrapped_point + '<br>')
+                
+                hover_text = (
+                    f"<b>Summary:</b><br>{summary_preview}<br><br>"
+                    f"<b>Highlights:</b><br>{key_points_text}"
+                )
+            else:
+                hover_text = "No data available for this date"
+            
+            hover_texts.append(hover_text)
+        
+        # Determine entity type name for legend grouping
+        entity_type_name = {
+            'PEOP': 'People',
+            'COMP': 'Companies',
+            'ORGA': 'Organizations'
+        }.get(entity_type, 'Entities')
+        
+        # Add trace
+        fig.add_trace(
+            go.Scatter(
+                x=dates_with_data,
+                y=entity_counts,
+                mode='lines+markers',
+                name=f'{entity} ({total_count})',
+                legendgroup=entity_type_name,
+                legendgrouptitle_text=entity_type_name,
+                line=dict(color=color, width=2.5),
+                marker=dict(
+                    size=8, 
+                    symbol=symbols[i % len(symbols)],
+                    color=color,
+                    line=dict(width=1.5, color='white')
+                ),
+                customdata=hover_texts,
+                hovertemplate=(
+                    '<b>%{fullData.name}</b><br>' +
+                    'Date: %{x|%Y-%m-%d}<br>' +
+                    'Occurrences: %{y}<br><br>' +
+                    '%{customdata}<br>' +
+                    '<extra></extra>'
+                ),
+                connectgaps=False
+            )
+        )
+    
+    # Update layout
+    fig.update_layout(
+        title={
+            'text': 'Entity Coverage Timeline',
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 24, 'color': '#2c3e50'}
+        },
+        xaxis_title='Date',
+        yaxis_title='Number of Occurrences',
+        hovermode='closest',
+        height=700,
+        showlegend=True,
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=1.02,
+            bgcolor='rgba(255,255,255,0.9)',
+            bordercolor='rgba(0,0,0,0.2)',
+            borderwidth=1
+        ),
+        plot_bgcolor='white',
+        paper_bgcolor='white',
+        font=dict(family="Arial, sans-serif", size=12, color='#2c3e50'),
+        margin=dict(l=80, r=250, t=100, b=80)
+    )
+    
+    # Update axes
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor='rgba(128,128,128,0.2)',
+        tickformat='%Y-%m-%d',
+        tickangle=45,
+        showline=True,
+        linewidth=1,
+        linecolor='rgba(128,128,128,0.3)'
+    )
+    
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor='rgba(128,128,128,0.2)',
+        showline=True,
+        linewidth=1,
+        linecolor='rgba(128,128,128,0.3)'
+    )
+    
+    # Add range selector
+    fig.update_xaxes(
+        rangeselector=dict(
+            buttons=list([
+                dict(count=7, label="1w", step="day", stepmode="backward"),
+                dict(count=14, label="2w", step="day", stepmode="backward"),
+                dict(count=1, label="1m", step="month", stepmode="backward"),
+                dict(step="all", label="All")
+            ]),
+            bgcolor='rgba(255,255,255,0.9)',
+            activecolor='rgba(46, 134, 171, 0.3)',
+            font=dict(color='#2c3e50')
+        ),
+        rangeslider=dict(visible=False),
+        type="date"
     )
     
     return fig

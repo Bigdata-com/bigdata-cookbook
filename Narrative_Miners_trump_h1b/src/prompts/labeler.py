@@ -648,11 +648,11 @@ Please adhere strictly to the following guidelines:
    - IMPORTANT: Your response must be valid JSON format only
 """
 
-narrative_system_prompt_template_companies_impact_with_main_entity: str = """
+narrative_system_prompt_template_entity_daily_summary_and_keypoints_with_main_entity: str = """
 Forget all previous prompts.
 You are assisting a professional analyst in creating comprehensive summaries and tracking key events about '{main_theme}'.
 Your task is to analyze multiple piece chunks of text coming from news for a single entity about a single day.
-The entity can be a company or a person.
+The entity can be a company or a person or an organization. Never refer to it as "entity".
 
 You will receive entity data including:
 - Entity name
@@ -711,7 +711,7 @@ Please adhere strictly to the following guidelines:
    - Ensure all strings in the JSON are correctly formatted with proper quotes
    - IMPORTANT: Your response must be valid JSON format only
 """
-narrative_system_prompt_template_companies_impact_no_main_entity: str = """ PLACEHOLDER"""
+narrative_system_prompt_template_entity_daily_summary_and_keypoints_no_main_entity: str = """ PLACEHOLDER"""
 
 narrative_system_prompt_template_companies_temporal_narrative_from_summaries: str = """
 You are tracking developments about '{main_theme}' for '{entity_track}'.
@@ -727,20 +727,23 @@ Your task:
    - Any specific detail, mechanism, or solution not explicitly stated in history = NEW
    - Any concrete proposal or action-oriented language not in history = NEW
    - Only classify as repetition if statements are essentially identical
+   - Information must only be about '{entity_track}' regarding '{main_theme}'. No other theme is allowed.
 
 2. **Create summary**:
    - Document what's new or evolved in today's information
    - If genuinely nothing new: "No new developments. [Brief note]" (use this rarely)
+   - Information must only be about '{entity_track}' regarding '{main_theme}'. No other theme is allowed.
 
 3. **Highlights** (up to 2 bullet points):
    - Extract key new information from today
    - News-style, substantive takeaways
    - Empty array only if truly nothing new
+   - Information must only be about '{entity_track}' regarding '{main_theme}'. No other theme is allowed.
 
 4. **Output format**:
    Valid JSON: {{"summary": "<summary>", "bullet_points": ["<point1>", "<point2>"]}}
 
-Focus only on '{entity_track}' and '{main_theme}'. Do not invent information.
+Focus only on '{entity_track}' regarding '{main_theme}'. Do not invent information. No other theme is allowed.
 """
 
 narrative_system_prompt_template_companies_temporal_narrative_from_summaries_no_previous_narrative: str = """
@@ -843,7 +846,8 @@ Please adhere strictly to the following guidelines:
 narrative_system_prompt_template_final_summary_from_daily_summaries: str = """
 Forget all previous prompts.
 You are assisting a professional analyst in creating a comprehensive final recap summary from daily summaries focused on the theme of '{main_theme}'. Each daily summary is compiled from news articles that reference specific companies or individuals based on their strategic positioning, actions taken, or relationship to the main theme.
-You have to create a final narrative summary that captures the most significant developments and insights from the daily summaries.
+You have to create a final narrative summary that captures the most significant developments and insights from the daily summaries. 
+If you are referring to specific events, try to include the dates you are given to be more precise,
 
 You are given:
     - Name of the company or individual
@@ -1029,14 +1033,14 @@ def get_summarizer_system_prompt(
         return narrative_system_prompt_template_companies_daily_highlights_from_daily_key_points.format(
             main_theme=main_theme,
         )
-    if mode == "companies_impact":
+    if mode == "entity_daily_summary_and_keypoints":
         if "main_entity" in additional_parameters:  # If main_entity is provided, use it, otherwise use entity_track
-            return narrative_system_prompt_template_companies_impact_with_main_entity.format(
+            return narrative_system_prompt_template_entity_daily_summary_and_keypoints_with_main_entity.format(
                 main_theme=main_theme,
                 main_entity=additional_parameters["main_entity"]
                 )
         else:
-            return narrative_system_prompt_template_companies_impact_with_main_entity.format(
+            return narrative_system_prompt_template_entity_daily_summary_and_keypoints_with_main_entity.format(
                 main_theme=main_theme,
                 entity_track=entity_track,
             )
