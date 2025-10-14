@@ -116,10 +116,9 @@ def test_llm_model_configured():
             [{"role": "user", "content": "Hello, world!"}]
         )
     except Exception as e:
-        print(
+        raise RuntimeError(
             "[ERROR] LLM model is not configured correctly. Read more here: https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration"
-        )
-        exit(1)
+        ) from e
     else:
         assert isinstance(test_answer, str), (
             "LLM model is not configured correctly. Read more here: https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration"
