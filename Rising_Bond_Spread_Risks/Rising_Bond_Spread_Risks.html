@@ -7557,12 +7557,12 @@ a.anchor-link {
 </div>
 </div>
 </div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=642189b2">
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=642189b2">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="o">%</span><span class="k">load_ext</span> autoreload
@@ -7572,26 +7572,12 @@ a.anchor-link {
 </div>
 </div>
 </div>
-<div class="jp-Cell-outputWrapper">
-<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
-</div>
-<div class="jp-OutputArea jp-Cell-outputArea">
-<div class="jp-OutputArea-child">
-<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>The autoreload extension is already loaded. To reload it, use:
-  %reload_ext autoreload
-</pre>
-</div>
-</div>
-</div>
-</div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=726d0807">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
@@ -7638,7 +7624,7 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [12]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
@@ -7667,49 +7653,6 @@ a.anchor-link {
 </div>
 </div>
 </div>
-<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d489e041">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
-</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="Import-Required-Libraries">Import Required Libraries<a class="anchor-link" href="#Import-Required-Libraries">¶</a></h2>
-</div>
-</div>
-</div>
-</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=485ade3d">
-<div class="jp-Cell-inputWrapper" tabindex="0">
-<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
-</div>
-<div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [13]:</div>
-<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
-<div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bigdata</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_client.models.search</span><span class="w"> </span><span class="kn">import</span> <span class="n">DocumentType</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_client.query</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentimentRange</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_research_tools.workflows.risk_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskAnalyzer</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_research_tools.labeler.risk_labeler</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskLabeler</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_research_tools.workflows.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_scored_df</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.search_entities</span><span class="w"> </span><span class="kn">import</span> <span class="n">search_by_entities</span><span class="p">,</span> <span class="n">post_process_dataframe</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.entity_risk_prompt_labeler</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">generate_risk_tree</span><span class="p">,</span> <span class="n">get_entity_risk_prompt</span><span class="p">,</span>
-                                            <span class="n">get_risk_entity_labeler_prompt</span><span class="p">,</span> <span class="n">label_search_results</span><span class="p">)</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.sentiment_analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_full_grid_indicators</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.report_generator</span><span class="w"> </span><span class="kn">import</span> <span class="n">SummaryGenerator</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.narrative_dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">display_dashboard</span><span class="p">,</span> <span class="n">summarize_narratives</span><span class="p">,</span> <span class="n">get_narrative_windows</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">src.visualization_tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">display_risk_figures_cookbooks</span>
-</pre></div>
-</div>
-</div>
-</div>
-</div>
-</div>
 <div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=966ef5b3">
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
@@ -7725,7 +7668,7 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [14]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">plotly.io</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pio</span>
@@ -7779,7 +7722,7 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [15]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="c1"># Define output file paths for our report</span>
@@ -7806,7 +7749,7 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [16]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dotenv</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_dotenv</span>
@@ -7861,10 +7804,55 @@ a.anchor-link {
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
-<div class="jp-InputPrompt jp-InputArea-prompt">In [17]:</div>
+<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
-<div class="highlight hl-ipython3"><pre><span></span><span class="n">bigdata</span> <span class="o">=</span> <span class="n">Bigdata</span><span class="p">(</span><span class="n">BIGDATA_USERNAME</span><span class="p">,</span> <span class="n">BIGDATA_PASSWORD</span><span class="p">)</span>
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bigdata</span>
+
+<span class="n">bigdata</span> <span class="o">=</span> <span class="n">Bigdata</span><span class="p">(</span><span class="n">BIGDATA_USERNAME</span><span class="p">,</span> <span class="n">BIGDATA_PASSWORD</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=d489e041">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="Import-Required-Libraries">Import Required Libraries<a class="anchor-link" href="#Import-Required-Libraries">¶</a></h2>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell jp-mod-noOutputs" id="cell-id=485ade3d">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Bigdata</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_client.models.search</span><span class="w"> </span><span class="kn">import</span> <span class="n">DocumentType</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_client.query</span><span class="w"> </span><span class="kn">import</span> <span class="n">SentimentRange</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_research_tools.workflows.risk_analyzer</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskAnalyzer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_research_tools.labeler.risk_labeler</span><span class="w"> </span><span class="kn">import</span> <span class="n">RiskLabeler</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">bigdata_research_tools.workflows.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_scored_df</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.search_entities</span><span class="w"> </span><span class="kn">import</span> <span class="n">search_by_entities</span><span class="p">,</span> <span class="n">post_process_dataframe</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.entity_risk_prompt_labeler</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span><span class="n">generate_risk_tree</span><span class="p">,</span> <span class="n">get_entity_risk_prompt</span><span class="p">,</span>
+                                            <span class="n">get_risk_entity_labeler_prompt</span><span class="p">,</span> <span class="n">label_search_results</span><span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.sentiment_analysis</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_full_grid_indicators</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.report_generator</span><span class="w"> </span><span class="kn">import</span> <span class="n">SummaryGenerator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.narrative_dashboard</span><span class="w"> </span><span class="kn">import</span> <span class="n">display_dashboard</span><span class="p">,</span> <span class="n">summarize_narratives</span><span class="p">,</span> <span class="n">get_narrative_windows</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">src.visualization_tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">display_risk_figures_cookbooks</span>
 </pre></div>
 </div>
 </div>
