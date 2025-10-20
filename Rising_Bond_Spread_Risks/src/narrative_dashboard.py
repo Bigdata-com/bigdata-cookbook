@@ -187,11 +187,15 @@ def display_dashboard(df: pd.DataFrame, entity: str, sentiment_col: str, narrati
 
     narratives = narratives[entity]
     
+    # Format dates for display
+    peak_vol_date_str = peak_vol_date.strftime('%d-%m-%Y')
+    min_sent_date_str = min_sent_date.strftime('%d-%m-%Y')
+    
     if export_mode:
         # For export mode, display narratives as regular markdown with headers
-        display(Markdown("## Peak Volume Narrative"))
+        display(Markdown(f"## Peak Volume Narrative - Date: {peak_vol_date_str}"))
         display(Markdown(narratives['volume']))
-        display(Markdown("## Most Negative Sentiment Narrative"))
+        display(Markdown(f"## Most Negative Sentiment Narrative - Date: {min_sent_date_str}"))
         display(Markdown(narratives['sentiment']))
     else:
         # For interactive mode, use accordion widgets
@@ -203,6 +207,6 @@ def display_dashboard(df: pd.DataFrame, entity: str, sentiment_col: str, narrati
             display(Markdown(narratives['sentiment']))
 
         accordion = widgets.Accordion(children=[output_volume, output_sentiment])
-        accordion.set_title(0, 'Peak Volume Narrative')
-        accordion.set_title(1, 'Most Negative Sentiment Narrative')
+        accordion.set_title(0, f'Peak Volume Narrative - Date: {peak_vol_date_str}')
+        accordion.set_title(1, f'Most Negative Sentiment Narrative - Date: {min_sent_date_str}')
         display(accordion)
