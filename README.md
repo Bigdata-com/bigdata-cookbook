@@ -146,6 +146,14 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Produces executive and detailed HTML reports
 - Exports structured CSVs for further analysis
 
+### 📉 [Rising Bond Spread Risks](./Rising_Bond_Spread_Risks/)
+**Analyzing Spillover Risks from Rising Bond Spreads in Western Europe**
+
+- Risk taxonomy generation with LLM-powered mind mapping
+- Country-level risk scoring across bond spread sub-scenarios
+- Rolling sentiment indicators and volume tracking
+- Interactive dashboards with AI-powered narrative summaries
+
 ### 🪙 [Screener for Crypto](./Screener_for_Crypto/)
 **Automated Cryptocurrency Thematic Screening and Analysis Tool**
 
@@ -280,6 +288,14 @@ bigdata-cookbook/
 │   ├── src/
 │   ├── requirements.txt
 │   ├── Dockerfile
+│   └── README.md
+├── Rising_Bond_Spread_Risks/                        # Bond spread spillover analysis
+│   ├── Rising_Bond_Spread_Risks.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   ├── .dockerignore
+│   └── README.md
 ├── Screener_for_Crypto/                             # Cryptocurrency thematic screening
 │   ├── Screener_for_Crypto.ipynb
 │   ├── src/
