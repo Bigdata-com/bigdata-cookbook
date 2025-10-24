@@ -8,8 +8,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 from IPython.display import HTML, display
+# Suppress only specific warnings instead of all warnings
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=UserWarning, module='plotly')
+warnings.filterwarnings('ignore', category=FutureWarning, module='pandas')
 
 # Optional imports for unified dashboard approach
 try:
@@ -378,18 +380,7 @@ def display_figures(df_entity, interactive=True, n_entities=10):
             plt.show()
 
 
-def display_risk_figures(df_entity, interactive=True, n_entities=10):
-    """Helper function to create and display risk figures based on type"""
-    
-    # Create figures with the specified interactive parameter
-    figures = create_risk_exposure_dashboard(df_entity, n_entities=n_entities, interactive=interactive)
-
-    # Display figures based on type
-    for fig in figures:
-        if interactive:
-            fig.show()
-        else:
-            plt.show()
+# Removed duplicate function - use display_risk_figures below with config parameter
 
 
 def display_figures_cookbooks(df_entity, interactive=True, n_entities=10):
@@ -644,4 +635,3 @@ def display_thematic_figures(df_entity, interactive=True, n_entities=10, config=
 def display_thematic_figures_cookbooks(df_entity, interactive=True, n_entities=10, config=None):
     """Display thematic dashboard for entities (cookbook compatible)"""
     display_figures_cookbooks(df_entity, interactive, n_entities)
-

@@ -46,9 +46,16 @@ def robust_deserialize_label_responses(self, responses: List[Dict[str, Any]]) ->
                     "label": self.unknown_label,
                 }
 
-    # Warn about skipped keys and show problematic responses
+    # Warn about skipped keys and show problematic responses (only in debug mode)
     if skipped_keys:
-        warnings.warn(f"Skipped invalid response keys (not sentence IDs): {skipped_keys}")
+        # Use a more specific warning category and make it suppressible
+        warnings.warn(
+            f"RiskLabeler: Skipped {len(skipped_keys)} invalid response keys. "
+            f"This may indicate LLM response formatting issues.",
+            category=UserWarning,
+            stacklevel=2
+        )
+        # Show detailed debug info in notebook output
         print("=== PROBLEMATIC RESPONSES FOR DEBUGGING ===")
         for prob_resp in problematic_responses[:3]:  # Show first 3 problematic responses
             print(prob_resp)

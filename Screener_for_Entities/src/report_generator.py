@@ -186,6 +186,10 @@ Carefully merge all completions into a single, clear, and actionable summary. Re
         if text_col not in fields_for_summary:
             fields_for_summary.append(text_col)
 
+        # Handle empty DataFrame
+        if len(df) == 0:
+            return f'Entity: {entity_name}\nNo data available for this period.'
+
         if len(df)>1:
 
             # Group by date and sentence ID - Aggregate at the chunk level
