@@ -2,6 +2,10 @@
 
 This project provides a comprehensive solution for generating briefing reports for large portfolios of companies using the Bigdata.com briefs service. It's designed for portfolio managers, analysts, and researchers who need to monitor hundreds or thousands of companies simultaneously.
 
+## High Level Design 
+
+![High Level diagram](static/media/diagram.png)
+
 ## Features
 
 - **Batch Processing**: Process hundreds or thousands of companies in configurable batches
