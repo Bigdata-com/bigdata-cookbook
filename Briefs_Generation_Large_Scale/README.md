@@ -19,9 +19,27 @@ This project provides a comprehensive solution for generating briefing reports f
 
 #### Deploying the bigdata-briefs Service
 
-1. **Navigate to the bigdata-briefs directory**:
+**Option 1: Use the pre-built Docker image (Recommended)**
+
+Run the service directly from GitHub Container Registry - no need to clone the repository:
+
+```bash
+docker run -d \
+  --name bigdata_briefs \
+  -p 8000:8000 \
+  -e BIGDATA_API_KEY=<your-bigdata-api-key> \
+  -e OPENAI_API_KEY=<your-openai-api-key> \
+  ghcr.io/bigdata-com/bigdata-briefs:latest
+```
+
+**Option 2: Build from source**
+
+If you prefer to build from source:
+
+1. **Clone the bigdata-briefs repository**:
    ```bash
-   cd ../bigdata-briefs
+   git clone https://github.com/Bigdata-com/bigdata-briefs.git
+   cd bigdata-briefs
    ```
 
 2. **Build and run the Docker container**:
@@ -38,21 +56,11 @@ This project provides a comprehensive solution for generating briefing reports f
      bigdata_briefs
    ```
 
-   Alternatively, run directly from GitHub Container Registry:
-   ```bash
-   docker run -d \
-     --name bigdata_briefs \
-     -p 8000:8000 \
-     -e BIGDATA_API_KEY=<your-bigdata-api-key> \
-     -e OPENAI_API_KEY=<your-openai-api-key> \
-     ghcr.io/bigdata-com/bigdata-briefs:latest
-   ```
+**Verify the service is running** (for both options):
+- Access the API documentation at `http://localhost:8000/docs`
+- The service should be accessible at `http://localhost:8000/`
 
-3. **Verify the service is running**:
-   - Access the API documentation at `http://localhost:8000/docs`
-   - The service should be accessible at `http://localhost:8000/`
-
-4. **Optional: Enable access token security**:
+**Optional: Enable access token security** (for both options):
    ```bash
    docker run -d \
      --name bigdata_briefs \
@@ -60,12 +68,12 @@ This project provides a comprehensive solution for generating briefing reports f
      -e BIGDATA_API_KEY=<your-bigdata-api-key> \
      -e OPENAI_API_KEY=<your-openai-api-key> \
      -e ACCESS_TOKEN=<your-access-token> \
-     bigdata_briefs
+     ghcr.io/bigdata-com/bigdata-briefs:latest
    ```
 
    If using an access token, set the `API_TOKEN` environment variable when running the notebook.
 
-For more details on deploying the service, refer to the [bigdata-briefs README](../bigdata-briefs/README.md).
+For more details on deploying the service, refer to the [bigdata-briefs README](https://github.com/Bigdata-com/bigdata-briefs/blob/main/README.md).
 
 ### Additional Requirements
 
@@ -262,7 +270,7 @@ The notebook generates two main output files:
 
 For issues related to:
 - **This notebook**: Check the notebook cells for detailed error messages
-- **bigdata-briefs service**: Refer to [bigdata-briefs documentation](../bigdata-briefs/README.md)
+- **bigdata-briefs service**: Refer to [bigdata-briefs documentation](https://github.com/Bigdata-com/bigdata-briefs)
 - **Bigdata.com API**: Visit [Bigdata.com documentation](https://docs.bigdata.com)
 
 ## License
