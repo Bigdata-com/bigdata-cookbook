@@ -137,6 +137,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Custom report generation with configurable ranking systems for trending topics
 - Market impact assessment scoring topics for trendiness, novelty, and magnitude
 
+### 📋 [Large-Scale Portfolio Briefs Generation](./Briefs_Generation_Large_Scale/)
+**Automated Brief Generation for Large Company Portfolios**
+
+- Batch processing for hundreds or thousands of companies in configurable batches
+- CSV-based input for easy portfolio management
+- Customizable topics and research questions tailored to analysis needs
+- Progress tracking with status polling and error handling
+- Multiple export formats including JSON and Excel for further analysis
+- Source attribution with full metadata including URLs, headlines, and publication dates
 
 ### 🧾 [Specialized Report Tariffs](./Report_Generator_Specialized_Report_Tariffs/)
 **Automated Analysis of Trade Tariff Risks and Corporate Mitigation Strategies**
@@ -163,6 +172,14 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Interactive visualizations with heatmaps, bar charts, and scatter plots
 - Structured output generating Excel reports and HTML visualizations for investment intelligence
 
+### 🔧 [Build Your Own MCP](./Build_Your_Own_MCP/)
+**MCP Server Integration for Bigdata Research Tools**
+
+- Integration of Bigdata research tools with MCP (Model Context Protocol) server
+- Watchlist creation and management through MCP interface
+- Thematic screening of companies via MCP tools
+- Compatible with Cursor, Claude Desktop, and other MCP clients
+- Enables AI agents to interact with Bigdata platform for research and analysis
 
 ## Quick Start
 
@@ -283,6 +300,12 @@ bigdata-cookbook/
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   └── README.md
+├── Briefs_Generation_Large_Scale/                    # Large-scale portfolio briefs generation
+│   ├── portfolio_briefs_generation.ipynb
+│   ├── static/
+│   │   └── data/
+│   ├── requirements.txt
+│   └── README.md
 ├── Report_Generator_Specialized_Report_Tariffs/      # Tariffs risk report generator
 │   ├── Report_Generator_Specialized_Report_Tariffs.ipynb
 │   ├── src/
@@ -302,6 +325,11 @@ bigdata-cookbook/
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   ├── .dockerignore
+│   └── README.md
+├── Build_Your_Own_MCP/                              # MCP server integration
+│   ├── build_your_mcp.py
+│   ├── assets/
+│   ├── Dockerfile
 │   └── README.md
 └── README.md                                        # This file
 ```
