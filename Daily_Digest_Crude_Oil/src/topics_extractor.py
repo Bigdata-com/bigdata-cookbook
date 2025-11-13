@@ -987,6 +987,9 @@ async def fetch_relevance(client, text_to_analyze, current_prompt, model, semaph
             relevance = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'].strip())
             return relevance['relevance']
         except Exception as e:
+            # Log the error for debugging purposes
+            import warnings
+            warnings.warn(f"Error in fetch_relevance for model {model}: {str(e)}. Returning None (will be filtered out).")
             return None
 
 
@@ -1083,9 +1086,24 @@ async def filter_irrelevant_news(df, model, api_key, main_theme, semaphore_size=
 
     # Collect relevant row numbers based on the results
     relevant_rows = [df.loc[i, 'row_number'] for i, relevance in enumerate(results) if relevance == 'Relevant']
-
+    
+    # Count statistics
+    total_count = len(results)
+    relevant_count = len(relevant_rows)
+    irrelevant_count = sum(1 for r in results if r == 'Irrelevant')
+    error_count = sum(1 for r in results if r is None)
+    
     # Filter the DataFrame based on relevant row numbers
     filtered_df = df[df['row_number'].isin(relevant_rows)].drop(columns=['row_number']).reset_index(drop=True)
+    
+    # Print summary
+    print(f"\n📊 Filtering Summary:")
+    print(f"   Total records: {total_count}")
+    print(f"   Relevant: {relevant_count}")
+    print(f"   Irrelevant: {irrelevant_count}")
+    if error_count > 0:
+        print(f"   ⚠️  Errors (filtered out): {error_count}")
+        print(f"   💡 Tip: Check model name and API key if error count is high")
 
     return filtered_df
 

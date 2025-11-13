@@ -26,7 +26,7 @@
         }
         .title {
             text-align: center;
-            font-size: 2em;
+            font-size: 1.4em;
             margin-bottom: 20px;
             color: #00BFFF; /* Dynamic blue color for the title */
             text-transform: uppercase;
@@ -173,7 +173,7 @@
                 <h2 class="section-title">The Day in Review</h2>
                 <ul class="bullet-points">
                     {% for point in day_in_review %}
-                    <li>{{ point }}</li>
+                    <li>{{ point | safe }}</li>
                     {% endfor %}
                 </ul>
             </div>
