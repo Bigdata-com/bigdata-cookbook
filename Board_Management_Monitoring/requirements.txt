@@ -3,7 +3,7 @@ numpy>=1.24.0
 plotly>=5.0.0
 matplotlib>=3.5.0
 bigdata-client>=2.18.0
-bigdata-research-tools>=0.17.3
+bigdata-research-tools @ git+https://github.com/Bigdata-com/bigdata-research-tools@f9848963c3a013c8119ad205de02653f3b1126ce
 requests>=2.31.0
 jupyter>=1.0.0
 ipython>=8.0.0

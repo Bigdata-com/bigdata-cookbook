@@ -113,8 +113,8 @@ def build_queries_for_monitoring(
         start_date = parse_date(start)
         end_date = parse_date(end)
         # Convert to ISO string tuples to avoid JSON serialization issues in tracing
-        start_iso = datetime.combine(start_date, datetime.min.time()).isoformat()
-        end_iso = datetime.combine(end_date, datetime.min.time()).isoformat()
+        start_iso = datetime.combine(start_date, datetime.min.time())
+        end_iso = datetime.combine(end_date, datetime.min.time())
         date_ranges_list.append((start_iso, end_iso))
 
     # Build base queries
