@@ -1,5 +1,5 @@
 bigdata-client>=2.17.0
-bigdata-research-tools[graphviz, openai] @ git+https://github.com/Bigdata-com/bigdata-research-tools@510b2786c1719bd36e15377f416e0f9ddf91332e
+bigdata-research-tools[graphviz, openai] @>=1.0.0
 nest-asyncio>=1.6.0
 matplotlib>=3.0.0
 numpy>=1.20.0
