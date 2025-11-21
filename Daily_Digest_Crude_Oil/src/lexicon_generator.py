@@ -52,33 +52,33 @@ class LexiconGenerator:
     async def _generate(self, theme):
         keywords = {}
         rr0 = None
-        #print("[LexiconGenerator] Using seeds:", self.seeds)
+        print("[LexiconGenerator] Using seeds:", self.seeds)
         tasks = [self._fetch_keywords(theme, seed, rr0) for seed in self.seeds]
         responses = await asyncio.gather(*tasks, return_exceptions=True)
         for i, rr in enumerate(responses):
             if isinstance(rr, Exception):
-                #print(f"[LexiconGenerator] Seed {self.seeds[i]} failed with error: {rr}")
+                print(f"[LexiconGenerator] Seed {self.seeds[i]} failed with error: {rr}")
                 continue
-            #print(f"[LexiconGenerator] Raw response for seed {self.seeds[i]}:", rr)
+            print(f"[LexiconGenerator] Raw response for seed {self.seeds[i]}:", rr)
             rr = re.sub(r'```', '', rr)
             rr = re.sub(r'json', '', rr)
             try:
                 concept_dict = json.loads(rr)
-                #print(f"[LexiconGenerator] Parsed JSON for seed {self.seeds[i]}:", concept_dict)
+                print(f"[LexiconGenerator] Parsed JSON for seed {self.seeds[i]}:", concept_dict)
                 rr0 = concept_dict.copy()
                 for s in concept_dict:
                     rr0[s] = [concept_dict[s][0]]
                 for k in concept_dict:
                     keywords[k] = keywords.get(k, []) + concept_dict.get(k, [])
             except Exception as e:
-                #print(f"[LexiconGenerator] Seed {self.seeds[i]} JSON error: {e}")
+                print(f"[LexiconGenerator] Seed {self.seeds[i]} JSON error: {e}")
                 continue
-        #print(f"[LexiconGenerator] Combined keywords dict:", keywords)
+        print(f"[LexiconGenerator] Combined keywords dict:", keywords)
         # Consolidate all keywords
         all_keywords = []
         for klist in keywords.values():
             all_keywords.extend(klist)
-        #print(f"[LexiconGenerator] All keywords before deduplication:", all_keywords)
+        print(f"[LexiconGenerator] All keywords before deduplication:", all_keywords)
         # Remove duplicates, preserve order
         seen = set()
         unique_keywords = []
@@ -86,7 +86,7 @@ class LexiconGenerator:
             if kw not in seen:
                 unique_keywords.append(kw)
                 seen.add(kw)
-        #print(f"[LexiconGenerator] Unique keywords after deduplication:", unique_keywords)
+        print(f"[LexiconGenerator] Unique keywords after deduplication:", unique_keywords)
         #unique_keywords = [keyword.replace(' ', '-') for keyword in unique_keywords]
         return unique_keywords
 

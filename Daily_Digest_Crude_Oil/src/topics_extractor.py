@@ -23,9 +23,11 @@ import ast
 def flatten_trending_topics(df, original_df):
     flattened_data = []
     
+ 
     for index, row in df.iterrows():
         date = row['Date']
         topics = row['trending_topics']
+ 
         
         for topic in topics:
             day_in_review = "\n".join(topic.get('day_in_review', []))  # Get the 'Day in Review' and join as a single string
@@ -35,6 +37,8 @@ def flatten_trending_topics(df, original_df):
             
             for news in topic['cited_news']:
                 row_number = news['row_number']  # Extract the row number
+                # matching_stats['total_citations'] += 1
+                # matching_stats['by_date'][date_str]['total_citations'] += 1
                 
                 # Find the original entry in the original_df based on the row number
                 matching_row = original_df.loc[original_df['row_number'] == row_number]
@@ -44,10 +48,16 @@ def flatten_trending_topics(df, original_df):
                     source = matching_row['source_name'].values[0]
                     headline = matching_row['headline'].values[0]
                     text = matching_row['text'].values[0]
+                    # matching_stats['successful_matches'] += 1
+                    # matching_stats['by_date'][date_str]['successful_matches'] += 1
                 else:
                     source = np.nan  # Assign NaN to source if no match is found
                     headline = np.nan
                     text = np.nan
+                    # matching_stats['failed_matches'] += 1
+                    # matching_stats['by_date'][date_str]['failed_matches'] += 1
+                    # if len(matching_stats['failed_row_numbers']) < 20:  # Limit to first 20
+                    #     matching_stats['failed_row_numbers'].append(row_number)
                 
                 flattened_row = {
                     'Date': date,
@@ -61,6 +71,7 @@ def flatten_trending_topics(df, original_df):
                 }
                 flattened_data.append(flattened_row)
     
+
     # Convert the flattened data into a DataFrame
     flattened_df = pd.DataFrame(flattened_data)
     
@@ -370,6 +381,59 @@ async def extract_trending_topics(text_to_analyze, model, yearmonth, number_of_r
         print(f"Timeout error: {e}. Retrying...")
         return await extract_trending_topics(text_to_analyze, model, yearmonth, number_of_reports, api_key, main_theme)
 
+# Helper function to consolidate with automatic retry and batch splitting
+async def consolidate_trending_topics_with_retry(batch_str, model, api_key, main_theme, max_retries=3, min_batch_size=10):
+    """
+    Wrapper for consolidate_trending_topics with automatic retry and batch size reduction.
+    
+    In case of JSONDecodeError, split the batch in half and retry recursively.
+    """
+    # Parse batch_str into list of (topic_id, topic_name)
+    items = []
+    for item in batch_str.split(', '):
+        if ': "' in item:
+            topic_id = item.split(': "')[0].strip()
+            topic_name = item.split(': "')[1].rstrip('"')
+            items.append((topic_id, topic_name))
+    
+    current_batch_size = len(items)
+    
+    # If the batch is too small, we cannot split it further
+    if current_batch_size <= min_batch_size:
+        return await consolidate_trending_topics(batch_str, model, api_key, main_theme)
+    
+    # Try consolidation
+    try:
+        return await consolidate_trending_topics(batch_str, model, api_key, main_theme)
+    
+    except json.JSONDecodeError as e:
+        print(f"⚠️  JSONDecodeError with batch size {current_batch_size}. Splitting batch in half...")
+        
+        # Split the batch in half
+        mid = len(items) // 2
+        batch1_items = items[:mid]
+        batch2_items = items[mid:]
+        
+        # Rebuild batch strings
+        batch1_str = ', '.join([f'{tid}: "{tname}"' for tid, tname in batch1_items])
+        batch2_str = ', '.join([f'{tid}: "{tname}"' for tid, tname in batch2_items])
+        
+        print(f"   Batch 1: {len(batch1_items)} items")
+        print(f"   Batch 2: {len(batch2_items)} items")
+        
+        # Process the two sub-batches recursively
+        result1 = await consolidate_trending_topics_with_retry(
+            batch1_str, model, api_key, main_theme, max_retries, min_batch_size
+        )
+        result2 = await consolidate_trending_topics_with_retry(
+            batch2_str, model, api_key, main_theme, max_retries, min_batch_size
+        )
+        
+        # Merge results
+        merged_result = {**result1, **result2}
+        return merged_result
+
+
 # Asynchronous function to consolidate trending topics
 async def consolidate_trending_topics(batch_results, model, api_key, main_theme):
     consolidation_prompt = (
@@ -435,10 +499,13 @@ async def consolidate_trending_topics(batch_results, model, api_key, main_theme)
     
     try:
         content = json.loads(summary['choices'][0]['message']['content'])
-        consolidated_topics = content['consolidated_topics']
+        consolidated_topics = content.get('consolidated_topics', {})
+        
+    except json.JSONDecodeError as e:
+        # Re-raise the JSON error to handle it at a higher level with retry
+        raise
     except Exception as e:
-        print("JSON decode error:", e)
-        print("Raw content:", summary['choices'][0]['message']['content'])
+        print(f"⚠️  Unexpected error in consolidate_trending_topics: {e}")
         raise
 
     return consolidated_topics
@@ -729,19 +796,24 @@ def process_matching(reports, model, api_key, main_theme):
     matched_reports = process_reports(reports, model, api_key, main_theme)
     return matched_reports
 
-async def process_all_trending_topics(unique_reports, start_query, end_query, main_theme, model='gpt-4o-mini', api_key=None, batches=5, freq='D'):
-    # Initialize your date range
-    #start_list, end_list = create_date_ranges(pd.to_datetime(start_query), pd.to_datetime(end_query), freq='D')
-
+async def phase1_extract_topics(unique_reports, start_query, end_query, main_theme, model='gpt-4o-mini', api_key=None, batches=5, freq='D'):
+    """
+    PHASE 1: Topic Extraction
+    Extracts topics from reports using the LLM for each date.
+    
+    Returns:
+        tuple: (all_results, trending_topics_df, unique_reports_with_date)
+    """
     start_list = pd.date_range(start=start_query, end=end_query, freq=freq).strftime('%Y-%m-%d %H:%M:%S').tolist()
-
+    
     # DataFrame to store the trending topics for each date
     trending_topics_df = pd.DataFrame(columns=['Date', 'trending_topics'])
-
+    
     # Extract dates and row numbers
+    unique_reports = unique_reports.copy()
     unique_reports['Date'] = unique_reports['timestamp'].apply(lambda x: x.date())
-    unique_reports['row_number'] = unique_reports.index  # Add row number as an additional column
-
+    unique_reports['row_number'] = unique_reports.index
+    
     # Add a text_with_reference field for each report
     unique_reports['text_with_reference'] = (
         '--- Report Start ---\n'
@@ -749,37 +821,35 @@ async def process_all_trending_topics(unique_reports, start_query, end_query, ma
         '\nText: ' + unique_reports['text'].astype(str) +
         '\n--- Report End ---'
     )
-
+    
     # Convert start_list to a list of datetime objects
     dates = [datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S').date() for date_str in start_list]
-
+    
     all_tasks = []
-    all_topics_and_summaries = []  # To hold all extracted topics and summaries from every batch
-
+    
     # Loop through each date and collect reports
     for period in dates:
         reports = unique_reports.loc[unique_reports['Date'] == period]
         yearmonth = period.strftime('%Y-%m-%d')
         number_of_reports = len(reports)
-
+        
         if number_of_reports == 0:
             continue
-
+        
         batch_size = len(reports) // batches + (1 if len(reports) % batches != 0 else 0)
-        batch_results = []
-
+        
         # Create async tasks for all batches for this date
         tasks = []
         for i in range(0, len(reports), batch_size):
             batch_reports = reports.iloc[i:i + batch_size]
             text_to_analyze = "\n\n".join(batch_reports['text_with_reference'])
-
+            
             # Create async tasks for extracting trending topics and summaries
             task = extract_trending_topics(text_to_analyze, model, yearmonth, len(batch_reports), api_key, main_theme)
             tasks.append(task)
-
+        
         all_tasks.append((period, tasks))
-
+    
     # Run all extract tasks concurrently for all dates and batches with tqdm
     all_results = {}
     for period, tasks in all_tasks:
@@ -788,188 +858,745 @@ async def process_all_trending_topics(unique_reports, start_query, end_query, ma
             result = await task
             results.append(result)
         all_results[period] = [item for sublist in results for item in sublist]
+    
 
-    # **Step 1**: Collect all topics and summaries from all batches across all dates
-    raw_topics_data = []  # To hold raw extracted topics and metadata
+    
+    # Collect all topics and summaries from all batches across all dates
     for period, batch_results in all_results.items():
-        for batch in batch_results:
-            raw_topics_data.append({
-                'Date': period,
-                'topic': batch['topic'],
-                'summary': batch.get('summary', ''),
-                'cited_news': batch.get('cited_news', [])
-            })
-
         # Add the extracted topics and summaries to trending_topics_df
         trending_topics_dict = {
             'Date': period,
-            'trending_topics': batch_results  # Using batch results directly
+            'trending_topics': batch_results
         }
         trending_topics_df = pd.concat([trending_topics_df, pd.DataFrame([trending_topics_dict])], ignore_index=True)
     
-    # **Step 3**: Flatten the DataFrame based on raw extracted topics
+    return all_results, trending_topics_df, unique_reports
+
+
+def phase2_flatten_topics(trending_topics_df, unique_reports):
+    """
+    PHASE 2: Flattening
+    Converts hierarchical structure into flat DataFrame.
+    
+    Returns:
+        tuple: (flattened_raw_topics_df, total_cited_for_summary)
+    """
+    # Calculate total cited for summary
+    all_cited_row_numbers = set()
+    for _, row in trending_topics_df.iterrows():
+        topics = row['trending_topics']
+        for topic in topics:
+            for news in topic.get('cited_news', []):
+                row_num = news.get('row_number')
+                if row_num is not None:
+                    all_cited_row_numbers.add(row_num)
+    
+    total_cited_for_summary = len(all_cited_row_numbers)
+    
+    # Flatten the DataFrame
     flattened_raw_topics_df = flatten_trending_topics(trending_topics_df, unique_reports)
     
+    return flattened_raw_topics_df, total_cited_for_summary
+
+
+async def phase3_consolidate_topics(flattened_raw_topics_df, model='gpt-4o-mini', api_key=None, main_theme='energy markets', 
+                                    consolidation_batch_size=50, consolidation_round_batch_size=80, max_consolidation_rounds=8):
+    """
+    PHASE 3: Consolidation
+    Consolidates topics using the LLM in batches and iterative rounds.
+    
+    Args:
+        consolidation_batch_size: Initial batch size for consolidation (default: 50)
+        consolidation_round_batch_size: Batch size for iterative rounds (default: 80)
+        max_consolidation_rounds: Maximum number of consolidation rounds (default: 8)
+    
+    Returns:
+        tuple: (flattened_consolidated_df, final_mapping, consolidation_stats)
+    """
     print("Consolidating topics...")
-    CONSOLIDATION_BATCH_SIZE = 50
-    MAX_CONSOLIDATION_ROUNDS = 5  # Prevent infinite loops
-
-    # **Step 4**: Consolidate all unique topics and summaries across all batches and dates, batching if needed
+    CONSOLIDATION_BATCH_SIZE = consolidation_batch_size
+    MAX_CONSOLIDATION_ROUNDS = max_consolidation_rounds
+    
+    # Get unique topics
     unique_topics_and_summaries = flattened_raw_topics_df.Topic.unique()
+    
 
-    ## for each topic, build a dict {'topic_X: 'topic_name'} where X is the topic number
+    
+    # Create mapping from topic_X to topic name
     topic_num_to_string_mapping = {f'topic_{i + 1}': topic for i, topic in enumerate(unique_topics_and_summaries)}
+    
+  
+    
+    # Prepare batches for consolidation
+    topic_id_label_pairs = list(zip(topic_num_to_string_mapping.keys(), topic_num_to_string_mapping.values()))
+    
+    # Sort alphabetically by topic name (second element of tuple)
+    topic_id_label_pairs = sorted(topic_id_label_pairs, key=lambda x: x[1])
+    
 
-    # If there are a lot of topics, batch the consolidation step to avoid LLM context overflows
-
-    topic_ids = topic_num_to_string_mapping.keys() #collect all 'topic_X' ids
-    topic_id_label_pairs = list(zip(topic_num_to_string_mapping.keys(), topic_num_to_string_mapping.values())) #create tuples of (topic_id, topic_name)
-
+    
     # Add a progress bar for batch consolidation
-    from tqdm.asyncio import tqdm as tqdm_asyncio
     batch_tasks = []
     batch_ranges = []
     for batch_start in range(0, len(topic_id_label_pairs), CONSOLIDATION_BATCH_SIZE):
         batch = topic_id_label_pairs[batch_start:batch_start + CONSOLIDATION_BATCH_SIZE]
-        # LLM receives a string of topic ids and names, e.g. 'topic_1: "Topic Name 1", topic_2: "Topic Name 2"'
         batch_str = ', '.join([f'{topic_id}: "{topic}"' for topic_id, topic in batch])
-        batch_tasks.append(consolidate_trending_topics(batch_str, model, api_key, main_theme))
+        batch_tasks.append(consolidate_trending_topics_with_retry(batch_str, model, api_key, main_theme))
         batch_ranges.append(batch)
-
+    
     # Run all batch consolidations with a progress bar
     batch_results = await tqdm_asyncio.gather(*batch_tasks, desc="Consolidating topic batches", total=len(batch_tasks))
-    ## The LLM returns a list of dictionaries, each with consolidated topics and their original topic numbers
-    # e.g. [{'consolidated_topic_1': ['topic_1', 'topic_2']}, {'consolidated_topic_2': ['topic_3']}]
-    # these can be topic ids or topic names, depending on the LLM response
+    
     # Helper: resolve topic ids/names to original topic ids
-    def resolve_to_ids(items, mapping):
-        # A hidden problem is that the LLM may return topic names or ids, so we need to ensure consistency in the dicts every time we receive a response and consolidate topics.
-        # Accepts a list of topic ids or names, returns topic ids
+    def resolve_to_ids(items, mapping, track_unresolved=False):
+        import re
         reverse_map = {v: k for k, v in mapping.items()}
         resolved = []
+        unresolved = []
         for item in items:
+            # Try direct match first
             if item in mapping:
                 resolved.append(item)
-            elif item in reverse_map:
-                resolved.append(reverse_map[item])
-            else:
-                # Defensive: skip or log unknowns
                 continue
+            
+            # Try reverse map (topic name -> topic ID)
+            if item in reverse_map:
+                resolved.append(reverse_map[item])
+                continue
+            
+            # Try to extract topic ID from mixed format: 'topic_X: "Topic Name"'
+            mixed_pattern = r'^topic_(\d+)(?:\s*:\s*["\'].*?["\'])?$'
+            match = re.match(mixed_pattern, str(item).strip())
+            if match:
+                topic_id = f'topic_{match.group(1)}'
+                if topic_id in mapping:
+                    resolved.append(topic_id)
+                    continue
+            
+            # Try to extract topic name from mixed format: 'topic_X: "Topic Name"'
+            name_pattern = r'^topic_\d+\s*:\s*["\'](.+?)["\']$'
+            match = re.match(name_pattern, str(item).strip())
+            if match:
+                topic_name = match.group(1)
+                if topic_name in reverse_map:
+                    resolved.append(reverse_map[topic_name])
+                    continue
+            
+            # If nothing matches, it's unresolved
+            if track_unresolved:
+                unresolved.append(item)
+            continue
+        
+        if track_unresolved:
+            return resolved, unresolved
         return resolved
-
+    
+    
+    all_resolved_ids = set()
+    all_unresolved_items = []
+    
     consolidated_batches = {}
-    # Update the dictionary in place instead of rebuilding
-    for batch_result in batch_results:
-        # for each dict take the consolidated topic and save or extend the list of topic_ids/names
+    for batch_idx, batch_result in enumerate(batch_results, 1):
+        if not batch_result or len(batch_result) == 0:
+            print(f"  ⚠️  Batch {batch_idx}: batch_result is EMPTY or None!")
+            print(f"    Type: {type(batch_result)}")
+            print(f"    Value: {batch_result}")
+            continue
+        
         for k, v in batch_result.items():
-            resolved_ids = resolve_to_ids(v, topic_num_to_string_mapping)
+            resolved_ids, unresolved = resolve_to_ids(v, topic_num_to_string_mapping, track_unresolved=True)
+            all_resolved_ids.update(resolved_ids)
+            all_unresolved_items.extend(unresolved)
+            
             if k in consolidated_batches:
                 consolidated_batches[k].extend(resolved_ids)
             else:
                 consolidated_batches[k] = resolved_ids
-                ## need to resolve the items: if topic name, get it, otherwise keep id
-
-    #print(consolidated_batches)
     
-    # consolidate again across batches
+    missing_after_resolve = set(topic_num_to_string_mapping.keys()) - all_resolved_ids
+    
+    if missing_after_resolve:
+     
+        topics_reinserted = 0
+        for topic_id in missing_after_resolve:
+            topic_name = topic_num_to_string_mapping[topic_id]
+            # Add as standalone topic in consolidated_batches
+            if topic_name in consolidated_batches:
+                # If it already exists, add the ID to the list
+                consolidated_batches[topic_name].append(topic_id)
+            else:
+                # Create new entry
+                consolidated_batches[topic_name] = [topic_id]
+            topics_reinserted += 1
+        
+ 
+    
+    # Consolidate again across batches
     current_dict = consolidated_batches
     current_mapping = topic_num_to_string_mapping.copy()
-
+    
     rounds = 0
-    while True: ## this is super dangerous, we need to limit this
-
+    round_stats = []
+    
+    while True:
         rounds += 1
-        ## for each topic, build a dict {'topic_X: 'topic_name'} where X is the topic number
         consolidated_topic_num_to_string_mapping = {f'topic_{i + 1}': topic for i, topic in enumerate(current_dict.keys())}
-
         new_id_label_pairs = list(consolidated_topic_num_to_string_mapping.items())
-        if len(new_id_label_pairs) <= CONSOLIDATION_BATCH_SIZE or rounds >= MAX_CONSOLIDATION_ROUNDS:
-            break
+        
+        topics_before_round = len(current_dict)
+        all_topic_ids_in_round = set()
+        for topic_list in current_dict.values():
+            all_topic_ids_in_round.update(topic_list)
+        
+        # Exit conditions: active only from round 4
+        if rounds >= 4:
+            if len(new_id_label_pairs) <= CONSOLIDATION_BATCH_SIZE or rounds >= MAX_CONSOLIDATION_ROUNDS:
+                # print(f"\n  Round {rounds}: Exiting loop (topics={topics_before_round}, batch_size={CONSOLIDATION_BATCH_SIZE}, max_rounds={MAX_CONSOLIDATION_ROUNDS})")
+                break
+        
+        consolidated_topic_id_label_pairs = list(zip(consolidated_topic_num_to_string_mapping.keys(), consolidated_topic_num_to_string_mapping.values()))
+        
+        # Sort alphabetically by topic name (second element of tuple)
+        consolidated_topic_id_label_pairs = sorted(consolidated_topic_id_label_pairs, key=lambda x: x[1])
+        
+        # ===== SIMPLE BATCHING =====
+        # Configurable batch size for rounds
+        ROUND_BATCH_SIZE = consolidation_round_batch_size
+        round_batch_tasks = []
+        round_batch_ranges = []
+        
+        
+        # Divide into batches of ROUND_BATCH_SIZE
+        num_round_batches = (len(consolidated_topic_id_label_pairs) + ROUND_BATCH_SIZE - 1) // ROUND_BATCH_SIZE
+        
+        for batch_start in range(0, len(consolidated_topic_id_label_pairs), ROUND_BATCH_SIZE):
+            batch = consolidated_topic_id_label_pairs[batch_start:batch_start + ROUND_BATCH_SIZE]
+            batch_str = ', '.join([f'{topic_num}: "{topic_label}"' for topic_num, topic_label in batch])
+            round_batch_tasks.append(consolidate_trending_topics_with_retry(batch_str, model, api_key, main_theme))
+            round_batch_ranges.append(batch)
+        
+        # Execute all batches of the round in parallel
+        round_batch_results = await tqdm_asyncio.gather(*round_batch_tasks, desc=f"Round {rounds} batches", total=len(round_batch_tasks))
+        
+        # Merge all batch results
+        next_consolidation_result = {}
+        for batch_result in round_batch_results:
+            for k, v in batch_result.items():
+                if k in next_consolidation_result:
+                    # If the key already exists, extend the list
+                    next_consolidation_result[k].extend(v)
+                else:
+                    next_consolidation_result[k] = v
 
-        # If there are a lot of topics, batch the consolidation step to avoid LLM context overflows
-        consolidated_topic_ids = consolidated_topic_num_to_string_mapping.keys() #collect all 'topic_X' ids
-        consolidated_topic_id_label_pairs = list(zip(consolidated_topic_num_to_string_mapping.keys(), consolidated_topic_num_to_string_mapping.values())) #create tuples of (topic_id, topic_name)
-
-        final_consolidation_input = ', '.join([f'{topic_num}: "{topic_label}"' for topic_num, topic_label in consolidated_topic_id_label_pairs])
-        # Run another consolidation round
-        next_consolidation_result = await consolidate_trending_topics(final_consolidation_input, model, api_key, main_theme)
-        # the result is {new_consolidated_topic_1: [consolidated_topic_num_1, consolidated_topic_num_2], new_consolidated_topic_2: [consolidated_topic_num_3]}
-        #print(next_consolidation_result)
-        # Expand to original topic_nums
         merged = {}
+        all_orig_ids_in_merged = set()
+        unresolved_in_round = []
+        
         for k, v in next_consolidation_result.items():
-            #print(k, v)
             ids = []
             for item in v:
-                #print(item)
-                ## need to resolve the item: if topic name, get it, otherwise keep id
-                # if LLM returned a topic id, find the name in the current mapping
+                orig_ids = []
+                found = False
+                
                 if item in consolidated_topic_num_to_string_mapping:
                     topic_name = consolidated_topic_num_to_string_mapping[item]
+                    if topic_name in current_dict:
+                        orig_ids = current_dict[topic_name]
+                        found = True
+                
+                elif item in current_dict:
+                    orig_ids = current_dict[item]
+                    found = True
+                
                 else:
-                    #otherwise keep the topic name as is
-                    topic_name = item 
-                # Now map to original ids using the mapping from the previous step
-                ## need to trace the new consolidated topics back to the original topic numbers
-    # e.g. {'new_consolidated_topic_1': ['topic_1', 'topic_2'], 'new_consolidated_topic_2': ['topic_3', topic_4]}
-                # collect all original topic ids to propagate the mapping to this new consolidated topic
-                orig_ids = []
-                for orig_id, orig_name in current_mapping.items():
-                    if orig_name == topic_name:
-                        # If orig_id is a list (from previous merges), flatten it
-                        if isinstance(orig_id, list):
-                            orig_ids.extend(orig_id)
-                        else:
-                            orig_ids.append(orig_id)
+                    import re
+                    mixed_pattern = r'^topic_(\d+)(?:\s*:\s*["\'].*?["\'])?$'
+                    match = re.match(mixed_pattern, str(item).strip())
+                    if match:
+                        topic_id = f'topic_{match.group(1)}'
+                        if topic_id in consolidated_topic_num_to_string_mapping:
+                            topic_name = consolidated_topic_num_to_string_mapping[topic_id]
+                            if topic_name in current_dict:
+                                orig_ids = current_dict[topic_name]
+                                found = True
+                    
+                    if not found:
+                        name_pattern = r'^topic_\d+\s*:\s*["\'](.+?)["\']$'
+                        match = re.match(name_pattern, str(item).strip())
+                        if match:
+                            topic_name = match.group(1)
+                            if topic_name in current_dict:
+                                orig_ids = current_dict[topic_name]
+                                found = True
+                
+                if not found:
+                    unresolved_in_round.append((item, str(item)))
+                
                 ids.extend(orig_ids)
             seen = set()
             ids_dedup = [x for x in ids if not (x in seen or seen.add(x))]
+            all_orig_ids_in_merged.update(ids_dedup)
             merged[k] = ids_dedup
-        current_dict = merged
-        # Update mapping for next round
-        current_mapping = {f'topic_{i + 1}': topic for i, topic in enumerate(merged.keys())} # keys are new consolidated topics
-        #the mapping is now {new_consolidated_topic_1: [orig_topic_num_1, ...], new_consolidated_topic_2: [orig_topic_num_2, ...]}
+        
+        topics_after_round = len(merged)
+        missing_in_round = all_topic_ids_in_round - all_orig_ids_in_merged
 
-    # Finally, current_dict will be {final_consolidated_topic_1: [orig_topic_num_1, ...]}
+        round_stats.append({
+            'round': rounds,
+            'topics_before': topics_before_round,
+            'topics_after': topics_after_round,
+            'orig_ids_before': len(all_topic_ids_in_round),
+            'orig_ids_after': len(all_orig_ids_in_merged),
+            'missing': len(missing_in_round)
+        })
+        
+        # Reinsert lost topics into merged, so they will be consolidated in the next round
+        if missing_in_round:
+            topics_reinserted = 0
+            for topic_id in missing_in_round:
+                topic_name = topic_num_to_string_mapping[topic_id]
+                # Add as standalone topic in merged
+                if topic_name in merged:
+                    # If it already exists, add the ID to the list
+                    merged[topic_name].append(topic_id)
+                else:
+                    # Create new entry
+                    merged[topic_name] = [topic_id]
+                topics_reinserted += 1
+        
+        # Check if reduction is less than 10%, then stop (only from round 4)
+        if rounds >= 4 and topics_before_round > 0:
+            reduction_pct = ((topics_before_round - topics_after_round) / topics_before_round) * 100
+            if reduction_pct < 10.0:
+                # print(f"  Round {rounds}: ⚠️  Reduction below 10% ({reduction_pct:.1f}%), early exit from loop")
+                current_dict = merged
+                break
+        
+        current_dict = merged
+        current_mapping = {f'topic_{i + 1}': topic for i, topic in enumerate(merged.keys())}
+    
+
+    
+    # Find all original topics that were lost during consolidation
+    all_topic_nums_in_current = set()
+    for topic_list in current_dict.values():
+        all_topic_nums_in_current.update(topic_list)
+    
+    missing_topic_ids = set(topic_num_to_string_mapping.keys()) - all_topic_nums_in_current
+    
+    if missing_topic_ids:
+
+        # Track duplicates
+        duplicates_found = 0
+        
+        for topic_id in missing_topic_ids:
+            topic_name = topic_num_to_string_mapping[topic_id]
+            
+            # Check if this topic name already exists in current_dict
+            if topic_name in current_dict:
+                # Append to existing list instead of overwriting
+                current_dict[topic_name].append(topic_id)
+                duplicates_found += 1
+            else:
+                # Create new entry
+                current_dict[topic_name] = [topic_id]
+
+    
     # Build the final mapping from original topic label to final consolidated label
     final_mapping = {}
+    all_topic_nums_in_final = set()
     for consolidated_topic, topic_nums in current_dict.items():
+        all_topic_nums_in_final.update(topic_nums)
         for topic_num in topic_nums:
             actual_topic = topic_num_to_string_mapping.get(topic_num)
             if actual_topic:
                 final_mapping[actual_topic] = consolidated_topic
-
-
-    # Step 4: Apply the final mapping to the original dataframe
+    
+   
+    
+    # Apply the final mapping to the original dataframe
+    topics_before_consolidation = flattened_raw_topics_df['Topic'].nunique()
+    rows_before_consolidation = len(flattened_raw_topics_df)
+    
+    
     flattened_raw_topics_df['Topic'] = flattened_raw_topics_df['Topic'].map(final_mapping)
     
+    
+    topics_nan = flattened_raw_topics_df['Topic'].isna().sum()
+   
+    
+    topics_after_consolidation = flattened_raw_topics_df['Topic'].nunique()
+    rows_after_consolidation = len(flattened_raw_topics_df)
+    
+    consolidation_stats = {
+        'topics_before': topics_before_consolidation,
+        'topics_after': topics_after_consolidation,
+        'rows_before': rows_before_consolidation,
+        'rows_after': rows_after_consolidation,
+        'topics_with_nan': topics_nan,
+        'round_stats': round_stats
+    }
+    
+    return flattened_raw_topics_df, final_mapping, consolidation_stats
+
+
+async def phase4_summarize_topics(flattened_df, model='gpt-4o-mini', api_key=None, main_theme='energy markets', yearmonth='2024-01'):
+    """
+    PHASE 4: Summarization
+    Generates consolidated summaries for each topic.
+    
+    Returns:
+        pd.DataFrame: DataFrame with updated Summaries
+    """
     print("Summarizing text for each topic...")
+    flattened_df = await summarize_grouped_summaries(flattened_df, model, api_key, main_theme, yearmonth)
+    return flattened_df
+
+
+async def phase5_generate_titles(flattened_df, model='gpt-4o-mini', api_key=None):
+    """
+    PHASE 5: Title Generation
+    Generates journalistic titles from summaries.
     
-    flattened_raw_topics_df = await summarize_grouped_summaries(flattened_raw_topics_df, model, api_key, main_theme, yearmonth)
+    Returns:
+        pd.DataFrame: DataFrame with Topic titles
+    """
+    flattened_df = await create_titles_from_summaries(flattened_df, model=model, api_key=api_key)
+    return flattened_df
+
+
+async def phase6_postprocess(flattened_df, api_key=None, main_theme='energy markets', total_cited_for_summary=0, unique_reports=None):
+    """
+    PHASE 6: Post-processing
+    Adds Day in Review, Text Summaries and removes NaN.
     
-    
-    # # **Step 6**: Generate titles from summaries
-    flattened_raw_topics_df = await create_titles_from_summaries(flattened_raw_topics_df, model=model, api_key=api_key)
-    
+    Returns:
+        pd.DataFrame: Final cleaned DataFrame
+    """
     print("Generating Day in Review summaries...")
+    flattened_df = add_day_in_review_to_df(flattened_df, api_key=api_key, main_theme=main_theme)
     
-    # Add a "Day in Review" summary to the DataFrame
-    flattened_raw_topics_df = add_day_in_review_to_df(flattened_raw_topics_df, api_key=api_key, main_theme=main_theme)
-
     print("Adding one-line summaries to DataFrame...")
-
-    # Run function to add additional text summaries
-    flattened_raw_topics_df = await add_text_summaries_to_df(flattened_raw_topics_df, api_key=api_key)
+    flattened_df = await add_text_summaries_to_df(flattened_df, api_key=api_key)
     
-    flattened_raw_topics_df = flattened_raw_topics_df.dropna().reset_index(drop=True)
+    
+    flattened_df = flattened_df.dropna().reset_index(drop=True)
+    
+    
+    return flattened_df
 
-    return flattened_raw_topics_df
+
+async def process_all_trending_topics_modular(unique_reports, start_query, end_query, main_theme, model='gpt-4o-mini', api_key=None, batches=5, freq='D', phases='all',
+                                             consolidation_batch_size=50, consolidation_round_batch_size=80, max_consolidation_rounds=8):
+    """
+    Modular workflow to process trending topics.
+    
+    Args:
+        batches: Number of batches per date in extraction phase (default: 5)
+        consolidation_batch_size: Initial batch size for consolidation (default: 50)
+        consolidation_round_batch_size: Batch size for iterative rounds (default: 80)
+        max_consolidation_rounds: Maximum number of consolidation rounds (default: 8)
+        phases: 'all' to execute all phases, or list of phases to execute
+                e.g. ['phase1', 'phase2', 'phase3'] or 'phase1,phase2,phase3'
+    
+    Returns:
+        dict: Dictionary with all intermediate results of executed phases
+    """
+    results = {}
+    
+    # Parse phases parameter
+    if phases == 'all':
+        phases_to_run = ['phase1', 'phase2', 'phase3', 'phase4', 'phase5', 'phase6']
+    elif isinstance(phases, str):
+        phases_to_run = [p.strip() for p in phases.split(',')]
+    else:
+        phases_to_run = phases
+    
+
+    
+    # Phase 1: Topic Extraction
+    if 'phase1' in phases_to_run:
+
+        all_results, trending_topics_df, unique_reports_with_date = await phase1_extract_topics(
+            unique_reports, start_query, end_query, main_theme, model, api_key, batches, freq
+        )
+        results['phase1'] = {
+            'all_results': all_results,
+            'trending_topics_df': trending_topics_df,
+            'unique_reports': unique_reports_with_date
+        }
+    
+    # Phase 2: Flattening
+    if 'phase2' in phases_to_run:
+
+        if 'phase1' not in results:
+            raise ValueError("Phase 2 requires results from Phase 1. Execute Phase 1 first or pass data manually.")
+        
+        flattened_raw_topics_df, total_cited = phase2_flatten_topics(
+            results['phase1']['trending_topics_df'],
+            results['phase1']['unique_reports']
+        )
+        results['phase2'] = {
+            'flattened_df': flattened_raw_topics_df,
+            'total_cited': total_cited
+        }
+    
+    # Phase 3: Consolidation
+    if 'phase3' in phases_to_run:
+
+        if 'phase2' not in results:
+            raise ValueError("Phase 3 requires results from Phase 2. Execute Phase 1 and 2 first or pass data manually.")
+        
+        flattened_consolidated_df, final_mapping, consolidation_stats = await phase3_consolidate_topics(
+            results['phase2']['flattened_df'],
+            model, api_key, main_theme,
+            consolidation_batch_size, consolidation_round_batch_size, max_consolidation_rounds
+        )
+        results['phase3'] = {
+            'flattened_df': flattened_consolidated_df,
+            'final_mapping': final_mapping,
+            'consolidation_stats': consolidation_stats
+        }
+    
+    # Phase 4: Summarization
+    if 'phase4' in phases_to_run:
+
+        if 'phase3' not in results:
+            raise ValueError("Phase 4 richiede i risultati di Phase 3.")
+        
+        # Determina yearmonth dalla prima data nel DataFrame
+        first_date = results['phase3']['flattened_df']['Date'].min()
+        yearmonth = first_date.strftime('%Y-%m') if hasattr(first_date, 'strftime') else '2024-01'
+        
+        flattened_summarized_df = await phase4_summarize_topics(
+            results['phase3']['flattened_df'],
+            model, api_key, main_theme, yearmonth
+        )
+        results['phase4'] = {
+            'flattened_df': flattened_summarized_df
+        }
+    
+    # Phase 5: Title Generation
+    if 'phase5' in phases_to_run:
+
+        if 'phase4' not in results:
+            raise ValueError("Phase 5 richiede i risultati di Phase 4.")
+        
+        flattened_titled_df = await phase5_generate_titles(
+            results['phase4']['flattened_df'],
+            model, api_key
+        )
+        results['phase5'] = {
+            'flattened_df': flattened_titled_df
+        }
+    
+    # Phase 6: Post-processing
+    if 'phase6' in phases_to_run:
+
+        if 'phase5' not in results:
+            raise ValueError("Phase 6 richiede i risultati di Phase 5.")
+        
+        total_cited = results.get('phase2', {}).get('total_cited', 0)
+        unique_reports_data = results.get('phase1', {}).get('unique_reports')
+        
+        flattened_final_df = await phase6_postprocess(
+            results['phase5']['flattened_df'],
+            api_key, main_theme, total_cited, unique_reports_data
+        )
+        results['phase6'] = {
+            'flattened_df': flattened_final_df
+        }
+    
+
+    
+    # Return final dataframe if all phases completed
+    if 'phase6' in results:
+        results['final_df'] = results['phase6']['flattened_df']
+    
+    return results
 
 
-# Wrapper function to run async process
-def run_process_all_trending_topics(unique_reports, start_query, end_query, main_theme, model, api_key, batches = 5, freq='D'):
-    return asyncio.run(process_all_trending_topics(unique_reports, start_query, end_query, main_theme, model, api_key, batches, freq=freq))
+def run_process_all_trending_topics_modular(unique_reports, start_query, end_query, main_theme, model='gpt-4o-mini', api_key=None, batches=5, freq='D', phases='all',
+                                           consolidation_batch_size=50, consolidation_round_batch_size=80, max_consolidation_rounds=8):
+    """
+    Synchronous wrapper for process_all_trending_topics_modular.
+    """
+    return asyncio.run(process_all_trending_topics_modular(unique_reports, start_query, end_query, main_theme, model, api_key, batches, freq, phases,
+                                                           consolidation_batch_size, consolidation_round_batch_size, max_consolidation_rounds))
 
+
+
+async def run_full_trending_topics_pipeline(
+    unique_reports, 
+    start_query, 
+    end_query, 
+    main_theme, 
+    model='gpt-4o-mini', 
+    api_key=None, 
+    batches=5, 
+    freq='D',
+    consolidation_batch_size=50, 
+    consolidation_round_batch_size=80, 
+    max_consolidation_rounds=8
+):
+    """
+    Automatically executes all 6 phases of the trending topics pipeline and returns the final DataFrame.
+    
+    This function simplifies workflow usage by automatically executing:
+    - Phase 1: Topic Extraction
+    - Phase 2: Flattening
+    - Phase 3: Consolidation
+    - Phase 4: Summarization
+    - Phase 5: Title Generation
+    - Phase 6: Post-processing (Day in Review, Text Summaries, cleanup)
+    
+    Args:
+        unique_reports: DataFrame with filtered news
+        start_query: Start date (format 'YYYY-MM-DD')
+        end_query: End date (format 'YYYY-MM-DD')
+        main_theme: Main theme (e.g. 'Energy - Gas and Power')
+        model: LLM model to use (default: 'gpt-4o-mini')
+        api_key: OpenAI API key
+        batches: Number of batches per date in extraction phase (default: 5)
+        freq: Time frequency ('D' for daily, 'W' for weekly, etc.)
+        consolidation_batch_size: Initial batch size for consolidation (default: 50)
+        consolidation_round_batch_size: Batch size for iterative rounds (default: 80)
+        max_consolidation_rounds: Maximum number of consolidation rounds (default: 8)
+    
+    Returns:
+        pd.DataFrame: Final processed DataFrame with all topics, summaries, titles and scores
+    
+    Example:
+        ```python
+        final_df = await run_full_trending_topics_pipeline(
+            unique_reports=filtered_reports,
+            start_query='2025-11-05',
+            end_query='2025-11-12',
+            main_theme='Energy - Gas and Power',
+            model='gpt-4o-mini',
+            api_key=OPENAI_API_KEY,
+            batches=20,
+            consolidation_batch_size=50
+        )
+        ```
+    """
+    
+    # PHASE 1: Topic Extraction
+    all_results, trending_topics_df, unique_reports_with_date = await phase1_extract_topics(
+        unique_reports=unique_reports,
+        start_query=start_query,
+        end_query=end_query,
+        main_theme=main_theme,
+        model=model,
+        api_key=api_key,
+        batches=batches,
+        freq=freq
+    )
+    
+    # PHASE 2: Flattening
+    flattened_raw_topics_df, total_cited = phase2_flatten_topics(
+        trending_topics_df=trending_topics_df,
+        unique_reports=unique_reports_with_date
+    )
+    
+    # PHASE 3: Consolidation
+    flattened_consolidated_df, final_mapping, consolidation_stats = await phase3_consolidate_topics(
+        flattened_raw_topics_df=flattened_raw_topics_df,
+        model=model,
+        api_key=api_key,
+        main_theme=main_theme,
+        consolidation_batch_size=consolidation_batch_size,
+        consolidation_round_batch_size=consolidation_round_batch_size,
+        max_consolidation_rounds=max_consolidation_rounds
+    )
+    
+    # PHASE 4: Summarization
+    flattened_with_summaries = await phase4_summarize_topics(
+        flattened_df=flattened_consolidated_df,
+        model=model,
+        api_key=api_key,
+        main_theme=main_theme
+    )
+    
+    # PHASE 5: Title Generation
+    flattened_with_titles = await phase5_generate_titles(
+        flattened_df=flattened_with_summaries,
+        model=model,
+        api_key=api_key
+    )
+    
+    # PHASE 6: Post-processing
+    final_df = await phase6_postprocess(
+        flattened_df=flattened_with_titles,
+        api_key=api_key,
+        main_theme=main_theme,
+        total_cited_for_summary=total_cited,
+        unique_reports=unique_reports_with_date
+    )
+    
+    return final_df
+
+
+def process_full_trending_topics_pipeline(
+    unique_reports, 
+    start_query, 
+    end_query, 
+    main_theme, 
+    model='gpt-4o-mini', 
+    api_key=None, 
+    batches=5, 
+    freq='D',
+    consolidation_batch_size=50, 
+    consolidation_round_batch_size=80, 
+    max_consolidation_rounds=8
+):
+    """
+    Synchronous wrapper for run_full_trending_topics_pipeline.
+    
+    Executes all 6 phases of the pipeline automatically and returns the final DataFrame.
+    This is the simplest version to use for processing trending topics end-to-end.
+    
+    Args:
+        unique_reports: DataFrame with filtered news
+        start_query: Start date (format 'YYYY-MM-DD')
+        end_query: End date (format 'YYYY-MM-DD')
+        main_theme: Main theme (e.g. 'Energy - Gas and Power')
+        model: LLM model to use (default: 'gpt-4o-mini')
+        api_key: OpenAI API key
+        batches: Number of batches per date in extraction phase (default: 5)
+        freq: Time frequency ('D' for daily, 'W' for weekly, etc.)
+        consolidation_batch_size: Initial batch size for consolidation (default: 50)
+        consolidation_round_batch_size: Batch size for iterative rounds (default: 80)
+        max_consolidation_rounds: Maximum number of consolidation rounds (default: 8)
+    
+    Returns:
+        pd.DataFrame: Final processed DataFrame
+    
+    Example:
+        ```python
+        final_df = process_full_trending_topics_pipeline(
+            unique_reports=filtered_reports,
+            start_query='2025-11-05',
+            end_query='2025-11-12',
+            main_theme='Energy - Gas and Power',
+            model='gpt-4o-mini',
+            api_key=OPENAI_API_KEY
+        )
+        ```
+    """
+    return asyncio.run(run_full_trending_topics_pipeline(
+        unique_reports=unique_reports,
+        start_query=start_query,
+        end_query=end_query,
+        main_theme=main_theme,
+        model=model,
+        api_key=api_key,
+        batches=batches,
+        freq=freq,
+        consolidation_batch_size=consolidation_batch_size,
+        consolidation_round_batch_size=consolidation_round_batch_size,
+        max_consolidation_rounds=max_consolidation_rounds
+    ))
 
 
 async def fetch_relevance(client, text_to_analyze, current_prompt, model, semaphore):
