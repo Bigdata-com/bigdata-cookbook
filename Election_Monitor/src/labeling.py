@@ -13,8 +13,6 @@ from bigdata_research_tools.prompts.labeler import(
 
 from bigdata_research_tools.labeler.labeler import (
     Labeler,
-    get_prompts_for_labeler,
-    parse_labeling_response,
 )
 
 
@@ -67,7 +65,7 @@ class ElectionLabeler(Labeler):
             unknown_label: Label for unclear classifications.
             temperature: Temperature to use in the LLM model.
         """
-        super().__init__(llm_model, unknown_label, temperature)
+        super().__init__(llm_model, unknown_label)
         self.label_prompt = label_prompt
 
     def get_labels(
@@ -92,13 +90,12 @@ class ElectionLabeler(Labeler):
                 - label
         """
         system_prompt = self.label_prompt
-        prompts = get_prompts_for_labeler(texts)
+        prompts = self.get_prompts_for_labeler(texts)
 
         responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers
+            prompts, system_prompt, max_workers=max_workers, timeout=None,
         )
-        responses = [parse_labeling_response(response) for response in responses]
-        return self._deserialize_label_responses(responses)
+        return self.deserialize_label_responses_as_df(responses)
 
 
 DEFAULT_TRUMP_REELECTION_PROMPT = (
