@@ -1,7 +1,8 @@
+import json
 import os
 import pandas as pd
 from typing import List, Dict, Any, Optional, Union
-from bigdata_research_tools.labeler.labeler import Labeler, get_prompts_for_labeler, parse_labeling_response
+from bigdata_research_tools.labeler.labeler import Labeler
 
 class FeatureExtractor(Labeler):
 
@@ -21,7 +22,7 @@ class FeatureExtractor(Labeler):
             temperature: Temperature for the LLM
             api_key: API key for the LLM provider (if needed)
         """
-        super().__init__(llm_model, unknown_label, temperature)
+        super().__init__(llm_model, unknown_label)
         if api_key:
             os.environ["OPENAI_API_KEY"] = api_key
         
@@ -362,7 +363,7 @@ These examples provide illustrations of extracting all necessary information, fo
         # Get text configs using the flexible prompt fields method
         text_configs = self._add_prompt_fields(df, additional_prompt_fields)
 
-        prompts = get_prompts_for_labeler(
+        prompts = self.get_prompts_for_labeler(
             texts=df[text_col].tolist(),
             textsconfig=text_configs
         )
@@ -371,13 +372,10 @@ These examples provide illustrations of extracting all necessary information, fo
         responses = self._run_labeling_prompts(
             prompts=prompts,
             system_prompt=system_prompt,
-            max_workers=max_workers
+            max_workers=max_workers,
+            timeout=None
         )
-
-        responses = [parse_labeling_response(response) for response in responses]
-        
-        # Deserialize the responses
-        df_labeled = self._deserialize_label_responses(responses)
+        df_labeled = self.deserialize_label_responses_as_df(responses)
         if len(df_labeled['motivation'].unique()) == 1 and df_labeled['motivation'].values[0]=='':
             df_labeled = df_labeled.drop(columns=['motivation', 'label'])
 
@@ -417,7 +415,7 @@ These examples provide illustrations of extracting all necessary information, fo
         # Get text configs using the flexible prompt fields method
         text_configs = self._add_prompt_fields(df, additional_prompt_fields)
         
-        prompts = get_prompts_for_labeler(
+        prompts = self.get_prompts_for_labeler(
             texts=df[text_col].tolist(),
             textsconfig=text_configs
         )
@@ -429,28 +427,31 @@ These examples provide illustrations of extracting all necessary information, fo
         responses_1 = self._run_labeling_prompts(
             prompts=prompts,
             system_prompt=self.credit_ratings_prompt,
-            max_workers=max_workers
+            max_workers=max_workers,
+            timeout=None,
         )
-        responses_1 = [parse_labeling_response(response) for response in responses_1]
-        features['credit_ratings'] = self._deserialize_label_responses(responses_1)
+
+        features['credit_ratings'] = self.deserialize_label_responses_as_df(responses_1)
         
         # Feature set 2: Debt instruments
         responses_2 = self._run_labeling_prompts(
             prompts=prompts,
             system_prompt=self.debt_instruments_prompt,
-            max_workers=max_workers
+            max_workers=max_workers,
+            timeout=None,
         )
-        responses_2 = [parse_labeling_response(response) for response in responses_2]
-        features['debt_instruments'] = self._deserialize_label_responses(responses_2)
+
+        features['debt_instruments'] = self.deserialize_label_responses_as_df(responses_2)
         
         # Feature set 3: Key drivers and forward guidance
         responses_3 = self._run_labeling_prompts(
             prompts=prompts,
             system_prompt=self.drivers_guidance_prompt,
-            max_workers=max_workers
+            max_workers=max_workers,
+            timeout=None,
         )
-        responses_3 = [parse_labeling_response(response) for response in responses_3]
-        features['drivers_guidance'] = self._deserialize_label_responses(responses_3)
+
+        features['drivers_guidance'] = self.deserialize_label_responses_as_df(responses_3)
 
         result = self._combine_features(df, features)
 
@@ -495,7 +496,7 @@ These examples provide illustrations of extracting all necessary information, fo
         # Get text configs using the flexible prompt fields method
         text_configs = self._add_prompt_fields(df, additional_prompt_fields)
         
-        prompts = get_prompts_for_labeler(
+        prompts = self.get_prompts_for_labeler(
             texts=df[text_col].tolist(),
             textsconfig=text_configs
         )
@@ -504,10 +505,10 @@ These examples provide illustrations of extracting all necessary information, fo
         responses = self._run_labeling_prompts(
             prompts=prompts,
             system_prompt=system_prompt,
-            max_workers=max_workers
+            max_workers=max_workers,
+            timeout=None,
         )
-        responses = [parse_labeling_response(response) for response in responses]
-        feature_df = self._deserialize_label_responses(responses)
+        feature_df = self.deserialize_label_responses_as_df(responses)
         
         return feature_df
 

@@ -1,6 +1,6 @@
 python_dotenv>=1.1.1
 bigdata-client>=2.18.0
-bigdata-research-tools>=0.17.3
+bigdata-research-tools @ git+https://github.com/Bigdata-com/bigdata-research-tools@510b2786c1719bd36e15377f416e0f9ddf91332e
 pandas>=2.3.1
 asyncio>=4.0.0
 openai>=1.99.3
@@ -9,6 +9,6 @@ ipython==8.37.0
 IProgress==0.4
 ipywidgets==8.1.7
 nest-asyncio>=1.6.0
-plotly==5.19.0
+plotly>=5.19.0
 kaleido==0.2.1
 jupyter>=1.0.0
