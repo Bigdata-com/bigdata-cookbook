@@ -13,7 +13,7 @@ from bigdata_client import Bigdata
 
 from bigdata_research_tools.search.screener_search import search_by_companies
 from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
-from bigdata_research_tools.themes import generate_theme_tree, stringify_label_summaries
+from bigdata_research_tools.mindmap import generate_theme_tree
 
 from src.summary.summary import TopicSummarizerSector, TopicSummarizerCompany
 from src.response.company_response import CompanyResponseProcessor
