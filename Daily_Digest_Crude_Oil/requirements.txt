@@ -1,6 +1,6 @@
 python_dotenv>=1.1.1
 bigdata-client>=2.18.0
-bigdata-research-tools>=0.17.3
+bigdata-research-tools @ git+https://github.com/Bigdata-com/bigdata-research-tools@510b2786c1719bd36e15377f416e0f9ddf91332e
 pandas>=2.3.1
 numpy>=2.3.2
 asyncio>=4.0.0
