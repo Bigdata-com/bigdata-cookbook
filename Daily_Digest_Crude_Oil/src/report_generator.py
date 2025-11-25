@@ -154,6 +154,8 @@ def display_html_report_as_image(report_date, theme, report_dir='./report/', tmp
         html_content = html_content.replace("<head>", f"<head>{custom_css}")
     else:
         html_content = custom_css + html_content
+    # Ensure the tmp_dir exists before writing
+    os.makedirs(tmp_dir, exist_ok=True)
     temp_html_path = os.path.join(tmp_dir, f"temp_{html_filename}")
     with open(temp_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
