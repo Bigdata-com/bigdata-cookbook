@@ -196,7 +196,7 @@ TOPICS = [
 ]
 
 payload = {
-    "companies": companies,
+    "entities": companies,
     "report_start_date": "2025-10-27",
     "report_end_date": "2025-11-03",
     "novelty": True,
