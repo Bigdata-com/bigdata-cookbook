@@ -247,6 +247,9 @@ MA_TOPICS = [
     {"topic_name": "M&A Activity", "topic_text": "Is {company} being acquired or in merger discussions with another company?"},
     {"topic_name": "M&A Activity", "topic_text": "What acquisition offers or takeover bids has {company} received recently?"},
     {"topic_name": "M&A Activity", "topic_text": "What strategic alternatives or sale processes is {company} exploring?"},
+    {"topic_name": "M&A Activity", "topic_text": "When did {company} announce or sign a definitive merger agreement or acquisition deal?"},
+    {"topic_name": "M&A Activity", "topic_text": "What are the key timeline milestones and closing dates for {company}'s pending merger or acquisition transaction?"}
+
     
     
     # Deal Terms & Valuation
