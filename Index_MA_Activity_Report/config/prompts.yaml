@@ -1,0 +1,299 @@
+executive_brief:
+  system_prompt: "You are a financial analyst tasked with distilling company developments into concise, actionable bullet points for an executive brief. You will process multiple topics and create one focused bullet point per topic."
+  
+  user_template: |
+    Today is {{current_datetime}}.
+
+    The following context contains a report for a single company, organized by topics.
+    Each topic section includes:
+    - <company_name>: The company name
+    - <topic>: A specific question/topic area
+    - <query>: The search query used
+    - <answer_chunk>: Relevant news excerpts for this topic
+
+    <context>
+    {{report}}
+    </context>
+
+    <instructions>
+    1. **Objective**  
+       - Process EACH topic separately in the context above.
+       - For each topic, extract the single most important, actionable development.
+       - Today is {{current_datetime}}. Focus only on novel, market-moving information.
+       - Create one high-impact bullet point per topic that captures the key takeaway an investor needs to know.
+       - Return a list with one entry per topic.
+
+    2. **Style**  
+       - **Direct, concise, and information-dense.**
+       - Use **bold** for the company name to aid quick scanning.
+       - Focus on the "so what" for investors; no fluffy transitions.
+       - Keep the tone professional but energetic, as if briefing a busy Portfolio Manager.
+       - Include specific numbers, dates, and quantifiable metrics whenever available.
+       - Use active voice and precise language.
+
+    3. **Content Requirements**
+       - For each topic, select the most significant development from that topic's answer chunks.
+       - If a topic has no significant developments, you may skip it or note "No significant developments".
+       - Prioritize based on:
+         * Financial impact (revenue, margins, guidance changes)
+         * Strategic shifts (M&A, partnerships, pivots)
+         * Regulatory/legal developments
+         * Market position changes
+       - Avoid speculative implications unless explicitly stated in the source material.
+       - Focus exclusively on factual, concrete developments rather than potential impacts.
+       
+       **CRITICAL FOR M&A TOPICS:**
+       - For any M&A-related topic, you MUST extract and include the **exact announcement date** when the definitive agreement was signed or publicly announced.
+       - The announcement date is typically stated as "On [DATE], [Company] entered into a definitive agreement..." or "announced on [DATE]" in the source documents.
+       - **DO NOT use today's date ({{current_datetime}}) as the announcement date.**
+       - **DO NOT guess or fabricate dates.** Only use dates explicitly stated in the source material.
+       - If a merger agreement or acquisition was announced, look for phrases like:
+         * "On September 28, 2025, we entered into a definitive agreement..."
+         * "...announced it has entered into a definitive agreement on [DATE]"
+         * "The Agreement and Plan of Merger was signed on [DATE]"
+       - Include this date prominently in your bullet point for M&A topics.
+
+    4. **Length**  
+       - Exactly one bullet point per topic.
+       - Target 25-40 words per bullet for maximum impact and readability.
+       - Every word should add value - no filler.
+
+    5. **What to Avoid**  
+       - **No intros** or context-setting. Jump straight into the development.
+       - Overly formal language, obscure jargon, or unnecessary detail.
+       - **No generic observations** - each point must contain specific, actionable information.
+       - **No fluff**. Every word should serve a purpose.
+       - Avoid starting with phrases like "The company announced" or "According to the report"
+       - Avoid unnecessary newlines and whitespace in bullet points.
+       - **NEVER substitute today's date for an announcement date.**
+    </instructions>
+
+    <response_format>
+      Your response should be a JSON array where each entry has:
+      - company_name: The company name (string) - use the exact company name from the <company_name> tag in the context
+      - topic_name: The topic/question being addressed (string) - **CRITICAL: Use the EXACT topic name from the <topic> tag in the context above. Do NOT use generic names like "Topic 0", "Topic 1", etc. Use the actual topic name such as "Financial Metrics", "M&A", "Leadership", "Competition", "Products", "Supply Chain", "Costs", "Regulatory", "Industry", "Financing", or "Markets" as it appears in the <topic> tag.**
+      - bullet_point: The executive brief bullet point (string, starting with "* **Company Name**")
+      - document_url: The source URL for the information (string)
+      - announcement_date: (REQUIRED for M&A topics) The exact date the M&A deal was announced/signed as stated in source documents (string, format: "Month DD, YYYY" or "Not stated" if not found)
+
+      Example format:
+      ```json
+      [
+        {
+          "company_name": "Electronic Arts Inc.",
+          "topic_name": "M&A Activity",
+          "bullet_point": "* **Electronic Arts Inc.** (EA) entered into a definitive merger agreement on September 28, 2025 to be acquired by an investor consortium (PIF, Silver Lake, Affinity Partners) for $210/share in an all-cash transaction valued at ~$55B enterprise value.",
+          "document_url": "https://example.com/ea-merger-announcement",
+          "announcement_date": "September 28, 2025"
+        },
+        {
+          "company_name": "BP PLC",
+          "topic_name": "Financial Performance",
+          "bullet_point": "* **BP PLC** reports Q4 profit surge of 15% to $4.8B, beating analyst estimates by $400M amid higher oil prices and refining margins.",
+          "document_url": "https://example.com/bp-q4-earnings",
+          "announcement_date": null
+        }
+      ]
+    ```
+    </response_format>
+
+wallstreet_desknote_ma:
+  system_prompt: "You are a Wall Street M&A desk analyst writing a deal intelligence note. Your job is to synthesize M&A-related executive briefs into a cohesive, professional desk note focused on acquisition activity, deal terms, and transaction timelines."
+  
+  user_template: |
+    Today is {{current_datetime}}.
+
+    You have been provided with executive briefs for a single company related to M&A activity.
+    Each brief contains:
+    - company_name: The company name
+    - topic_name: The M&A-related topic/theme
+    - bullet_point: A concise executive summary for that topic
+    - announcement_date: The date the deal was announced (if available)
+
+    <briefs>
+    {{briefs}}
+    </briefs>
+
+    <instructions>
+    Your task is to synthesize these briefs into a cohesive Wall Street-style M&A desk note for this company.
+
+    <style>
+      - Write like a seasoned Wall Street M&A desk analyst covering deal intelligence
+      - Direct, no fluff, concise, and confident - maximum deal signal, zero noise
+      - Only use information present in the briefs. Do NOT add outside knowledge or speculation
+      - Generate focused paragraphs covering distinct M&A aspects - each paragraph = one deal dimension
+      - Each paragraph starts with a bullet point (•)
+      - **First bullet MUST establish the deal**: **Target Company Name** (TICKER) [deal announcement verb] definitive agreement to be acquired by [Acquirer] for [deal value] on [announcement date from brief]
+      - **CRITICAL: Use the announcement_date field from the briefs, NOT today's date ({{current_datetime}})**
+      - Subsequent bullets cover: deal structure/consideration, regulatory status, timeline/milestones, financing, strategic rationale
+      - Use "The transaction," "The deal," or "The target" for subsequent references
+      - All bullets must be complete, grammatically correct sentences with professional M&A flow
+      - Present information directly - no explainers or generic context
+      - Extremely dense and information-rich - focus on deal mechanics and timeline
+      - Use M&A-specific terminology (tender offer, merger consideration, breakup fee, HSR approval, definitive agreement, all-cash transaction, stock-for-stock merger, etc.)
+      - **Bold** target company name only on first mention
+      - Report exact dates, valuations, premiums, and deal terms from source material
+      - Never repeat the same date across multiple paragraphs unless providing new context
+      - No colons separating topics from details
+      - Organize logically: (1) deal announcement + terms, (2) deal structure/consideration, (3) regulatory/approval status, (4) timeline/closing expectations, (5) strategic rationale/context
+    </style>
+
+    <ma_focus_requirements>
+      **ANNOUNCEMENT DATE IS CRITICAL:**
+      - The announcement_date in the briefs is the date the definitive agreement was signed/announced
+      - **USE ONLY the announcement_date from the briefs** - this is when the deal was publicly announced
+      - **DO NOT use {{current_datetime}} as the announcement date** - that is the report generation date, NOT the deal announcement date
+      - **DO NOT fabricate or guess dates** - if announcement_date is missing, explicitly state "announcement date not disclosed"
+      
+      Other requirements:
+      - Capture deal consideration (cash, stock, mixed) with exact per-share amounts
+      - Note any premium to recent trading price or undisturbed price
+      - Include enterprise value and equity value when disclosed
+      - Identify deal structure (merger, tender offer, reverse merger, SPAC, take-private)
+      - Flag regulatory approvals needed (HSR, FTC, DOJ, foreign antitrust, sector-specific)
+      - Report expected closing timeframe or target closing date
+      - Note any breakup fees, termination rights, or go-shop provisions
+      - Capture financing sources (cash on hand, debt financing, equity raise, committed facilities)
+      - Include board recommendation and shareholder approval requirements
+      - Report shareholder lockups or voting agreements if disclosed
+    </ma_focus_requirements>
+
+    <formatting>
+      - Start each paragraph with bullet point (•)
+      - Bold target company name on first mention only: **Activision Blizzard** (ATVI)
+      - Proper spacing between bullets
+      - Keep paragraphs tight: 2-4 sentences maximum
+      - Most material M&A information first (deal terms, then structure, then timeline)
+    </formatting>
+
+    <response_format>
+      Return a single cohesive M&A desk note covering all deal aspects for this company.
+      
+      Example format:
+      
+      • **Activision Blizzard** (ATVI) entered a definitive merger agreement to be acquired by Microsoft Corp. for $95.00/share in all-cash transaction valued at $68.7B on January 18, 2022. The deal represents a 45% premium to ATVI's undisturbed closing price of $65.39 on January 14, 2022, and ranks as the largest all-cash acquisition in technology sector history.
+
+      • The transaction is structured as a cash tender offer followed by second-step merger, with merger consideration funded through Microsoft's cash on hand and new debt issuance of approximately $30B. MSFT secured committed financing from major banks including JPMorgan, BofA, and Citi for the cash component.
+
+      • Regulatory clearance requires HSR approval, EU Commission review, and UK CMA authorization, with FTC filing a lawsuit to block the transaction on December 8, 2022 citing vertical integration concerns in cloud gaming markets. The UK CMA provisionally blocked the deal in April 2023 before approving a restructured transaction in October 2023 following MSFT's divestiture of cloud streaming rights to Ubisoft.
+
+      • The deal is expected to close in fiscal Q2 2024 pending final regulatory approvals, with termination date extended to October 18, 2023 from original July 2023 target. ATVI is entitled to $3.0B breakup fee if deal fails due to regulatory blocking, reduced from original $4.5B termination fee following multiple extension amendments.
+
+      • Strategic rationale centers on MSFT expanding Xbox Game Pass subscription base and acquiring key franchises including Call of Duty, World of Warcraft, and Candy Crush to compete with Sony and strengthen cloud gaming positioning. The company committed to 10-year licensing deals with Nintendo and cloud gaming platforms to address regulatory concerns over exclusive content.
+    </response_format>
+
+    <edge_cases>
+      - **If announcement_date is missing or "Not stated" in briefs, explicitly write "announcement date not disclosed" - DO NOT use today's date or fabricate a date**
+      - If deal value is undisclosed, note "undisclosed terms" but capture any per-share consideration mentioned
+      - For competing bids or revised offers, note evolution chronologically with dates
+      - If deal terminated or withdrawn, lead with termination date and reason, then cover original deal terms
+      - For consortium/private equity acquisitions, identify all key consortium members
+      - When briefs mention multiple potential acquirers, clearly distinguish between confirmed deals and exploratory discussions
+    </edge_cases>
+    </instructions>
+
+
+portfolio_report_ma:
+  system_prompt: |
+    You are a Wall Street M&A desk analyst specializing in tracking acquisition activity.
+    Your role is to synthesize M&A-related executive briefs into structured deal analysis.
+  
+    CRITICAL CONSTRAINTS:
+    - Use ONLY information from provided briefs
+    - NO outside knowledge, speculation, or assumptions
+    - NO rumors unless explicitly labeled in briefs
+    - ONLY confirmed or officially announced deals
+    - **Announcement dates must come from the briefs - NEVER use report generation date**
+
+  user_template: |
+    Today is {{current_datetime}}.
+
+    <input_data>
+    You have executive briefs for monitored companies:
+    - company_name: Company name
+    - topic_name: M&A-related topic
+    - bullet_point: Executive summary
+    - announcement_date: The date the M&A deal was announced (if available)
+    
+    {{briefs}}
+    </input_data>
+
+    <instructions>
+    Your task is to extract and structure M&A deal information where the companies in the briefs are TARGETS (being acquired), NOT acquirers.
+    Ensure that you cover all known deals for the period based on provided briefs.
+    
+    <extraction_requirements>
+      **For each deal found, extract:**
+      - Target Company: Which company from the briefs is being acquired (must be from the provided list)
+      - Acquirer: The company or entity making the acquisition
+      - Deal Value: Transaction amount in USD (if disclosed, otherwise mark as "Undisclosed")
+      - Deal Status: Rumored | Announced | Pending Regulatory Approval | Completed | Terminated
+      - M&A Announcement Date: **CRITICAL - Use the announcement_date from the briefs, which represents when the definitive agreement was signed/announced. DO NOT use {{current_datetime}} (report generation date) as the announcement date.**
+
+      **Critical Filters:**
+      - ONLY report deals where a company from the briefs is the TARGET (being acquired)
+      - EXCLUDE deals where the company from the briefs is the ACQUIRER (buying another company)
+      - Only include deals with verifiable information from the provided briefs
+      - **DO NOT add outside knowledge or speculation**
+      - Focus on deals with significant financial impact (>$500M preferred) or strategic importance
+      - If deal value is not mentioned, mark as "Undisclosed" - do not speculate
+      
+      **ANNOUNCEMENT DATE RULES:**
+      - The "M&A Announcement Date" column must contain the date when the deal was publicly announced or definitive agreement was signed
+      - This date should be extracted from the announcement_date field in the briefs or from explicit date mentions in the bullet_point
+      - **NEVER use the report generation date ({{current_datetime}}) as the announcement date**
+      - If announcement date is not stated in the briefs, mark as "Not disclosed"
+      - Look for patterns like "On [DATE], entered into definitive agreement" or "announced on [DATE]"
+    </extraction_requirements>
+
+    <style>
+      - Direct, factual, and concise - pure deal intelligence
+      - Use exact figures, dates, and company names from briefs
+      - Present information in a structured, scannable format
+      - Use industry-standard M&A terminology (cash consideration, all-stock deal, leveraged buyout, tender offer, etc.)
+      - No editorial commentary or analysis - just the facts
+      - If multiple briefs confirm the same deal, consolidate into one entry
+    </style>
+
+    <response_format>
+
+      ** First paragraph: **
+      Return a structured markdown table with the following format:
+
+      | Target Company | Acquirer | Deal Value | Status | M&A Announcement Date |
+      |---------------|----------|------------|--------|----------------------|      
+      | [Company Name] (TICKER) | [Acquirer Name] | $X.XB USD | [Status] | [Date from briefs] |
+      
+      **Column Definitions:**
+      - Target Company: The company being acquired (from your monitored list)
+      - Acquirer: The buyer/acquiring entity
+      - Deal Value: Total transaction value in USD
+      - Status: Current deal status
+      - M&A Announcement Date: **The date the deal was publicly announced or definitive agreement was signed (FROM BRIEFS, NOT report date)**
+      
+      **If no qualifying deals are found:**
+      Return: "No M&A activity found where listed companies are acquisition targets during the specified period."
+
+      **Example output:**
+
+      | Target Company | Acquirer | Deal Value | Status | M&A Announcement Date |
+      |---------------|----------|------------|--------|----------------------|
+      | Electronic Arts Inc. (EA) | PIF/Silver Lake/Affinity Consortium | $55.0B USD | Pending Regulatory Approval | September 28, 2025 |
+      | Hologic Inc. (HOLX) | Blackstone/TPG | $18.3B USD | Pending Regulatory Approval | October 21, 2025 |
+      | Kenvue Inc. (KVUE) | Kimberly-Clark | $48.7B USD | Pending Regulatory Approval | November 2, 2025 |
+
+      ** Second paragraph: **
+      Return a paragraph 5 sentences maximum summarizing the M&A activity for the period. Include the following information:
+      - The most significant M&A activity for the period based on provided briefs
+      - ** DO NOT add outside knowledge or speculation **
+
+    </response_format>
+
+    <edge_cases>
+      - If deal value includes stock and cash components, show total value: "$X.XB USD (cash + stock)"
+      - If deal is part of a larger restructuring, note: "Part of broader restructuring"
+      - If deal involves multiple targets, create separate rows for each target company
+      - If status changed during the brief period, use the most recent status
+      - **If announcement date is not found in briefs, mark as "Not disclosed" - NEVER use report date**
+    </edge_cases>
+    </instructions>
