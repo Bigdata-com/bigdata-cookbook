@@ -97,13 +97,42 @@ ma_report = await llm_service.generate_content_raw(prompt=full_prompt)
 
 ## Output Format
 
-The M&A report produces a structured table:
+The M&A report is structured in three sections:
 
-| Target Company | Acquirer | Deal Value | Status | Announcement Date |
-|---------------|----------|------------|--------|-------------------|
+### 1. Deal Table
+| Target Company | Acquirer | Deal Value | Status | M&A Announcement Date |
+|---------------|----------|------------|--------|----------------------|
 | Company A (TICKER) | Acquirer Inc. | $X.XB USD | Pending | Month DD, YYYY |
 
-Plus a summary paragraph highlighting key M&A activity.
+### 2. Summary
+A paragraph highlighting key M&A activity for the period.
+
+### 3. Sources
+Each company with hyperlinked sources (top 3 by relevance):
+
+**Company A (TICKER)**
+  - [Source Name 1](url)
+  - [Source Name 2](url)
+  - [Source Name 3](url)
+
+### Output Files
+
+The workflow generates the following output files in the `output/` directory:
+
+| File Pattern | Description |
+|-------------|-------------|
+| `search_results_{timestamp}.json` | Raw search results from Bigdata.com API |
+| `brief_result_{timestamp}.json` | LLM-generated executive briefs with source_map |
+| `desk_notes_{timestamp}.json` | Consolidated desk notes per company with sources |
+| `ma_report_{timestamp}.md` | Final M&A report in markdown format |
+
+### Source Attribution
+
+Each company in the report includes a **Sources** column with links to the top 3 most relevant sources (by relevance score) from the original search results. The source_map is:
+- Extracted from search results after the search phase
+- Attached to briefs during brief generation
+- Carried through to desk notes
+- Added to the final report as clickable hyperlinks
 
 ## Project Structure
 
@@ -127,6 +156,10 @@ dist/
 │   ├── company_cache.py         # Company data caching
 │   └── topic_search_service.py  # News search service
 └── output/                      # Generated reports
+    ├── search_results_*.json    # Raw search results
+    ├── brief_result_*.json      # Executive briefs with sources
+    ├── desk_notes_*.json        # Desk notes per company
+    └── ma_report_*.md           # Final M&A report
 ```
 
 ## M&A Topics
