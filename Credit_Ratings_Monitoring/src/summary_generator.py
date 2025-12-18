@@ -5,7 +5,7 @@ import asyncio
 from typing import List, Dict, Union, Optional, Tuple, Any
 
 from bigdata_research_tools.llm.base import AsyncLLMEngine
-from bigdata_research_tools.labeler.labeler import Labeler, get_prompts_for_labeler, parse_labeling_response
+from bigdata_research_tools.labeler.labeler import Labeler
 
 
 class SummaryGenerator(Labeler):
@@ -27,7 +27,7 @@ class SummaryGenerator(Labeler):
             temperature: Temperature for the model
             max_workers: Maximum number of concurrent workers for batch processing
         """
-        self.llm_model = llm_model
+        super().__init__(llm_model_config=llm_model)
         self.llm_engine = AsyncLLMEngine(model=llm_model)
         self.temperature = temperature
         self.max_workers = max_workers
@@ -373,18 +373,17 @@ You are tasked with generating a comprehensive timeline report based on input te
 
         texts = df[summary_input_col].tolist()
 
-        prompts = get_prompts_for_labeler(texts, textsconfig=textsconfig)
+        prompts = self.get_prompts_for_labeler(texts, textsconfig=textsconfig)
 
         #these prompts should have summary input instead of text as key
 
         responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers
+            prompts, system_prompt, max_workers=max_workers, timeout=None,
         )
-        responses = [parse_labeling_response(response) for response in responses]
 
         ## add error catching, splits, retries, and consolidation to the failed ones.
 
-        parsed_responses = self._deserialize_label_responses(responses)
+        parsed_responses = self.deserialize_label_responses_as_df(responses)
         if len(parsed_responses['motivation'].unique()) == 1 and parsed_responses['motivation'].values[0]=='':
             parsed_responses = parsed_responses.drop(columns=['motivation', 'label'])
 

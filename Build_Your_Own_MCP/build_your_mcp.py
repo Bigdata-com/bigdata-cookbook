@@ -2,7 +2,7 @@
 #
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["mcp[cli]==1.11.0", "bigdata-research-tools==0.20.1", "nest-asyncio==1.6.0", "python-dotenv==1.1.1"]
+# dependencies = ["mcp[cli]==1.11.0", "bigdata-research-tools>=1.0.0", "nest-asyncio==1.6.0", "python-dotenv==1.1.1"]
 # ///
 
 import os
@@ -65,7 +65,7 @@ def screen_companies(
 
     # Configure and run the thematic screener
     them = ThematicScreener(
-        llm_model=LLM_MODEL,
+        llm_model_config=LLM_MODEL,
         main_theme=main_theme,
         focus=focus,
         companies=companies,
