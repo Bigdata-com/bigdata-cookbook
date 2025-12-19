@@ -30,7 +30,7 @@ class LexiconGenerator:
         The output should be a lexicon of only the most critical and uniquely relevant keywords related to the {theme}, formatted as a JSON list, with full terms and abbreviations listed separately.
         """
         if rr0:
-            print("Using example output for expansion:", rr0)
+            #print("Using example output for expansion:", rr0)
             system_prompt2 = f"{system_prompt}\nBelow is just an example output, please expand:\n{str(rr0)}"
         else:
             system_prompt2 = system_prompt
