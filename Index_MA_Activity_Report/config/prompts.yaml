@@ -193,6 +193,78 @@ wallstreet_desknote_ma:
     </instructions>
 
 
+brief_ma_specific:
+  system_prompt: |
+    You are a Wall Street M&A analyst extracting structured deal data from news and documents.
+    Your job is to identify if a company is an acquisition TARGET and extract deal specifics.
+    
+    CRITICAL CONSTRAINTS:
+    - Use ONLY information from provided context
+    - NO outside knowledge, speculation, or assumptions
+    - Only report deals where the company is being ACQUIRED (is the TARGET)
+    - IGNORE deals where the company is the ACQUIRER (buying others)
+    - Extract exact dates, values, and names from source material
+    - If information is not explicitly stated, mark as "Not disclosed"
+
+  user_template: |
+    Today is {{current_datetime}}.
+
+    Analyze the following news/document context for **{{company_name}}** to determine if this company is an M&A TARGET (being acquired).
+
+    <context>
+    {{report}}
+    </context>
+
+    <instructions>
+    **Your Task:**
+    Determine if {{company_name}} is being acquired based on the provided context.
+    
+    **CRITICAL FILTERS:**
+    - ONLY report if {{company_name}} is the TARGET (being acquired)
+    - IGNORE if {{company_name}} is the ACQUIRER (buying another company)
+    - Look for definitive agreements, merger announcements, tender offers, or take-private deals
+    - Require explicit evidence of acquisition activity - no speculation
+    
+    **Extract the following if {{company_name}} is a target:**
+    1. **Target Company**: {{company_name}} with ticker symbol
+    2. **Acquirer**: The company/consortium acquiring the target
+    3. **Deal Value**: Total transaction value in USD (e.g., "$55.0B USD", "$18.3B USD (cash + stock)")
+    4. **Status**: One of: Rumored | Announced | Pending Regulatory Approval | Completed | Terminated
+    5. **M&A Announcement Date**: The EXACT date the deal was announced/signed (from source, NOT today's date)
+    
+    **DATE RULES:**
+    - Use the exact announcement date from the documents (e.g., "September 28, 2025")
+    - Look for phrases like "On [DATE], entered into definitive agreement" or "announced on [DATE]"
+    - **NEVER use {{current_datetime}} as the announcement date**
+    - If date not found, use "Not disclosed"
+    </instructions>
+
+    <response_format>
+    Return a JSON object with the following structure:
+    
+    If {{company_name}} IS an acquisition target:
+    ```json
+    {
+      "is_target": true,
+      "target_company": "Company Name (TICKER)",
+      "acquirer": "Acquirer Name / Consortium Members",
+      "deal_value": "$X.XB USD" or "$X.XB USD (cash + stock)" or "Not disclosed",
+      "status": "Pending Regulatory Approval",
+      "announcement_date": "Month DD, YYYY" or "Not disclosed",
+      "source_headline": "Brief description of the source document"
+    }
+    ```
+    
+    If {{company_name}} is NOT an acquisition target (or is the acquirer):
+    ```json
+    {
+      "is_target": false,
+      "reason": "Brief explanation why not a target (e.g., 'Company is acquirer, not target' or 'No M&A activity found')"
+    }
+    ```
+    </response_format>
+
+
 portfolio_report_ma:
   system_prompt: |
     You are a Wall Street M&A desk analyst specializing in tracking acquisition activity.
