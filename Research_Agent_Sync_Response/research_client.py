@@ -370,6 +370,7 @@ class ResearchClient:
         self.base_url = base_url
         self.timeout = timeout
     
+    # NOTE: Additional parameters can be added to the research function based on the requirements.
     def research(
         self,
         message: str,
@@ -382,6 +383,8 @@ class ResearchClient:
         This method sends a request to the Bigdata.com Research Agent API,
         which performs multi-step research using retrieval-augmented generation (RAG)
         across web, premium sources, and your own content.
+
+        Additional parameters can be added to the research function based on the requirements.
         
         Args:
             message: Your research question or prompt. Can include instructions
