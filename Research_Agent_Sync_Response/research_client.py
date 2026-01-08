@@ -215,36 +215,64 @@ class ResearchResult:
     
     def get_answer_with_citations(self) -> str:
         """
-        Get answer with inline citation numbers [1], [2], etc.
+        Get answer with inline citation numbers [1, 2, 3], etc.
         
         Returns the answer text with citation markers inserted at the
         positions indicated by grounding references.
+        
+        Improvements:
+        - Groups nearby citations into single consolidated markers
+        - Deduplicates repeated citation numbers at same position
+        - Displays citation numbers in ascending order for readability
         """
         if not self.grounding_refs:
             return self.answer
         
-        # Build citation number mapping (deduplicate by headline/id)
+        # First, assign citation numbers in order of appearance (by position ascending)
+        # This ensures consistent numbering with get_numbered_citations()
         citation_nums = {}
         num_counter = 1
+        refs_sorted_asc = sorted(self.grounding_refs, key=lambda r: r.start)
         
-        # Sort refs by position (descending) to insert from end to start
-        sorted_refs = sorted(self.grounding_refs, key=lambda r: r.start, reverse=True)
-        
-        result = self.answer
-        
-        for ref in sorted_refs:
-            # Get or assign citation number
+        for ref in refs_sorted_asc:
             key = ref.headline or ref.citation_id or f"{ref.source_name}_{ref.start}"
             if key not in citation_nums:
                 citation_nums[key] = num_counter
                 num_counter += 1
-            
+        
+        # Group citations by position (within threshold of 5 chars)
+        # This consolidates multiple citations at the same logical point
+        POSITION_THRESHOLD = 5
+        position_groups = {}  # position -> set of citation numbers
+        
+        for ref in self.grounding_refs:
+            key = ref.headline or ref.citation_id or f"{ref.source_name}_{ref.start}"
             cite_num = citation_nums[key]
-            
-            # Insert citation marker at position
             pos = ref.end if ref.end > 0 else ref.start
+            
+            # Find existing group within threshold or create new one
+            found_group = None
+            for group_pos in position_groups:
+                if abs(group_pos - pos) <= POSITION_THRESHOLD:
+                    found_group = group_pos
+                    break
+            
+            if found_group is not None:
+                position_groups[found_group].add(cite_num)
+            else:
+                position_groups[pos] = {cite_num}
+        
+        # Insert consolidated markers from end to start (to preserve positions)
+        result = self.answer
+        for pos in sorted(position_groups.keys(), reverse=True):
+            nums = sorted(position_groups[pos])  # Sort ascending for readability
             if 0 <= pos <= len(result):
-                result = result[:pos] + f" [{cite_num}]" + result[pos:]
+                # Format as [1, 2, 3] for multiple, or [1] for single
+                if len(nums) == 1:
+                    marker = f" [{nums[0]}]"
+                else:
+                    marker = f" [{', '.join(str(n) for n in nums)}]"
+                result = result[:pos] + marker + result[pos:]
         
         return result
     
@@ -260,11 +288,13 @@ class ResearchResult:
             return [{"number": i+1, **c.to_dict()} for i, c in enumerate(self.citations)]
         
         # Build numbered citations from grounding refs
+        # Sort by position (ascending) to match get_answer_with_citations() numbering
         citation_nums = {}
         numbered = []
         num_counter = 1
+        refs_sorted_asc = sorted(self.grounding_refs, key=lambda r: r.start)
         
-        for ref in self.grounding_refs:
+        for ref in refs_sorted_asc:
             key = ref.headline or ref.citation_id or f"{ref.source_name}_{ref.start}"
             if key not in citation_nums:
                 citation_nums[key] = num_counter
