@@ -13,7 +13,7 @@ from bigdata_research_tools.search import run_search
 from tqdm.notebook import tqdm
 
 
-def search_enhanced(companies:Union[list[str], list[Company]], keywords: list[str], sentences: Optional[list[str]], control_entities:Optional[Union[list[str], list[Company]]], start_date: str, end_date: str, scope = DocumentType.NEWS, fiscal_year: Optional[int] = None, sources: Optional[List[str]] = None, freq:str='M', sort_by: SortBy = SortBy.RELEVANCE, document_limit:int=100, batch_size:int = 1, enhance_search:bool = True, **kwargs):
+def search_enhanced(companies:Union[list[str], list[Company]], keywords: list[str], sentences: Optional[list[str]], control_entities:Optional[Union[list[str], list[Company]]], start_date: str, end_date: str, scope = DocumentType.NEWS, fiscal_year: Optional[int] = None, sources: Optional[List[str]] = None, frequency:str='M', sort_by: SortBy = SortBy.RELEVANCE, document_limit:int=100, batch_size:int = 1, enhance_search:bool = True, **kwargs):
     """
     Enhanced search function that can retrieve and process document chunks with context.
     
@@ -27,7 +27,7 @@ def search_enhanced(companies:Union[list[str], list[Company]], keywords: list[st
         scope: Document type to search (NEWS, FILINGS, TRANSCRIPTS)
         fiscal_year: Optional fiscal year for filings
         sources: Optional list of source IDs to filter by
-        freq: Frequency for date ranges ('D', 'W', 'M', etc.)
+        frequency: Frequency for date ranges ('D', 'W', 'M', etc.)
         sort_by: How to sort the results
         document_limit: Maximum number of documents to retrieve
         batch_size: Size of query batches
@@ -44,7 +44,7 @@ def search_enhanced(companies:Union[list[str], list[Company]], keywords: list[st
                 f"`fiscal_year` must be None when `document_scope` is `{scope.value}`"
             )
 
-    date_ranges = create_date_ranges(start_date, end_date, freq=freq)
+    date_ranges = create_date_ranges(start_date, end_date, frequency=frequency)
 
     entities_config = EntitiesToSearch(companies=companies) if isinstance(companies[0], str) else EntitiesToSearch(companies=[company.id for company in companies])
 
@@ -78,7 +78,7 @@ def search_enhanced(companies:Union[list[str], list[Company]], keywords: list[st
 
     results, entities = filter_search_results(results)
     # Filter entities to only include COMPANY entities
-    entities = filter_company_entities(entities)
+    entities, _ = filter_company_entities(entities)
 
     needs_company_filtering = scope not in (
             DocumentType.FILINGS,
@@ -102,7 +102,9 @@ def process_search_results(
     document_type: DocumentType = DocumentType.NEWS,
     enhance_search: bool = True,
 ) -> DataFrame:
-    
+    print(entities)
+    print(type(entities))
+    print(entities[0])
     entity_key_map = {entity.id: entity for entity in entities}
     companies_ids = [company.id for company in companies] if isinstance(companies[0], Company) else companies
     

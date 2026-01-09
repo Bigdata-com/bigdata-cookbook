@@ -33,7 +33,7 @@ This project provides comprehensive tools for analyzing corporate positioning to
      ```bash
      cp .env.example .env
      ```
-   - Edit the `.env` file and add your credentials:
+   - Edit the `.env` file and add your credentials (this assumes that OpenAI is being used as LLM provider):
      ```
      BIGDATA_USERNAME=your_username
      BIGDATA_PASSWORD=your_password
@@ -52,7 +52,7 @@ This project provides comprehensive tools for analyzing corporate positioning to
 
 4. **Access JupyterLab**:
    - Open your browser and navigate to `http://localhost:8888`
-   - Open `Trump_Reelection_Impact_Analisys.ipynb`
+   - Open `Trump_Reelection_Impact_Analysis.ipynb`
    - Follow the setup instructions in the notebook
    - Run cells sequentially to perform the analysis
 
@@ -60,7 +60,6 @@ This project provides comprehensive tools for analyzing corporate positioning to
 ### Option 2: Local Installation
 
 #### Prerequisites
-- Python 3.8 or higher
 - [uv](https://github.com/astral-sh/uv) package manager
 
 ### Setup and Run
@@ -80,7 +79,6 @@ This project provides comprehensive tools for analyzing corporate positioning to
    uv venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    uv pip install -r requirements.txt
-   uv pip install jupyterlab
    ```
 
 4. **Set up credentials**:

@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmaceutical Companies Tariff Impact Analysis</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+        .powered-by {
+            text-align: center;
+            color: #4a5568;
+            font-weight: 600;
+            margin-bottom: 25px;
+            font-size: 0.95em;
+        }
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .company-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .company-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+        .company-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .score {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .positive { color: #48bb78; }
+        .neutral { color: #ed8936; }
+        .negative { color: #f56565; }
+        .investment-amount {
+            color: #4a5568;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        tr:hover {
+            background: #f7fafc;
+        }
+        .theme-header {
+            background: #4a5568;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            padding: 10px 5px;
+            text-align: center;
+            font-size: 0.85em;
+        }
+        .sentiment-cell {
+            text-align: center;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+        .sentiment-positive {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        .sentiment-neutral {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        .sentiment-negative {
+            background: #fee;
+            color: #742a2a;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        .key-findings {
+            background: #edf2f7;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .finding {
+            margin: 10px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        .finding:before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .methodology-section {
+            background: linear-gradient(135deg, #f6f9fc 0%, #eef2f7 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+            border: 2px solid #e2e8f0;
+        }
+        .methodology-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .rubric-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .rubric-score {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .references-section {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            border: 1px solid #e2e8f0;
+        }
+        .reference-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f4f8;
+            font-size: 0.9em;
+            color: #4a5568;
+        }
+        .reference-source {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        @media (max-width: 768px) {
+            .theme-header {
+                writing-mode: horizontal-tb;
+                text-orientation: initial;
+            }
+            table {
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏭 Pharmaceutical Companies Tariff Impact Analysis</h1>
+        <p class="subtitle">Strategic Positioning Assessment - October 2025 Tariff Implementation</p>
+        <p class="powered-by">Powered by BigData.com</p>
+        
+        <div class="summary-cards">
+            <div class="company-card">
+                <div class="company-name">Eli Lilly</div>
+                <div class="score positive">+85</div>
+                <div class="investment-amount">$50B US Investment Since 2020</div>
+                <small>Clear Winner - Largest US Manufacturing Network</small>
+            </div>
+            <div class="company-card">
+                <div class="company-name">Johnson & Johnson</div>
+                <div class="score positive">+75</div>
+                <div class="investment-amount">$55B US Investment (4 Years)</div>
+                <small>Strong Position - Major Expansion</small>
+            </div>
+            <div class="company-card">
+                <div class="company-name">AbbVie</div>
+                <div class="score positive">+70</div>
+                <div class="investment-amount">$10B US Investment (10 Years)</div>
+                <small>Well Positioned - Balanced Footprint</small>
+            </div>
+            <div class="company-card">
+                <div class="company-name">Merck</div>
+                <div class="score positive">+65</div>
+                <div class="investment-amount">$12B+ Since 2018</div>
+                <small>Prepared - Delaware/NC Expansions</small>
+            </div>
+            <div class="company-card">
+                <div class="company-name">Pfizer</div>
+                <div class="score neutral">+45</div>
+                <div class="investment-amount">Limited New Investment</div>
+                <small>Cautious - Awaiting Clarity</small>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-box sentiment-positive"></div>
+                <span>Positive Impact</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box sentiment-neutral"></div>
+                <span>Neutral/Mixed Impact</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box sentiment-negative"></div>
+                <span>Negative Impact</span>
+            </div>
+        </div>
+
+        <h2 style="margin-top: 30px; color: #2d3748;">Detailed Theme Analysis by Company</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Theme</th>
+                    <th>Pfizer</th>
+                    <th>J&J</th>
+                    <th>Merck</th>
+                    <th>AbbVie</th>
+                    <th>Eli Lilly</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>1. Implementation Timeline</strong></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Preparing for shifts</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>$2B commitment ready</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Limited visibility</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Fall 2025 expansion</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Well positioned</small></td>
+                </tr>
+                <tr>
+                    <td><strong>2. Exemption Criteria</strong></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>11 US sites qualify</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Wilson NC groundbreaking</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Delaware construction</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>North Chicago expansion</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>4 new sites underway</small></td>
+                </tr>
+                <tr>
+                    <td><strong>3. Trade Value Impact</strong></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>15% EU tariff exposure</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>$400M tariff costs</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>$200M additional costs</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Ireland Botox impact</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Minimal exposure</small></td>
+                </tr>
+                <tr>
+                    <td><strong>4. Consumer Cost Crisis</strong></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Generic focus helps</small></td>
+                    <td class="sentiment-cell sentiment-negative">NEGATIVE<br><small>Pricing pressures</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Limited data</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Limited data</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Premium pricing power</small></td>
+                </tr>
+                <tr>
+                    <td><strong>5. Generic Drug Protection</strong></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Strong generic portfolio</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Mixed portfolio</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Branded focus</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Branded focus</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Branded focus</small></td>
+                </tr>
+                <tr>
+                    <td><strong>6. Manufacturing Investment</strong></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Cautious approach</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>$55B commitment</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>$12B+ invested</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>$10B commitment</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>$50B since 2020</small></td>
+                </tr>
+                <tr>
+                    <td><strong>7. Supply Chain Disruption</strong></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Can shift production</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Domestic focus</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Diverse footprint</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>9 US vs 9 foreign</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>9 US plants lead</small></td>
+                </tr>
+                <tr>
+                    <td><strong>8. National Security</strong></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>No specific data</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Aligned with admin</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>US R&D focus</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Limited data</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>CEO Trump ally</small></td>
+                </tr>
+                <tr>
+                    <td><strong>9. Healthcare System</strong></td>
+                    <td class="sentiment-cell sentiment-negative">NEGATIVE<br><small>Medicare pressures</small></td>
+                    <td class="sentiment-cell sentiment-negative">NEGATIVE<br><small>340B challenges</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Mixed impact</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Limited data</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Premium positioning</small></td>
+                </tr>
+                <tr>
+                    <td><strong>10. Industry Opposition</strong></td>
+                    <td class="sentiment-cell sentiment-negative">NEGATIVE<br><small>Investment uncertainty</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Pragmatic approach</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Managing impact</small></td>
+                    <td class="sentiment-cell sentiment-neutral">NEUTRAL<br><small>Limited opposition</small></td>
+                    <td class="sentiment-cell sentiment-positive">POSITIVE<br><small>Aligned with policy</small></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="key-findings">
+            <h3 style="color: #2d3748;">🔍 Key Findings</h3>
+            <div class="finding"><strong>Winner:</strong> Eli Lilly emerges as the clear winner with $50B in US investments since 2020, 9 domestic plants, and CEO alignment with administration policies.</div>
+            <div class="finding"><strong>Strong Positions:</strong> Johnson & Johnson ($55B commitment) and AbbVie (balanced 9:9 US/foreign ratio) are well-positioned to benefit from exemptions.</div>
+            <div class="finding"><strong>Prepared:</strong> Merck has strategically invested $12B+ and opened key facilities in Delaware and North Carolina, ensuring exemption eligibility.</div>
+            <div class="finding"><strong>Cautious:</strong> Pfizer, despite having 11 US sites, shows investment hesitation due to policy uncertainty, potentially missing opportunities.</div>
+            <div class="finding"><strong>Common Strategy:</strong> All companies are qualifying for exemptions through active construction projects, with combined investments exceeding $150B.</div>
+            <div class="finding"><strong>Market Impact:</strong> The tariff policy is driving the largest pharmaceutical manufacturing reshoring in US history, fundamentally altering global supply chains.</div>
+        </div>
+
+        <div class="methodology-section">
+            <h3 style="color: #2d3748; margin-top: 0;">📊 Scoring Methodology & Rubric</h3>
+            <p style="color: #4a5568; margin-bottom: 20px;">
+                Each company was evaluated across 10 strategic themes based on sentiment analysis of news coverage and corporate announcements. 
+                Scores represent relative positioning for navigating the October 2025 tariff implementation.
+            </p>
+            
+            <div class="methodology-grid">
+                <div class="rubric-item">
+                    <div class="rubric-score">8-10 points</div>
+                    <strong>Positive Impact</strong>
+                    <p style="font-size: 0.85em; color: #718096; margin: 5px 0;">Clear competitive advantage, strong investments, or explicit exemption qualification</p>
+                </div>
+                <div class="rubric-item">
+                    <div class="rubric-score">4-6 points</div>
+                    <strong>Neutral/Mixed Impact</strong>
+                    <p style="font-size: 0.85em; color: #718096; margin: 5px 0;">Manageable exposure, limited data, or offsetting factors</p>
+                </div>
+                <div class="rubric-item">
+                    <div class="rubric-score">0-3 points</div>
+                    <strong>Negative Impact</strong>
+                    <p style="font-size: 0.85em; color: #718096; margin: 5px 0;">Significant challenges, cost pressures, or strategic disadvantages</p>
+                </div>
+            </div>
+            
+            <p style="color: #4a5568; margin-top: 20px; font-size: 0.9em;">
+                <strong>Total Score Calculation:</strong> Sum of points across all 10 themes (maximum 100 points)<br>
+                <strong>Weighting:</strong> Manufacturing investment and exemption criteria received slightly higher consideration due to direct relevance to tariff policy<br>
+                <strong>Data Sources:</strong> Analysis based on 50 targeted searches across company-theme combinations using BigData.com's comprehensive news database
+            </p>
+        </div>
+
+        <div class="references-section">
+            <h3 style="color: #2d3748; margin-top: 0;">📚 Key References</h3>
+            <div class="reference-item">
+                <span class="reference-source">BigData - Washington Post:</span> "What Trump's new tariffs means for pharmaceuticals and 'patented' drugs" (Sept 26, 2025)
+            </div>
+            <div class="reference-item">
+                <span class="reference-source">BigData - Forbes:</span> "Trump's tariff pill: A bitter dose for the global pharma ecosystem" (Sept 26, 2025)
+            </div>
+            <div class="reference-item">
+                <span class="reference-source">BigData - CNN:</span> "100% tariff on some imported drugs coming Oct. 1, Trump says" (Sept 26, 2025)
+            </div>
+            <div class="reference-item">
+                <span class="reference-source">BigData - CNBC:</span> "U.S. to impose 100% tariff on branded, patented drugs unless firms build plants locally" (Sept 25, 2025)
+            </div>
+            <div class="reference-item">
+                <span class="reference-source">BigData - Benzinga:</span> "Trump's 100% Pharmaceutical Tariff: The $270 Billion Manufacturing War" (Sept 26, 2025)
+            </div>
+            <div class="reference-item">
+                <span class="reference-source">BigData - Associated Press:</span> Company-specific manufacturing announcements from J&J, Merck, Eli Lilly (2025)
+            </div>
+            <div class="reference-item">
+                <span class="reference-source">BigData - Yahoo Finance:</span> Multiple company earnings calls and investment announcements (2025)
+            </div>
+            <div class="reference-item">
+                <span class="reference-source">BigData - Business Standard:</span> "Trump's tariff threat spotlights US factory progress of drugmakers" (Sept 26, 2025)
+            </div>
+            <div class="reference-item">
+                <span class="reference-source">BigData - American Enterprise Institute:</span> "How Pharmaceutical Tariffs Will Affect US Health Care Costs" (Sept 26, 2025)
+            </div>
+            <div class="reference-item">
+                <span class="reference-source">BigData - Quartr/FactSet Transcripts:</span> Earnings calls and conference presentations from all 5 companies (2025)
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -113,8 +113,8 @@ def build_queries_for_monitoring(
         start_date = parse_date(start)
         end_date = parse_date(end)
         # Convert to ISO string tuples to avoid JSON serialization issues in tracing
-        start_iso = datetime.combine(start_date, datetime.min.time()).isoformat()
-        end_iso = datetime.combine(end_date, datetime.min.time()).isoformat()
+        start_iso = datetime.combine(start_date, datetime.min.time())
+        end_iso = datetime.combine(end_date, datetime.min.time())
         date_ranges_list.append((start_iso, end_iso))
 
     # Build base queries
@@ -1454,3 +1454,26 @@ def plot_top_sources(df, person_name="Person", top_n=5, interactive=True):
         
         plt.tight_layout()
         plt.show()
+
+_intialization_sent = False 
+def notebook_initialized():
+    from importlib.metadata import version
+    from bigdata_client import Bigdata
+    from bigdata_client import tracking_services
+
+    try:
+        bigdata = Bigdata()
+        global _intialization_sent
+        if not _intialization_sent:
+            trace = tracking_services.TraceEvent(event_name = "BigdataCookbookExecution", 
+                       properties={"bigdataResearchToolsVersion": version("bigdata_research_tools"),
+                                    "bigdataClientVersion": version("bigdata-client"),
+                                   "cookbook_name": "BoardManagementMonitoring"
+                                  })
+            
+            tracking_services.send_trace(bigdata_client = bigdata, trace = trace)
+            _intialization_sent = True
+    except Exception as e:
+        pass
+        
+notebook_initialized()         
