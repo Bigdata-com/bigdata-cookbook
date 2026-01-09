@@ -30,8 +30,14 @@ def prepare_narrative_data(df, freq='W'):
     """
     Prepare narrative data for visualization by creating time series of narrative counts,
     converting to z-scores, and applying smoothing.
+    Uses unique Sentence ID counts per Date/Label to avoid duplication.
     """
-    pivot_df = pd.pivot_table(df, index='Date', columns='Label', aggfunc='size', fill_value=0)
+    # Group by Date, Label and count unique Sentence IDs
+    date_label_counts = df.groupby(['Date', 'Label'])['Sentence ID'].nunique().reset_index()
+    date_label_counts.columns = ['Date', 'Label', 'Count']
+
+    # Create pivot table with unique counts
+    pivot_df = date_label_counts.pivot(index='Date', columns='Label', values='Count').fillna(0)
     resampled_df = pivot_df.resample(freq).sum()
 
     # Calculate z-scores for each narrative
@@ -55,8 +61,10 @@ def prepare_narrative_data(df, freq='W'):
 def calculate_source_scores(df):
     """
     Calculate overall narrative scores (z-scores) across all narratives by source.
+    Uses unique Sentence ID counts per Date to avoid duplication.
     """
-    date_counts = df.groupby('Date').size()
+    # Count of unique Sentence IDs per date
+    date_counts = df.groupby('Date')['Sentence ID'].nunique()
     weekly_counts = date_counts.resample('W').sum().fillna(0)
     mean = weekly_counts.mean()
     std = weekly_counts.std()
@@ -85,7 +93,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
     comparison_df['News Media'] = pd.Series(news_score)
     comparison_df['Earnings Calls'] = pd.Series(transcript_score)
     comparison_df['SEC Filings'] = pd.Series(filing_score)
-    comparison_df = comparison_df.sort_index().fillna(method='ffill').fillna(0)
+    comparison_df = comparison_df.sort_index().ffill().fillna(0)
 
     # Define colors
     source_colors = {
@@ -353,7 +361,7 @@ def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filing
     comparison_df['News Media'] = pd.Series(news_score)
     comparison_df['Earnings Calls'] = pd.Series(transcript_score)
     comparison_df['SEC Filings'] = pd.Series(filing_score)
-    comparison_df = comparison_df.sort_index().fillna(method='ffill').fillna(0)
+    comparison_df = comparison_df.sort_index().ffill().fillna(0)
 
     # Create the plot
     fig, ax = plt.subplots(figsize=(12, 8))
