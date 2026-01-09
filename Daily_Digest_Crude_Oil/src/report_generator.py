@@ -154,6 +154,8 @@ def display_html_report_as_image(report_date, theme, report_dir='./report/', tmp
         html_content = html_content.replace("<head>", f"<head>{custom_css}")
     else:
         html_content = custom_css + html_content
+    # Ensure the tmp_dir exists before writing
+    os.makedirs(tmp_dir, exist_ok=True)
     temp_html_path = os.path.join(tmp_dir, f"temp_{html_filename}")
     with open(temp_html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
@@ -225,7 +227,24 @@ def prepare_data_for_report(df, ranking_criteria, report_date: Optional[str] = N
         try:
             report_date = datetime.strptime(report_date, "%Y-%m-%d").date()
             # Filter DataFrame by date
+            df_before_filter = df.copy()
             df = df[df['Date'] == report_date]
+            
+            # Check if filtering resulted in empty DataFrame
+            if len(df) == 0:
+                # Get available dates in the DataFrame
+                if 'Date' in df_before_filter.columns:
+                    available_dates = sorted(df_before_filter['Date'].unique())
+                    if len(available_dates) > 0:
+                        date_strs = [str(d) for d in available_dates]
+                        print(f"⚠️  No data found for date '{report_date}'.")
+                        print(f"   Available dates in data: {', '.join(date_strs)}")
+                        print(f"   Please update 'specific_date' to one of the available dates.")
+                    else:
+                        print(f"⚠️  No data found for date '{report_date}' and DataFrame has no 'Date' column or is empty.")
+                else:
+                    print(f"⚠️  No data found for date '{report_date}' and DataFrame has no 'Date' column.")
+                return []
         except ValueError:
             print(f"Invalid date format: {report_date}. Expected format is YYYY-MM-DD.")
             return []
@@ -239,8 +258,8 @@ def prepare_data_for_report(df, ranking_criteria, report_date: Optional[str] = N
                 bullet = bullet.strip()
                 if not bullet:
                     continue
-                # Wrap leading **...**: in <b>...</b> if present
-                bullet = re.sub(r'^\*\*(.+?)\*\*:', r'<b>\1</b>:', bullet)
+                # Convert all **text** patterns to <b>text</b> (handles both at start and in middle)
+                bullet = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', bullet)
                 parsed.append(bullet.replace(r'\$', '$'))
             return parsed
 
