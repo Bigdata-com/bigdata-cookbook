@@ -1,0 +1,184 @@
+<svg viewBox="0 0 1200 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients for bigdata.com theme -->
+    <linearGradient id="headerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#1a1a2e;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#16213e;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="layer1Grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0f4c75;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1b6ca8;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="layer2Grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3282b8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4a9fd8;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="layer3Grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#5eb5e0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7fd5ff;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Drop shadow for cards -->
+    <filter id="cardShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="900" fill="#f5f7fa"/>
+  
+  <!-- Header -->
+  <rect width="1200" height="80" fill="url(#headerGrad)"/>
+  <text x="40" y="50" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">
+    Multi-Layered Rate Limiting Architecture
+  </text>
+  
+  <!-- Layer 1: Sliding Window -->
+  <g filter="url(#cardShadow)">
+    <rect x="100" y="120" width="1000" height="120" rx="8" fill="url(#layer1Grad)"/>
+    <text x="550" y="155" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Layer 1: Sliding Window
+    </text>
+    <text x="550" y="185" font-family="Arial, sans-serif" font-size="18" fill="#e8f4f8" text-anchor="middle">
+      460 requests/min with 5-second burst windows
+    </text>
+    <rect x="140" y="200" width="180" height="28" rx="14" fill="rgba(255,255,255,0.2)"/>
+    <text x="230" y="220" font-family="Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+      Prevents API Limits
+    </text>
+  </g>
+  
+  <!-- Arrow 1 -->
+  <path d="M 600 240 L 600 270" stroke="#3282b8" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  
+  <!-- Layer 2: Concurrency Semaphore -->
+  <g filter="url(#cardShadow)">
+    <rect x="100" y="280" width="1000" height="120" rx="8" fill="url(#layer2Grad)"/>
+    <text x="550" y="315" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Layer 2: Concurrency Semaphore
+    </text>
+    <text x="550" y="345" font-family="Arial, sans-serif" font-size="18" fill="#e8f4f8" text-anchor="middle">
+      Max 40 simultaneous connections
+    </text>
+    <rect x="140" y="360" width="200" height="28" rx="14" fill="rgba(255,255,255,0.2)"/>
+    <text x="240" y="380" font-family="Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+      Prevents Connection Spikes
+    </text>
+  </g>
+  
+  <!-- Arrow 2 -->
+  <path d="M 600 400 L 600 430" stroke="#5eb5e0" stroke-width="3" fill="none" marker-end="url(#arrowhead)"/>
+  
+  <!-- Layer 3: Automatic Retry -->
+  <g filter="url(#cardShadow)">
+    <rect x="100" y="440" width="1000" height="120" rx="8" fill="url(#layer3Grad)"/>
+    <text x="550" y="475" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Layer 3: Automatic Retry
+    </text>
+    <text x="550" y="505" font-family="Arial, sans-serif" font-size="18" fill="#e8f4f8" text-anchor="middle">
+      Up to 5 retries with exponential backoff
+    </text>
+    <rect x="140" y="520" width="210" height="28" rx="14" fill="rgba(255,255,255,0.2)"/>
+    <text x="245" y="540" font-family="Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+      Handles Transient Errors
+    </text>
+  </g>
+  
+  <!-- Data Flow Section -->
+  <rect x="100" y="600" width="1000" height="250" rx="8" fill="#ffffff" filter="url(#cardShadow)"/>
+  <rect x="100" y="600" width="1000" height="50" rx="8" fill="url(#headerGrad)"/>
+  <text x="550" y="635" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    Data Flow Pipeline
+  </text>
+  
+  <!-- Flow boxes -->
+  <g>
+    <!-- Tickers -->
+    <rect x="130" y="680" width="140" height="60" rx="6" fill="#0f4c75" stroke="#1b6ca8" stroke-width="2"/>
+    <text x="200" y="715" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle">Tickers</text>
+    
+    <!-- Arrow -->
+    <path d="M 270 710 L 310 710" stroke="#3282b8" stroke-width="2" fill="none"/>
+    <polygon points="310,710 305,707 305,713" fill="#3282b8"/>
+    
+    <!-- Entity Resolution -->
+    <rect x="320" y="680" width="140" height="60" rx="6" fill="#0f4c75" stroke="#1b6ca8" stroke-width="2"/>
+    <text x="390" y="705" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">Entity</text>
+    <text x="390" y="725" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">Resolution</text>
+    <text x="390" y="760" font-family="Arial, sans-serif" font-size="11" fill="#7fd5ff" text-anchor="middle">(cached)</text>
+    
+    <!-- Arrow -->
+    <path d="M 460 710 L 500 710" stroke="#3282b8" stroke-width="2" fill="none"/>
+    <polygon points="500,710 495,707 495,713" fill="#3282b8"/>
+    
+    <!-- Parallel Search -->
+    <rect x="510" y="680" width="140" height="60" rx="6" fill="#0f4c75" stroke="#1b6ca8" stroke-width="2"/>
+    <text x="580" y="705" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">Parallel</text>
+    <text x="580" y="725" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">Search</text>
+    <text x="580" y="760" font-family="Arial, sans-serif" font-size="11" fill="#7fd5ff" text-anchor="middle">(40 workers)</text>
+    
+    <!-- Arrow -->
+    <path d="M 650 710 L 690 710" stroke="#3282b8" stroke-width="2" fill="none"/>
+    <polygon points="690,710 685,707 685,713" fill="#3282b8"/>
+    
+    <!-- SQLite Storage -->
+    <rect x="700" y="680" width="140" height="60" rx="6" fill="#0f4c75" stroke="#1b6ca8" stroke-width="2"/>
+    <text x="770" y="705" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">SQLite</text>
+    <text x="770" y="725" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">Storage</text>
+    <text x="770" y="760" font-family="Arial, sans-serif" font-size="11" fill="#7fd5ff" text-anchor="middle">(indexed)</text>
+    
+    <!-- Arrow -->
+    <path d="M 840 710 L 880 710" stroke="#3282b8" stroke-width="2" fill="none"/>
+    <polygon points="880,710 875,707 875,713" fill="#3282b8"/>
+    
+    <!-- Query Results -->
+    <rect x="890" y="680" width="140" height="60" rx="6" fill="#0f4c75" stroke="#1b6ca8" stroke-width="2"/>
+    <text x="960" y="705" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">Query</text>
+    <text x="960" y="725" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">Results</text>
+  </g>
+  
+  <!-- Summary Stats -->
+  <g>
+    <rect x="130" y="780" width="280" height="50" rx="4" fill="#e8f4f8"/>
+    <text x="270" y="800" font-family="Arial, sans-serif" font-size="13" fill="#16213e" text-anchor="middle" font-weight="600">
+      Sliding Window
+    </text>
+    <text x="270" y="818" font-family="Arial, sans-serif" font-size="11" fill="#3282b8" text-anchor="middle">
+      460 req/min • 5s windows
+    </text>
+    
+    <rect x="450" y="780" width="280" height="50" rx="4" fill="#e8f4f8"/>
+    <text x="590" y="800" font-family="Arial, sans-serif" font-size="13" fill="#16213e" text-anchor="middle" font-weight="600">
+      Concurrency
+    </text>
+    <text x="590" y="818" font-family="Arial, sans-serif" font-size="11" fill="#3282b8" text-anchor="middle">
+      40 max connections
+    </text>
+    
+    <rect x="770" y="780" width="280" height="50" rx="4" fill="#e8f4f8"/>
+    <text x="910" y="800" font-family="Arial, sans-serif" font-size="13" fill="#16213e" text-anchor="middle" font-weight="600">
+      Retry Logic
+    </text>
+    <text x="910" y="818" font-family="Arial, sans-serif" font-size="11" fill="#3282b8" text-anchor="middle">
+      5 retries • exponential backoff
+    </text>
+  </g>
+  
+  <!-- Arrow marker definition -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#3282b8" />
+    </marker>
+  </defs>
+</svg>

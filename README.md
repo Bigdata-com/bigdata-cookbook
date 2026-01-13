@@ -181,6 +181,26 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Compatible with Cursor, Claude Desktop, and other MCP clients
 - Enables AI agents to interact with Bigdata platform for research and analysis
 
+### 🔬 [Research Agent Sync Response](./Research_Agent_Sync_Response/)
+**Python Client for Research Agent API with Citation Support**
+
+- Simple synchronous interface wrapping the Research Agent streaming API
+- Bigdata.com standard citation format with full source metadata
+- Inline citation markers `[1]`, `[2]` with numbered reference lists
+- Multiple output formats: plain answer, citations JSON, or combined results
+- Follow-up conversation support with chat ID continuation
+- Configurable research effort levels (lite/standard) for speed vs. depth tradeoff
+
+### 🔍 [Large Scale Search](./Search_Large_Scale/)
+**High-Performance Portfolio Search Tool**
+
+- Entity resolution with CSV caching for ticker-to-entity ID mapping
+- Parallel processing with ThreadPoolExecutor for searching hundreds of tickers
+- Multi-layered rate limiting (sliding window + concurrency semaphore + auto-retry)
+- SQLite storage with indexed queries for fast result retrieval
+- Customizable research topics with company name placeholders
+- Query interface to filter results by ticker, topic, or custom criteria
+
 ## Quick Start
 
 ### Prerequisites
@@ -330,6 +350,15 @@ bigdata-cookbook/
 │   ├── build_your_mcp.py
 │   ├── assets/
 │   ├── Dockerfile
+│   └── README.md
+├── Research_Agent_Sync_Response/                    # Research Agent API client
+│   ├── research_client_usage.ipynb
+│   ├── research_client.py
+│   ├── output/
+│   └── README.md
+├── Search_Large_Scale/                              # Large-scale portfolio search
+│   ├── large_search.ipynb
+│   ├── output/
 │   └── README.md
 └── README.md                                        # This file
 ```

@@ -9,3 +9,7 @@
 .cache/
 .config/
 .ipython/
+
+# Output directory
+output/
+**/output/
