@@ -82,7 +82,7 @@ Execute all cells in `large_search.ipynb` to:
 | `MAX_CHUNKS_PER_QUERY` | 10 | Maximum results per search query |
 | `DOCUMENT_TYPES` | `["NEWS", "TRANSCRIPT"]` | Document types to include |
 | `SENTIMENT_VALUES` | `["positive", "negative"]` | Sentiment filter |
-| `SEARCH_WORKERS` | 40 | Parallel search workers |
+| `SEARCH_WORKERS` | 10 | Parallel search workers |
 | `ENTITY_WORKERS` | 10 | Parallel entity resolution workers |
 
 ---
