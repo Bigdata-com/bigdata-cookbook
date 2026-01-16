@@ -201,6 +201,16 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Customizable research topics with company name placeholders
 - Query interface to filter results by ticker, topic, or custom criteria
 
+### 📦 [Smart Batching](./smart-batching/)
+**Optimized Semantic Search Query Planning for Large Company Universes**
+
+- Two-phase approach: single full-period query followed by adaptive batching
+- Automatic granularity determination (yearly, quarterly, monthly, weekly) based on company volume
+- Volume-based basket creation maximizing query efficiency while staying under limits
+- Reduces total queries by 100-1000x compared to naive approaches
+- CSV export for entities and baskets with full time period coverage
+- Efficiency metrics reporting total queries, utilization, and optimization statistics
+
 ## Quick Start
 
 ### Prerequisites
