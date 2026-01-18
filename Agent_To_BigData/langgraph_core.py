@@ -490,7 +490,7 @@ def get_bigdata_tools() -> List[Callable]:
     def bigdata_search_news(
         query: str, 
         entity_id: Optional[str] = None, 
-        days_back: int = 30, 
+        days_back: int = 90, 
         max_results: int = 10
     ) -> str:
         """Search Bigdata.com for financial news and market intelligence.
@@ -498,7 +498,7 @@ def get_bigdata_tools() -> List[Callable]:
         Args:
             query: Natural language search query (e.g., 'AI chip demand', 'earnings guidance')
             entity_id: Optional Bigdata entity ID to filter by company
-            days_back: Number of days to search back (default: 30)
+            days_back: Number of days to search back (default: 90)
             max_results: Maximum number of results to return (default: 10)
         
         Returns:
@@ -516,8 +516,12 @@ def get_bigdata_tools() -> List[Callable]:
                     "text": query,
                     "filters": {
                         "timestamp": {
-                            "start": start_date.strftime("%Y-%m-%dT00:00:00Z"),
-                            "end": end_date.strftime("%Y-%m-%dT23:59:59Z")
+                            "start": start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                            "end": end_date.strftime("%Y-%m-%dT%H:%M:%S.999Z")
+                        },
+                        "category": {
+                            "mode": "INCLUDE",
+                            "values": ["news_public"]
                         }
                     },
                     "max_chunks": max_results * 2
@@ -591,7 +595,9 @@ def get_research_agent_tool() -> List[Callable]:
             client = ResearchClient(api_key=config.bigdata_api_key)
             result: ResearchResult = client.research(
                 message=query,
-                research_effort=research_effort
+                research_effort=research_effort,
+                days_back=90,  # Last 90 days
+                source_categories=["news_public"]  # Filter to public news only
             )
             
             # Get answer with inline citation numbers [1], [2], etc.
@@ -1006,7 +1012,8 @@ def run_agent_query(
 def display_agent_response(
     agent,
     query: str,
-    verbose: bool = True
+    verbose: bool = True,
+    show_json: bool = False
 ):
     """
     Run agent query and display results with nice formatting (for Jupyter notebooks).
@@ -1016,6 +1023,7 @@ def display_agent_response(
         agent: LangGraph agent instance
         query: User query string
         verbose: Print tool calls during execution
+        show_json: Show raw JSON response at the end (default: False)
     """
     from IPython.display import display, Markdown, HTML
     import html as html_lib
@@ -1195,7 +1203,10 @@ def display_agent_response(
             </div>
             """))
     
-    return result
+    # Only return JSON result if explicitly requested (reduces notebook output clutter)
+    if show_json:
+        return result
+    return None
 
 
 # ============================================================================

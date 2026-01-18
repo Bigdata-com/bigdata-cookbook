@@ -19,6 +19,7 @@ import json
 import time
 import logging
 import requests
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any
 
@@ -405,7 +406,9 @@ class ResearchClient:
         self,
         message: str,
         research_effort: str = "standard",
-        chat_id: Optional[str] = None
+        chat_id: Optional[str] = None,
+        days_back: int = 90,
+        source_categories: Optional[List[str]] = None
     ) -> ResearchResult:
         """
         Execute a research query and return complete result with citations.
@@ -431,6 +434,12 @@ class ResearchClient:
             chat_id: Optional conversation ID from a previous response. Use this
                 to ask follow-up questions that maintain context from earlier
                 exchanges. Get this value from result.chat_id.
+                
+            days_back: Number of days to search back (default: 90).
+            
+            source_categories: Optional list of source categories to filter results.
+                Common categories: ["news_public"], ["news_public", "transcripts"], etc.
+                If not provided, defaults to ["news_public"].
         
         Returns:
             ResearchResult: Complete result containing:
@@ -448,7 +457,8 @@ class ResearchClient:
             >>> client = ResearchClient()
             >>> result = client.research(
             ...     message="What are the key risks facing NVIDIA?",
-            ...     research_effort="standard"
+            ...     research_effort="standard",
+            ...     source_categories=["news_public"]
             ... )
             >>> print(result.get_answer())
             >>> print(f"Found {len(result.citations)} citations")
@@ -466,13 +476,38 @@ class ResearchClient:
                 f"research_effort must be one of {valid_efforts}, got '{research_effort}'"
             )
         
-        logger.info(f"Starting research query (effort={research_effort}, chat_id={chat_id or 'new'})")
+        # Default to news_public if not specified
+        categories = source_categories or ["news_public"]
+        
+        logger.info(f"Starting research query (effort={research_effort}, chat_id={chat_id or 'new'}, categories={categories})")
         start_time = time.time()
+        
+        # Calculate date range
+        end_date = datetime.utcnow()
+        start_date = end_date - timedelta(days=days_back)
         
         # Build request payload per Bigdata.com API spec
         payload = {
             "message": message,
             "research_effort": research_effort,
+            "tools_configs": {
+                "search": {
+                    "query_filters": {
+                        "period": {
+                            "start": start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                            "end": end_date.strftime("%Y-%m-%dT%H:%M:%S.999Z")
+                        },
+                        "content": {
+                            "any_of": [
+                                {
+                                    "type": "SOURCE_CATEGORY_ID",
+                                    "source_category_ids": categories
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
         if chat_id:
             payload["chat_id"] = chat_id
