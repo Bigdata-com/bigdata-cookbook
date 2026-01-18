@@ -1,4 +1,4 @@
-# Large-Scale Portfolio News Search
+# Large Scale Search
 
 A Notebook demonstrating high-performance portfolio search tool built on the Bigdata.com API that enables searching financial news across hundreds of tickers with intelligent rate limiting and parallel processing.
 
@@ -59,7 +59,7 @@ Execute all cells in `large_search.ipynb` to:
 
 ## Architecture
 
-![Multi-Layered Rate Limiting Architecture](./lage_search_architecture.svg)
+![Multi-Layered Rate Limiting Architecture](./static/large_search_architecture.png)
 
 ---
 
