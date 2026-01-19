@@ -201,7 +201,16 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Customizable research topics with company name placeholders
 - Query interface to filter results by ticker, topic, or custom criteria
 
-### 📦 [Smart Batching](./smart-batching/)
+### 📊 [Index M&A Activity Report](./Index_MA_Activity_Report/)
+**Automated M&A Analysis and Report Generation Tool**
+
+- M&A news search for specified tickers using Bigdata.com API
+- AI-powered executive briefs summarizing key M&A developments
+- Structured deal analysis tables identifying acquisition targets
+- Desk notes per ticker with source attribution
+- Automated report generation with deal tables, summaries, and source links
+
+### 📦 [Smart Batching](./Smart_batching/)
 **Optimized Semantic Search Query Planning for Large Company Universes**
 
 - Two-phase approach: single full-period query followed by adaptive batching
@@ -369,6 +378,15 @@ bigdata-cookbook/
 ├── Search_Large_Scale/                              # Large-scale portfolio search
 │   ├── large_search.ipynb
 │   ├── output/
+│   └── README.md
+├── Index_MA_Activity_Report/                        # M&A activity report generation
+│   ├── index_ma_report.ipynb
+│   ├── config/
+│   ├── services/
+│   ├── requirements.txt
+│   └── README.md
+├── Smart_batching/                                  # Optimized query planning
+│   ├── ...
 │   └── README.md
 └── README.md                                        # This file
 ```
