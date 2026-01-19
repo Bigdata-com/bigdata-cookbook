@@ -1,4 +1,4 @@
-# Large-Scale Portfolio News Search
+# Large Scale Search
 
 A Notebook demonstrating high-performance portfolio search tool built on the Bigdata.com API that enables searching financial news across hundreds of tickers with intelligent rate limiting and parallel processing.
 
@@ -15,19 +15,50 @@ A Notebook demonstrating high-performance portfolio search tool built on the Big
 
 ## Quick Start
 
-### 1. Set Your API Key
+### Prerequisites
 
-```bash
-export BIGDATA_API_KEY="your-api-key-here"
-```
+- Python 3.8 or higher
+- [uv](https://github.com/astral-sh/uv) package manager
+- Bigdata API access
 
-Or create a `.env` file:
+### Installation
 
-```
-BIGDATA_API_KEY=your-api-key-here
-```
+1. **Install uv** (if not already installed):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
 
-### 2. Configure Your Search
+2. **Navigate to the project directory**:
+   ```bash
+   cd Search_Large_Scale
+   ```
+
+3. **Create a virtual environment and install dependencies**:
+   ```bash
+   uv venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   uv pip install -r requirements.txt
+   uv pip install jupyterlab
+   ```
+
+4. **Set Your API Key**:
+
+   Create a `.env` file in the project directory:
+   ```
+   BIGDATA_API_KEY=your-api-key-here
+   ```
+
+   Or export it as an environment variable:
+   ```bash
+   export BIGDATA_API_KEY="your-api-key-here"
+   ```
+
+5. **Start JupyterLab**:
+   ```bash
+   jupyter lab
+   ```
+
+### Configure Your Search
 
 Edit the configuration section in the notebook:
 
@@ -47,19 +78,23 @@ TOPICS = [
 ]
 ```
 
-### 3. Run the Notebook
+### Run the Notebook
 
-Execute all cells in `large_search.ipynb` to:
-1. Resolve tickers to entity IDs (cached for future runs)
-2. Execute parallel searches across all ticker+topic combinations
-3. Store results in SQLite database
-4. Query and analyze results
+1. **Open the notebook**:
+   - When JupyterLab starts, click on one of the provided URLs in the terminal
+   - Open `large_search.ipynb` in JupyterLab
+
+2. **Execute all cells** in `large_search.ipynb` to:
+   - Resolve tickers to entity IDs (cached for future runs)
+   - Execute parallel searches across all ticker+topic combinations
+   - Store results in SQLite database
+   - Query and analyze results
 
 ---
 
 ## Architecture
 
-![Multi-Layered Rate Limiting Architecture](./lage_search_architecture.svg)
+![Multi-Layered Rate Limiting Architecture](./static/large_search_architecture.png)
 
 ---
 
@@ -201,16 +236,20 @@ The parallel architecture ensures efficient use of the API rate limits while pre
 
 ## Requirements
 
-- Python 3.8+
-- `requests`
-- `python-dotenv`
+- Python 3.8 or higher
+- [uv](https://github.com/astral-sh/uv) package manager
 - `BIGDATA_API_KEY` environment variable
+
+### Dependencies
+
+All dependencies are listed in `requirements.txt`:
+- `requests>=2.31.0` - HTTP library for API requests
+- `python-dotenv>=1.0.0` - Environment variable management
+- `httpx>=0.24.0` - Async HTTP client library
 
 ### Installation
 
-```bash
-pip install requests python-dotenv
-```
+See the [Quick Start](#quick-start) section above for installation instructions using `uv`.
 
 ---
 
@@ -219,7 +258,9 @@ pip install requests python-dotenv
 | File | Description |
 |------|-------------|
 | `large_search.ipynb` | Main notebook with complete workflow |
+| `requirements.txt` | Python dependencies |
 | `README.md` | This documentation |
+| `static/` | Architecture diagrams |
 | `output/` | Generated output files (gitignored) |
 
 ---
