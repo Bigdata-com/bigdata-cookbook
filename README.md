@@ -191,6 +191,16 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Follow-up conversation support with chat ID continuation
 - Configurable research effort levels (lite/standard) for speed vs. depth tradeoff
 
+### 🤖 [Agent to Bigdata](./Agent_To_Bigdata/)
+**Modular Framework for Building AI Agents with Bigdata.com Integration**
+
+- Multi-source AI agent integrating Bigdata.com Search, Knowledge Graph, and Research Agent APIs
+- Internal data integration with SQLite databases and FAISS vector stores
+- Hierarchical agent architecture with smart tool routing (internal-first, external escalation)
+- LangSmith observability for production monitoring and tracing
+- Reusable core module for building custom agent workflows
+- Citation support with inline markers and numbered references
+
 ### 🔍 [Large Scale Search](./Search_Large_Scale/)
 **High-Performance Portfolio Search Tool**
 
@@ -374,6 +384,14 @@ bigdata-cookbook/
 │   ├── research_client_usage.ipynb
 │   ├── research_client.py
 │   ├── output/
+│   └── README.md
+├── Agent_To_Bigdata/                                # AI agent framework with Bigdata.com integration
+│   ├── agent_to_research_agent.ipynb
+│   ├── agent_to_search.ipynb
+│   ├── langgraph_core.py
+│   ├── research_client.py
+│   ├── requirements.txt
+│   ├── static/
 │   └── README.md
 ├── Search_Large_Scale/                              # Large-scale portfolio search
 │   ├── large_search.ipynb

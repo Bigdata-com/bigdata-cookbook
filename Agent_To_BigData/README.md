@@ -203,6 +203,14 @@ result = run_agent_query(research_agent, "Research NVDA competitive position")
 
 ## Dependencies
 
+Install from requirements file:
+
+```bash
+pip install -r requirements.txt
+```
+
+Or install manually:
+
 ```bash
 pip install langchain langchain-openai langchain-community faiss-cpu requests python-dotenv
 ```
