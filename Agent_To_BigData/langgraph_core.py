@@ -792,12 +792,10 @@ Guidelines:
 - For portfolio questions, use `internal_portfolio_summary` or `internal_query_database` with SQL
 - Combine external market data with internal holdings/research for comprehensive analysis
 
-**IMPORTANT - Source Attribution:**
-- ALWAYS cite your sources clearly in your response
-- For Bigdata.com data: Include inline citation numbers [1], [2] if provided in the tool response
-- For internal data: Mention "From internal database" or "According to our internal research"
-- Preserve any citation markers from Bigdata.com Research Agent responses
-- When presenting external data, attribute it to Bigdata.com
+**Source Attribution:**
+- Use inline citations [1], [2], [3] when referencing specific news articles or external data
+- For internal data: Briefly mention "From internal database" or "According to internal research"
+- DO NOT include a "Sources:" list at the end of your response - sources are displayed separately
 
 Available portfolios: PF001 (US Large Cap Growth), PF002 (AI & Semiconductor Focus), PF003 (Diversified Tech Leaders)
 """
@@ -875,16 +873,15 @@ HIERARCHICAL_SYSTEM_PROMPT = """You are a senior financial research analyst with
 - Market trends/macro/credit analysis → Research Agent
 - Current news/events → Research Agent
 
-**CRITICAL - Source Attribution:**
+**Source Attribution:**
 - ALWAYS preserve inline citation numbers [1], [2], [3] from Bigdata.com Research Agent responses
 - These citations link to verified sources - DO NOT remove or modify them
-- For internal data: Clearly state "From internal database" or "According to internal research"
-- When synthesizing from multiple sources, attribute each fact to its source
-- The citations demonstrate data provenance and build client confidence
+- For internal data: Briefly mention "From internal database" or "According to internal research"
+- DO NOT include a "Sources:" list at the end of your response - sources are displayed separately
 
 **Available Portfolios:** PF001 (US Large Cap Growth), PF002 (AI & Semiconductor Focus), PF003 (Diversified Tech Leaders)
 
-Always explain which sources you consulted and why. Check internal sources first, then escalate to Research Agent for external data.
+Check internal sources first, then escalate to Research Agent for external data.
 """
 
 
@@ -972,30 +969,43 @@ def run_agent_query(
     tool_calls = []
     tool_results = []
     
+    # Track seen message IDs to avoid duplicates from stream snapshots
+    seen_tool_call_ids = set()
+    seen_tool_message_ids = set()
+    
     for event in agent.stream({"messages": messages}, stream_mode="values"):
-        last_message = event["messages"][-1]
-        msg_type = type(last_message).__name__
-        
-        # Capture tool calls from AI messages
-        if hasattr(last_message, 'tool_calls') and last_message.tool_calls:
-            for tc in last_message.tool_calls:
-                tool_calls.append({
-                    "name": tc['name'],
-                    "args": tc['args']
-                })
-                if verbose:
-                    args_str = json.dumps(tc['args'], indent=2)[:150]
-                    print(f"🔧 {tc['name']}: {args_str}...")
-        
-        # Capture tool results
-        if msg_type == 'ToolMessage':
-            tool_results.append(last_message.content)
-        
-        # Capture final AI response (AIMessage without tool_calls)
-        if msg_type == 'AIMessage':
-            if hasattr(last_message, 'content') and last_message.content:
-                if not (hasattr(last_message, 'tool_calls') and last_message.tool_calls):
-                    final_response = last_message.content
+        # Process ALL messages in the event, not just the last one
+        # This ensures we capture tool results from parallel tool calls
+        for message in event["messages"]:
+            msg_type = type(message).__name__
+            msg_id = getattr(message, 'id', None) or id(message)
+            
+            # Capture tool calls from AI messages
+            if hasattr(message, 'tool_calls') and message.tool_calls:
+                for tc in message.tool_calls:
+                    tc_id = tc.get('id', tc['name'] + str(tc['args']))
+                    if tc_id not in seen_tool_call_ids:
+                        seen_tool_call_ids.add(tc_id)
+                        tool_calls.append({
+                            "name": tc['name'],
+                            "args": tc['args']
+                        })
+                        if verbose:
+                            args_str = json.dumps(tc['args'], indent=2)[:150]
+                            print(f"🔧 {tc['name']}: {args_str}...")
+            
+            # Capture tool results - track by tool_call_id to avoid duplicates
+            if msg_type == 'ToolMessage':
+                tool_msg_id = getattr(message, 'tool_call_id', None) or msg_id
+                if tool_msg_id not in seen_tool_message_ids:
+                    seen_tool_message_ids.add(tool_msg_id)
+                    tool_results.append(message.content)
+            
+            # Capture final AI response (AIMessage without tool_calls)
+            if msg_type == 'AIMessage':
+                if hasattr(message, 'content') and message.content:
+                    if not (hasattr(message, 'tool_calls') and message.tool_calls):
+                        final_response = message.content
     
     # If no final response but we have tool results, use the last tool result
     if not final_response and tool_results:
@@ -1085,9 +1095,22 @@ def display_agent_response(
     all_sources = []
     citation_counter = 1
     
+    # Track tool names with their results for better context
+    tools_list = result.get("tools", [])
+    tool_index = 0
+    
     for tool_result in result.get("tool_results", []):
         try:
             parsed_result = json.loads(tool_result)
+            
+            # Get context from corresponding tool call (for search_news queries)
+            tool_context = ""
+            if tool_index < len(tools_list):
+                tool_name = tools_list[tool_index].get("name", "")
+                tool_args = tools_list[tool_index].get("args", {})
+                if tool_name == "bigdata_search_news":
+                    tool_context = tool_args.get("query", "")
+                tool_index += 1
             
             # Extract from Research Agent citations
             if "citations" in parsed_result and parsed_result.get("citations"):
@@ -1099,7 +1122,8 @@ def display_agent_response(
                         "url": citation.get("url"),
                         "timestamp": citation.get("timestamp"),
                         "text": citation.get("text", ""),
-                        "type": "research"
+                        "type": "research",
+                        "context": tool_context
                     })
                     citation_counter += 1
             
@@ -1115,7 +1139,8 @@ def display_agent_response(
                             "timestamp": item.get("timestamp"),
                             "text": item.get("relevant_text", ""),
                             "sentiment": item.get("sentiment"),
-                            "type": "search"
+                            "type": "search",
+                            "context": tool_context
                         })
                         citation_counter += 1
                         
@@ -1124,27 +1149,30 @@ def display_agent_response(
     
     # Display sources if found
     if all_sources:
-        # Deduplicate by headline
-        seen_headlines = set()
+        # Deduplicate by URL (more precise) or full headline if no URL
+        seen_keys = set()
         unique_sources = []
         for src in all_sources:
-            headline_key = src.get("headline", "")[:50]
-            if headline_key not in seen_headlines:
-                seen_headlines.add(headline_key)
+            # Use URL as primary dedup key, fallback to full headline
+            # Handle None values explicitly (get() returns None if key exists with None value)
+            dedup_key = src.get("url") or (src.get("headline") or "")
+            if dedup_key and dedup_key not in seen_keys:
+                seen_keys.add(dedup_key)
                 unique_sources.append(src)
         
-        # Re-number after deduplication
+        # Keep original sequential numbering (preserves correlation with LLM citations)
+        # Don't re-number - use display_number for UI only
         for i, src in enumerate(unique_sources, 1):
-            src["number"] = i
+            src["display_number"] = i
         
         citations_html = []
         for source in unique_sources[:15]:  # Limit to 15 for display
-            num = source.get("number", "")
-            headline = html_lib.escape(str(source.get("headline", "Untitled"))[:100])
-            src_name = html_lib.escape(str(source.get("source", "Bigdata.com")))
-            url = source.get("url", "")
-            timestamp = str(source.get("timestamp", ""))[:10] if source.get("timestamp") else ""
-            text = source.get("text", "")
+            num = source.get("display_number") or source.get("number") or ""
+            headline = html_lib.escape(str(source.get("headline") or "Untitled")[:100])
+            src_name = html_lib.escape(str(source.get("source") or "Bigdata.com"))
+            url = source.get("url") or ""
+            timestamp = str(source.get("timestamp") or "")[:10] if source.get("timestamp") else ""
+            text = source.get("text") or ""
             excerpt = html_lib.escape(text[:150]) + "..." if text else ""
             
             # Sentiment indicator for search results
