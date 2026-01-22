@@ -1,0 +1,6404 @@
+{
+  "total_expected_chunks": 69125,
+  "baskets": [
+    {
+      "basket_id": "medium_basket_0",
+      "companies": [
+        "F63C6D",
+        "675376"
+      ],
+      "expected_chunks": 956,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "F63C6D",
+              "675376"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 956
+      }
+    },
+    {
+      "basket_id": "medium_basket_1",
+      "companies": [
+        "F30508",
+        "0PHEIV"
+      ],
+      "expected_chunks": 827,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "F30508",
+              "0PHEIV"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 827
+      }
+    },
+    {
+      "basket_id": "medium_basket_2",
+      "companies": [
+        "875F41",
+        "EF5BED"
+      ],
+      "expected_chunks": 720,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "875F41",
+              "EF5BED"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 720
+      }
+    },
+    {
+      "basket_id": "medium_basket_3",
+      "companies": [
+        "FF6644",
+        "CFF97C",
+        "F4194B"
+      ],
+      "expected_chunks": 997,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "FF6644",
+              "CFF97C",
+              "F4194B"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 997
+      }
+    },
+    {
+      "basket_id": "medium_basket_4",
+      "companies": [
+        "ECD263",
+        "F57F6F",
+        "E96E0B",
+        "127021"
+      ],
+      "expected_chunks": 1000,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "ECD263",
+              "F57F6F",
+              "E96E0B",
+              "127021"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 1000
+      }
+    },
+    {
+      "basket_id": "medium_basket_5",
+      "companies": [
+        "4F9926",
+        "EEA6B3",
+        "E8846E",
+        "72BEB6"
+      ],
+      "expected_chunks": 834,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "4F9926",
+              "EEA6B3",
+              "E8846E",
+              "72BEB6"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 834
+      }
+    },
+    {
+      "basket_id": "medium_basket_6",
+      "companies": [
+        "890C4E",
+        "BC9793",
+        "HJ95FV",
+        "E8A49A",
+        "E70531"
+      ],
+      "expected_chunks": 944,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "890C4E",
+              "BC9793",
+              "HJ95FV",
+              "E8A49A",
+              "E70531"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 944
+      }
+    },
+    {
+      "basket_id": "medium_basket_7",
+      "companies": [
+        "E040DD",
+        "6FBEA1",
+        "E3D6CF",
+        "D90F43",
+        "FDC7E6"
+      ],
+      "expected_chunks": 903,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "E040DD",
+              "6FBEA1",
+              "E3D6CF",
+              "D90F43",
+              "FDC7E6"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 903
+      }
+    },
+    {
+      "basket_id": "medium_basket_8",
+      "companies": [
+        "FFF3BE",
+        "55EB38",
+        "3D551E",
+        "D7998C",
+        "9D56F2"
+      ],
+      "expected_chunks": 874,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "FFF3BE",
+              "55EB38",
+              "3D551E",
+              "D7998C",
+              "9D56F2"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 874
+      }
+    },
+    {
+      "basket_id": "medium_basket_9",
+      "companies": [
+        "BB88B6",
+        "93D207",
+        "BB036E",
+        "3DE4D1",
+        "F40EE2",
+        "7B6C88"
+      ],
+      "expected_chunks": 970,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "BB88B6",
+              "93D207",
+              "BB036E",
+              "3DE4D1",
+              "F40EE2",
+              "7B6C88"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 970
+      }
+    },
+    {
+      "basket_id": "medium_basket_10",
+      "companies": [
+        "A905D3",
+        "D6AAF0",
+        "E0427E",
+        "B4EF98",
+        "10C19B",
+        "D2B9E5"
+      ],
+      "expected_chunks": 876,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "A905D3",
+              "D6AAF0",
+              "E0427E",
+              "B4EF98",
+              "10C19B",
+              "D2B9E5"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 876
+      }
+    },
+    {
+      "basket_id": "medium_basket_11",
+      "companies": [
+        "C87ECC",
+        "24D81E",
+        "278C18",
+        "EB6965",
+        "CB5DB1",
+        "A8B137",
+        "B8EF97"
+      ],
+      "expected_chunks": 961,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "C87ECC",
+              "24D81E",
+              "278C18",
+              "EB6965",
+              "CB5DB1",
+              "A8B137",
+              "B8EF97"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 961
+      }
+    },
+    {
+      "basket_id": "medium_basket_12",
+      "companies": [
+        "95DC1F",
+        "6C4D2F",
+        "757034",
+        "4D9669",
+        "2F94A5",
+        "8F67EE",
+        "DDDBDC"
+      ],
+      "expected_chunks": 900,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "95DC1F",
+              "6C4D2F",
+              "757034",
+              "4D9669",
+              "2F94A5",
+              "8F67EE",
+              "DDDBDC"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 900
+      }
+    },
+    {
+      "basket_id": "medium_basket_13",
+      "companies": [
+        "267718",
+        "B17747",
+        "F6DCE4",
+        "C83B88",
+        "930367",
+        "5D49C7",
+        "713F21",
+        "F837A5"
+      ],
+      "expected_chunks": 986,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "267718",
+              "B17747",
+              "F6DCE4",
+              "C83B88",
+              "930367",
+              "5D49C7",
+              "713F21",
+              "F837A5"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 986
+      }
+    },
+    {
+      "basket_id": "medium_basket_14",
+      "companies": [
+        "6D9ECA",
+        "736B94",
+        "AA5C8E",
+        "7578DB",
+        "0DBBB6",
+        "DBB28E",
+        "719477",
+        "24C48B"
+      ],
+      "expected_chunks": 919,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "6D9ECA",
+              "736B94",
+              "AA5C8E",
+              "7578DB",
+              "0DBBB6",
+              "DBB28E",
+              "719477",
+              "24C48B"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 919
+      }
+    },
+    {
+      "basket_id": "medium_basket_15",
+      "companies": [
+        "BB07E4",
+        "5821D6",
+        "99333F",
+        "B4703C",
+        "954E30",
+        "C9B932",
+        "A3800A",
+        "2B7A40",
+        "65F83A"
+      ],
+      "expected_chunks": 974,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "BB07E4",
+              "5821D6",
+              "99333F",
+              "B4703C",
+              "954E30",
+              "C9B932",
+              "A3800A",
+              "2B7A40",
+              "65F83A"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 974
+      }
+    },
+    {
+      "basket_id": "medium_basket_16",
+      "companies": [
+        "65CF8E",
+        "93F143",
+        "D4AB73",
+        "F010CC",
+        "2E89C1",
+        "12731D",
+        "0157B1",
+        "41FF10",
+        "D437C3"
+      ],
+      "expected_chunks": 937,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "65CF8E",
+              "93F143",
+              "D4AB73",
+              "F010CC",
+              "2E89C1",
+              "12731D",
+              "0157B1",
+              "41FF10",
+              "D437C3"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 937
+      }
+    },
+    {
+      "basket_id": "medium_basket_17",
+      "companies": [
+        "7552D0",
+        "EEA734",
+        "A98B8F",
+        "BDD12C",
+        "528DA2",
+        "7D85A9",
+        "9592FB"
+      ],
+      "expected_chunks": 706,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "7552D0",
+              "EEA734",
+              "A98B8F",
+              "BDD12C",
+              "528DA2",
+              "7D85A9",
+              "9592FB"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 706
+      }
+    },
+    {
+      "basket_id": "low_basket_18",
+      "companies": [
+        "4EE167",
+        "A2E445",
+        "35EC43",
+        "FC1F9D",
+        "98CAED",
+        "DE4924",
+        "FFBF74",
+        "3FF798",
+        "2CC60C",
+        "96F126"
+      ],
+      "expected_chunks": 960,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "4EE167",
+              "A2E445",
+              "35EC43",
+              "FC1F9D",
+              "98CAED",
+              "DE4924",
+              "FFBF74",
+              "3FF798",
+              "2CC60C",
+              "96F126"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 960
+      }
+    },
+    {
+      "basket_id": "low_basket_19",
+      "companies": [
+        "72AE3C",
+        "DEAFC5",
+        "DF8855",
+        "A87920",
+        "055018",
+        "6844D2",
+        "D7AC6E",
+        "B00481",
+        "AC8882",
+        "FF9086"
+      ],
+      "expected_chunks": 932,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "72AE3C",
+              "DEAFC5",
+              "DF8855",
+              "A87920",
+              "055018",
+              "6844D2",
+              "D7AC6E",
+              "B00481",
+              "AC8882",
+              "FF9086"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 932
+      }
+    },
+    {
+      "basket_id": "low_basket_20",
+      "companies": [
+        "CE03DF",
+        "228924",
+        "365F78",
+        "ADD337",
+        "952A6D",
+        "102727",
+        "164D72",
+        "ADF092",
+        "D64C6D",
+        "1A3E1B",
+        "338544"
+      ],
+      "expected_chunks": 994,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "CE03DF",
+              "228924",
+              "365F78",
+              "ADD337",
+              "952A6D",
+              "102727",
+              "164D72",
+              "ADF092",
+              "D64C6D",
+              "1A3E1B",
+              "338544"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 994
+      }
+    },
+    {
+      "basket_id": "low_basket_21",
+      "companies": [
+        "27CF0E",
+        "C72B8F",
+        "CC3224",
+        "CAD7D9",
+        "092C47",
+        "E4CA19",
+        "4A4183",
+        "D25249",
+        "8E8E6E",
+        "FF4BA4",
+        "075172"
+      ],
+      "expected_chunks": 971,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "27CF0E",
+              "C72B8F",
+              "CC3224",
+              "CAD7D9",
+              "092C47",
+              "E4CA19",
+              "4A4183",
+              "D25249",
+              "8E8E6E",
+              "FF4BA4",
+              "075172"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 971
+      }
+    },
+    {
+      "basket_id": "low_basket_22",
+      "companies": [
+        "D226E4",
+        "D9A6A2",
+        "C16A8F",
+        "168A5D",
+        "FA40E2",
+        "5F1B7B",
+        "601979",
+        "627186",
+        "789ADD",
+        "0DBB81",
+        "53C167"
+      ],
+      "expected_chunks": 947,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "D226E4",
+              "D9A6A2",
+              "C16A8F",
+              "168A5D",
+              "FA40E2",
+              "5F1B7B",
+              "601979",
+              "627186",
+              "789ADD",
+              "0DBB81",
+              "53C167"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 947
+      }
+    },
+    {
+      "basket_id": "low_basket_23",
+      "companies": [
+        "ADA50C",
+        "A247F5",
+        "92AA5B",
+        "B8A51F",
+        "C66B44",
+        "5F2FF7",
+        "911AB8",
+        "CD4203",
+        "0B57D7",
+        "BCC13E",
+        "C99CC8",
+        "E866D2"
+      ],
+      "expected_chunks": 993,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "ADA50C",
+              "A247F5",
+              "92AA5B",
+              "B8A51F",
+              "C66B44",
+              "5F2FF7",
+              "911AB8",
+              "CD4203",
+              "0B57D7",
+              "BCC13E",
+              "C99CC8",
+              "E866D2"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 993
+      }
+    },
+    {
+      "basket_id": "low_basket_24",
+      "companies": [
+        "7749CF",
+        "D44D33",
+        "6CC55E",
+        "7A10FF",
+        "BC8373",
+        "C598D7",
+        "13ACB6",
+        "4458AA",
+        "773A17",
+        "B40F35",
+        "B3CB74",
+        "DCD97F"
+      ],
+      "expected_chunks": 954,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "7749CF",
+              "D44D33",
+              "6CC55E",
+              "7A10FF",
+              "BC8373",
+              "C598D7",
+              "13ACB6",
+              "4458AA",
+              "773A17",
+              "B40F35",
+              "B3CB74",
+              "DCD97F"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 954
+      }
+    },
+    {
+      "basket_id": "low_basket_25",
+      "companies": [
+        "FBDA0F",
+        "E6D89E",
+        "4E01CD",
+        "728737",
+        "F702CA",
+        "EB7FBF",
+        "0C136E",
+        "1748F6",
+        "C18941",
+        "EB5E78",
+        "AC2505",
+        "972356"
+      ],
+      "expected_chunks": 930,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "FBDA0F",
+              "E6D89E",
+              "4E01CD",
+              "728737",
+              "F702CA",
+              "EB7FBF",
+              "0C136E",
+              "1748F6",
+              "C18941",
+              "EB5E78",
+              "AC2505",
+              "972356"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 930
+      }
+    },
+    {
+      "basket_id": "low_basket_26",
+      "companies": [
+        "3EE06F",
+        "CC339B",
+        "F2208B",
+        "50070E",
+        "21245F",
+        "1FA886",
+        "875B04",
+        "D1173F",
+        "10AE08",
+        "1D943E",
+        "41B0E2",
+        "D09938",
+        "CF4517"
+      ],
+      "expected_chunks": 973,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "3EE06F",
+              "CC339B",
+              "F2208B",
+              "50070E",
+              "21245F",
+              "1FA886",
+              "875B04",
+              "D1173F",
+              "10AE08",
+              "1D943E",
+              "41B0E2",
+              "D09938",
+              "CF4517"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 973
+      }
+    },
+    {
+      "basket_id": "low_basket_27",
+      "companies": [
+        "5C2E1C",
+        "431B74",
+        "F198C3",
+        "2C8DBC",
+        "01D03F",
+        "F7B8AC",
+        "E7BF32",
+        "2JMFNA",
+        "E1C16B",
+        "CE96E7",
+        "69CE71",
+        "9CA619",
+        "960AA9"
+      ],
+      "expected_chunks": 936,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "5C2E1C",
+              "431B74",
+              "F198C3",
+              "2C8DBC",
+              "01D03F",
+              "F7B8AC",
+              "E7BF32",
+              "2JMFNA",
+              "E1C16B",
+              "CE96E7",
+              "69CE71",
+              "9CA619",
+              "960AA9"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 936
+      }
+    },
+    {
+      "basket_id": "low_basket_28",
+      "companies": [
+        "E9C061",
+        "7CA5BD",
+        "416C55",
+        "7B1E50",
+        "C356AC",
+        "DF532D",
+        "372037",
+        "20BEEA",
+        "F6E248",
+        "DD394F",
+        "D17F7E",
+        "9B71A7",
+        "31F25C",
+        "CAKBBK"
+      ],
+      "expected_chunks": 970,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "E9C061",
+              "7CA5BD",
+              "416C55",
+              "7B1E50",
+              "C356AC",
+              "DF532D",
+              "372037",
+              "20BEEA",
+              "F6E248",
+              "DD394F",
+              "D17F7E",
+              "9B71A7",
+              "31F25C",
+              "CAKBBK"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 970
+      }
+    },
+    {
+      "basket_id": "low_basket_29",
+      "companies": [
+        "3BA4B2",
+        "9A02C4",
+        "FAE021",
+        "6621BA",
+        "60F8A4",
+        "E20392",
+        "9D30A8",
+        "E094EB",
+        "D21EF3",
+        "F33B3C",
+        "E70EE9",
+        "9F71E5",
+        "3B37F7",
+        "B2DAF6"
+      ],
+      "expected_chunks": 948,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "3BA4B2",
+              "9A02C4",
+              "FAE021",
+              "6621BA",
+              "60F8A4",
+              "E20392",
+              "9D30A8",
+              "E094EB",
+              "D21EF3",
+              "F33B3C",
+              "E70EE9",
+              "9F71E5",
+              "3B37F7",
+              "B2DAF6"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 948
+      }
+    },
+    {
+      "basket_id": "low_basket_30",
+      "companies": [
+        "7E1542",
+        "NACC5K",
+        "E26FC3",
+        "D6EAA3",
+        "D78CCD",
+        "14ED2B",
+        "D54E62",
+        "264398",
+        "273F20",
+        "4A6655",
+        "S9NREF",
+        "990599",
+        "E736E2",
+        "7A0EC4",
+        "F0702B"
+      ],
+      "expected_chunks": 995,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "7E1542",
+              "NACC5K",
+              "E26FC3",
+              "D6EAA3",
+              "D78CCD",
+              "14ED2B",
+              "D54E62",
+              "264398",
+              "273F20",
+              "4A6655",
+              "S9NREF",
+              "990599",
+              "E736E2",
+              "7A0EC4",
+              "F0702B"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 995
+      }
+    },
+    {
+      "basket_id": "low_basket_31",
+      "companies": [
+        "FC1B7B",
+        "8A8E41",
+        "B7F5B8",
+        "78DC2B",
+        "0F8A06",
+        "0401A0",
+        "16F464",
+        "223552",
+        "205AD5",
+        "5E1DF3",
+        "7C9FE3",
+        "78F9ED",
+        "UEF0UF",
+        "FDE763",
+        "E93C3A"
+      ],
+      "expected_chunks": 966,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "FC1B7B",
+              "8A8E41",
+              "B7F5B8",
+              "78DC2B",
+              "0F8A06",
+              "0401A0",
+              "16F464",
+              "223552",
+              "205AD5",
+              "5E1DF3",
+              "7C9FE3",
+              "78F9ED",
+              "UEF0UF",
+              "FDE763",
+              "E93C3A"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 966
+      }
+    },
+    {
+      "basket_id": "low_basket_32",
+      "companies": [
+        "0555FF",
+        "C5F463",
+        "CDC215",
+        "322A44",
+        "371283",
+        "F1CD47",
+        "R6B9L3",
+        "B5A6BF",
+        "AE0DB4",
+        "5CC29D",
+        "C564E4",
+        "F5D410",
+        "513F56",
+        "641F17",
+        "81F4BE",
+        "7BFF81"
+      ],
+      "expected_chunks": 997,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "0555FF",
+              "C5F463",
+              "CDC215",
+              "322A44",
+              "371283",
+              "F1CD47",
+              "R6B9L3",
+              "B5A6BF",
+              "AE0DB4",
+              "5CC29D",
+              "C564E4",
+              "F5D410",
+              "513F56",
+              "641F17",
+              "81F4BE",
+              "7BFF81"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 997
+      }
+    },
+    {
+      "basket_id": "low_basket_33",
+      "companies": [
+        "C7B8C2",
+        "DB5CA5",
+        "2D643C",
+        "F11638",
+        "72FCA3",
+        "92D3A0",
+        "AD23DE",
+        "DB58AF",
+        "C12ED9",
+        "774B11",
+        "D5AF19",
+        "B48F49",
+        "C9E107",
+        "D33D8C",
+        "F5D059",
+        "449447"
+      ],
+      "expected_chunks": 952,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "C7B8C2",
+              "DB5CA5",
+              "2D643C",
+              "F11638",
+              "72FCA3",
+              "92D3A0",
+              "AD23DE",
+              "DB58AF",
+              "C12ED9",
+              "774B11",
+              "D5AF19",
+              "B48F49",
+              "C9E107",
+              "D33D8C",
+              "F5D059",
+              "449447"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 952
+      }
+    },
+    {
+      "basket_id": "low_basket_34",
+      "companies": [
+        "447FC6",
+        "59872F",
+        "89F693",
+        "ABBAD1",
+        "B35ED4",
+        "FFCC2A",
+        "ECDC73",
+        "0D41CF",
+        "0A32EA",
+        "12A3A3",
+        "CC890D",
+        "58CA9A",
+        "B2206F",
+        "48C7A3",
+        "7077AD",
+        "A52B6B",
+        "B079B3"
+      ],
+      "expected_chunks": 976,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "447FC6",
+              "59872F",
+              "89F693",
+              "ABBAD1",
+              "B35ED4",
+              "FFCC2A",
+              "ECDC73",
+              "0D41CF",
+              "0A32EA",
+              "12A3A3",
+              "CC890D",
+              "58CA9A",
+              "B2206F",
+              "48C7A3",
+              "7077AD",
+              "A52B6B",
+              "B079B3"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 976
+      }
+    },
+    {
+      "basket_id": "low_basket_35",
+      "companies": [
+        "D8F347",
+        "F92DBC",
+        "F3FCC3",
+        "1BDB2A",
+        "24CB56",
+        "2D981A",
+        "B2774C",
+        "B0F783",
+        "B95F81",
+        "D6853F",
+        "D9CAF0",
+        "713810",
+        "192564",
+        "C74288",
+        "770E54",
+        "B91342",
+        "2A6DBE"
+      ],
+      "expected_chunks": 949,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "D8F347",
+              "F92DBC",
+              "F3FCC3",
+              "1BDB2A",
+              "24CB56",
+              "2D981A",
+              "B2774C",
+              "B0F783",
+              "B95F81",
+              "D6853F",
+              "D9CAF0",
+              "713810",
+              "192564",
+              "C74288",
+              "770E54",
+              "B91342",
+              "2A6DBE"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 949
+      }
+    },
+    {
+      "basket_id": "low_basket_36",
+      "companies": [
+        "E74B55",
+        "C3F99F",
+        "7D35D8",
+        "7E3F8F",
+        "D63F73",
+        "C4073B",
+        "E21871",
+        "65A0E8",
+        "C4CFC3",
+        "B65303",
+        "94A811",
+        "4BD6DB",
+        "53A226",
+        "5E6959",
+        "B5AD76",
+        "E0634F",
+        "4AFAOJ",
+        "385DD4"
+      ],
+      "expected_chunks": 978,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "E74B55",
+              "C3F99F",
+              "7D35D8",
+              "7E3F8F",
+              "D63F73",
+              "C4073B",
+              "E21871",
+              "65A0E8",
+              "C4CFC3",
+              "B65303",
+              "94A811",
+              "4BD6DB",
+              "53A226",
+              "5E6959",
+              "B5AD76",
+              "E0634F",
+              "4AFAOJ",
+              "385DD4"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 978
+      }
+    },
+    {
+      "basket_id": "low_basket_37",
+      "companies": [
+        "D06CF0",
+        "41D61C",
+        "C3DE7D",
+        "8DCF18",
+        "D683EC",
+        "C5C137",
+        "B1FC3B",
+        "69ADD9",
+        "174023",
+        "86170D",
+        "2A6B55",
+        "1E5786",
+        "C5EF8D",
+        "51B442",
+        "564F3E",
+        "B5734D",
+        "82E58A",
+        "11C694",
+        "B866BF"
+      ],
+      "expected_chunks": 995,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "D06CF0",
+              "41D61C",
+              "C3DE7D",
+              "8DCF18",
+              "D683EC",
+              "C5C137",
+              "B1FC3B",
+              "69ADD9",
+              "174023",
+              "86170D",
+              "2A6B55",
+              "1E5786",
+              "C5EF8D",
+              "51B442",
+              "564F3E",
+              "B5734D",
+              "82E58A",
+              "11C694",
+              "B866BF"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 995
+      }
+    },
+    {
+      "basket_id": "low_basket_38",
+      "companies": [
+        "BA218A",
+        "D74613",
+        "C06EB6",
+        "F47871",
+        "CSOVLF",
+        "A117F8",
+        "1EA923",
+        "1D43B2",
+        "F1C69A",
+        "B73B08",
+        "8686F2",
+        "A79F7D",
+        "C44D01",
+        "CB3DD5",
+        "303C83",
+        "E743AE",
+        "E6A53A",
+        "150442",
+        "1216D1"
+      ],
+      "expected_chunks": 972,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "BA218A",
+              "D74613",
+              "C06EB6",
+              "F47871",
+              "CSOVLF",
+              "A117F8",
+              "1EA923",
+              "1D43B2",
+              "F1C69A",
+              "B73B08",
+              "8686F2",
+              "A79F7D",
+              "C44D01",
+              "CB3DD5",
+              "303C83",
+              "E743AE",
+              "E6A53A",
+              "150442",
+              "1216D1"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 972
+      }
+    },
+    {
+      "basket_id": "low_basket_39",
+      "companies": [
+        "2EB04E",
+        "1981BF",
+        "2F6C41",
+        "39D9DA",
+        "5930DD",
+        "A30C8B",
+        "B80AD1",
+        "7AB859",
+        "FS4N5I",
+        "5UMXLJ",
+        "B959AD",
+        "FF227B",
+        "251988",
+        "006697",
+        "0E439E",
+        "55438C",
+        "B76277",
+        "3209B9",
+        "450647",
+        "513791"
+      ],
+      "expected_chunks": 992,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "2EB04E",
+              "1981BF",
+              "2F6C41",
+              "39D9DA",
+              "5930DD",
+              "A30C8B",
+              "B80AD1",
+              "7AB859",
+              "FS4N5I",
+              "5UMXLJ",
+              "B959AD",
+              "FF227B",
+              "251988",
+              "006697",
+              "0E439E",
+              "55438C",
+              "B76277",
+              "3209B9",
+              "450647",
+              "513791"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 992
+      }
+    },
+    {
+      "basket_id": "low_basket_40",
+      "companies": [
+        "66A667",
+        "7D5FD6",
+        "73C9E2",
+        "89054D",
+        "944B2E",
+        "ACF77B",
+        "BDDAB4",
+        "88598A",
+        "182B8C",
+        "0624BE",
+        "CA4CC1",
+        "351EC3",
+        "5283BA",
+        "692DA6",
+        "589846",
+        "789D88",
+        "A6BE37",
+        "8C311A",
+        "8C5519",
+        "992E92"
+      ],
+      "expected_chunks": 967,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "66A667",
+              "7D5FD6",
+              "73C9E2",
+              "89054D",
+              "944B2E",
+              "ACF77B",
+              "BDDAB4",
+              "88598A",
+              "182B8C",
+              "0624BE",
+              "CA4CC1",
+              "351EC3",
+              "5283BA",
+              "692DA6",
+              "589846",
+              "789D88",
+              "A6BE37",
+              "8C311A",
+              "8C5519",
+              "992E92"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 967
+      }
+    },
+    {
+      "basket_id": "low_basket_41",
+      "companies": [
+        "C5E100",
+        "C9881C",
+        "FDAF8A",
+        "F36FCB",
+        "FTP6U3",
+        "C8FAC7",
+        "34B411",
+        "43FCCA",
+        "878396",
+        "B286E6",
+        "6CE666",
+        "A7102F",
+        "818072",
+        "E8E57E",
+        "949625",
+        "95E203",
+        "38DD6E",
+        "CBA33B",
+        "GF4J30",
+        "INZ173",
+        "F1529C"
+      ],
+      "expected_chunks": 992,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "C5E100",
+              "C9881C",
+              "FDAF8A",
+              "F36FCB",
+              "FTP6U3",
+              "C8FAC7",
+              "34B411",
+              "43FCCA",
+              "878396",
+              "B286E6",
+              "6CE666",
+              "A7102F",
+              "818072",
+              "E8E57E",
+              "949625",
+              "95E203",
+              "38DD6E",
+              "CBA33B",
+              "GF4J30",
+              "INZ173",
+              "F1529C"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 992
+      }
+    },
+    {
+      "basket_id": "low_basket_42",
+      "companies": [
+        "P0NQHB",
+        "08399C",
+        "FF4C20",
+        "E9F94A",
+        "23DEB5",
+        "407878",
+        "F8ZZV1",
+        "D68276",
+        "E3E68E",
+        "57DDB9",
+        "6B6375",
+        "5DD486",
+        "882426",
+        "8BE916",
+        "74E288",
+        "D064D5",
+        "DB3C9C",
+        "EB5B31",
+        "F4E992",
+        "0AFC61",
+        "0EA1CF"
+      ],
+      "expected_chunks": 965,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "P0NQHB",
+              "08399C",
+              "FF4C20",
+              "E9F94A",
+              "23DEB5",
+              "407878",
+              "F8ZZV1",
+              "D68276",
+              "E3E68E",
+              "57DDB9",
+              "6B6375",
+              "5DD486",
+              "882426",
+              "8BE916",
+              "74E288",
+              "D064D5",
+              "DB3C9C",
+              "EB5B31",
+              "F4E992",
+              "0AFC61",
+              "0EA1CF"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 965
+      }
+    },
+    {
+      "basket_id": "low_basket_43",
+      "companies": [
+        "33570F",
+        "316BDF",
+        "D6F456",
+        "442587",
+        "458D2C",
+        "51527B",
+        "F15E41",
+        "6A0123",
+        "D8480B",
+        "2BD5AC",
+        "480A02",
+        "6BC61F",
+        "97B027",
+        "B9A887",
+        "B0D41A",
+        "BD8517",
+        "61AC49",
+        "DBC82B",
+        "EAA0A7",
+        "55F015",
+        "CC3489",
+        "35E278"
+      ],
+      "expected_chunks": 987,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "33570F",
+              "316BDF",
+              "D6F456",
+              "442587",
+              "458D2C",
+              "51527B",
+              "F15E41",
+              "6A0123",
+              "D8480B",
+              "2BD5AC",
+              "480A02",
+              "6BC61F",
+              "97B027",
+              "B9A887",
+              "B0D41A",
+              "BD8517",
+              "61AC49",
+              "DBC82B",
+              "EAA0A7",
+              "55F015",
+              "CC3489",
+              "35E278"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 987
+      }
+    },
+    {
+      "basket_id": "low_basket_44",
+      "companies": [
+        "9AF527",
+        "03BB1C",
+        "1F848A",
+        "0D436D",
+        "D1F989",
+        "6EE648",
+        "6B95E8",
+        "67B052",
+        "57CAAB",
+        "S8G5MN",
+        "879C3F",
+        "781F3F",
+        "222E50",
+        "F27207",
+        "8A46B6",
+        "F95404",
+        "EDBC11",
+        "0A4B18",
+        "41PTF7",
+        "9C8BC3",
+        "C1V5N6",
+        "2D8CEC"
+      ],
+      "expected_chunks": 968,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "9AF527",
+              "03BB1C",
+              "1F848A",
+              "0D436D",
+              "D1F989",
+              "6EE648",
+              "6B95E8",
+              "67B052",
+              "57CAAB",
+              "S8G5MN",
+              "879C3F",
+              "781F3F",
+              "222E50",
+              "F27207",
+              "8A46B6",
+              "F95404",
+              "EDBC11",
+              "0A4B18",
+              "41PTF7",
+              "9C8BC3",
+              "C1V5N6",
+              "2D8CEC"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 968
+      }
+    },
+    {
+      "basket_id": "low_basket_45",
+      "companies": [
+        "A8A146",
+        "FB97A9",
+        "3A30JO",
+        "HXSFR3",
+        "39E219",
+        "627395",
+        "S01V6K",
+        "WSRD7D",
+        "BEPJUB",
+        "8JI1D4",
+        "AWSZIT",
+        "D1C0B9",
+        "D9A2A0",
+        "FD8512",
+        "WBXIN1",
+        "4LIE79",
+        "FHNXMQ",
+        "78934F",
+        "2C4950",
+        "D96734",
+        "FE0EE8",
+        "013528"
+      ],
+      "expected_chunks": 967,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "A8A146",
+              "FB97A9",
+              "3A30JO",
+              "HXSFR3",
+              "39E219",
+              "627395",
+              "S01V6K",
+              "WSRD7D",
+              "BEPJUB",
+              "8JI1D4",
+              "AWSZIT",
+              "D1C0B9",
+              "D9A2A0",
+              "FD8512",
+              "WBXIN1",
+              "4LIE79",
+              "FHNXMQ",
+              "78934F",
+              "2C4950",
+              "D96734",
+              "FE0EE8",
+              "013528"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 967
+      }
+    },
+    {
+      "basket_id": "low_basket_46",
+      "companies": [
+        "2F7474",
+        "28F905",
+        "272704",
+        "34A959",
+        "E13BAF",
+        "E68C3D",
+        "59DB8C",
+        "CDFCC9",
+        "8B2C4A",
+        "D1C26F",
+        "9F47E2",
+        "9F03A1",
+        "9A29F4",
+        "BB6DA7",
+        "JGFOB3",
+        "7D7B81",
+        "0F91FC",
+        "D07D25",
+        "B072C0",
+        "E15E7F",
+        "F8068D",
+        "54D11D",
+        "32F943"
+      ],
+      "expected_chunks": 981,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "2F7474",
+              "28F905",
+              "272704",
+              "34A959",
+              "E13BAF",
+              "E68C3D",
+              "59DB8C",
+              "CDFCC9",
+              "8B2C4A",
+              "D1C26F",
+              "9F47E2",
+              "9F03A1",
+              "9A29F4",
+              "BB6DA7",
+              "JGFOB3",
+              "7D7B81",
+              "0F91FC",
+              "D07D25",
+              "B072C0",
+              "E15E7F",
+              "F8068D",
+              "54D11D",
+              "32F943"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 981
+      }
+    },
+    {
+      "basket_id": "low_basket_47",
+      "companies": [
+        "32E873",
+        "53F491",
+        "3A0C6D",
+        "512F7B",
+        "WB2XGN",
+        "530578",
+        "39DDB2",
+        "5FE4B6",
+        "5BC2F4",
+        "CD2DA4",
+        "94563D",
+        "E19A99",
+        "78F776",
+        "9EF918",
+        "6A6D94",
+        "9AE6FF",
+        "94983E",
+        "A12436",
+        "C40AAF",
+        "C54140",
+        "B762D3",
+        "C82BE4",
+        "AD1ACF"
+      ],
+      "expected_chunks": 966,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "32E873",
+              "53F491",
+              "3A0C6D",
+              "512F7B",
+              "WB2XGN",
+              "530578",
+              "39DDB2",
+              "5FE4B6",
+              "5BC2F4",
+              "CD2DA4",
+              "94563D",
+              "E19A99",
+              "78F776",
+              "9EF918",
+              "6A6D94",
+              "9AE6FF",
+              "94983E",
+              "A12436",
+              "C40AAF",
+              "C54140",
+              "B762D3",
+              "C82BE4",
+              "AD1ACF"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 966
+      }
+    },
+    {
+      "basket_id": "low_basket_48",
+      "companies": [
+        "B4F2F7",
+        "1M4HUV",
+        "CC176E",
+        "D8ECA1",
+        "FAC1FD",
+        "3A9314",
+        "51EB44",
+        "530BCB",
+        "F6C1C3",
+        "09E31A",
+        "0A59F8",
+        "190B91",
+        "16C7F0",
+        "0338E4",
+        "985506",
+        "2F64FC",
+        "519FE0",
+        "41EC04",
+        "546A27",
+        "5A64D5",
+        "E317E0",
+        "8DCBBB",
+        "AB4B9A",
+        "807AEB"
+      ],
+      "expected_chunks": 993,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "B4F2F7",
+              "1M4HUV",
+              "CC176E",
+              "D8ECA1",
+              "FAC1FD",
+              "3A9314",
+              "51EB44",
+              "530BCB",
+              "F6C1C3",
+              "09E31A",
+              "0A59F8",
+              "190B91",
+              "16C7F0",
+              "0338E4",
+              "985506",
+              "2F64FC",
+              "519FE0",
+              "41EC04",
+              "546A27",
+              "5A64D5",
+              "E317E0",
+              "8DCBBB",
+              "AB4B9A",
+              "807AEB"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 993
+      }
+    },
+    {
+      "basket_id": "low_basket_49",
+      "companies": [
+        "8E8Z6W",
+        "86AB6F",
+        "FDD1Z2",
+        "97AAF6",
+        "B72D2E",
+        "BB5271",
+        "F9048F",
+        "ED869A",
+        "F93BE4",
+        "E6C1D1",
+        "B614F8",
+        "A3C5A4",
+        "C4A432",
+        "44D635",
+        "CF6A5A",
+        "839C6A",
+        "E50F1C",
+        "09DE1F",
+        "01478A",
+        "26B02E",
+        "59D732",
+        "665D7D",
+        "5539E2",
+        "B2PPGH"
+      ],
+      "expected_chunks": 977,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "8E8Z6W",
+              "86AB6F",
+              "FDD1Z2",
+              "97AAF6",
+              "B72D2E",
+              "BB5271",
+              "F9048F",
+              "ED869A",
+              "F93BE4",
+              "E6C1D1",
+              "B614F8",
+              "A3C5A4",
+              "C4A432",
+              "44D635",
+              "CF6A5A",
+              "839C6A",
+              "E50F1C",
+              "09DE1F",
+              "01478A",
+              "26B02E",
+              "59D732",
+              "665D7D",
+              "5539E2",
+              "B2PPGH"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 977
+      }
+    },
+    {
+      "basket_id": "low_basket_50",
+      "companies": [
+        "60EA12",
+        "LIVBLM",
+        "FD6926",
+        "7E2DE6",
+        "842C93",
+        "A0F146",
+        "E99564",
+        "08V8N2",
+        "BF93F8",
+        "C5A8DF",
+        "D1AE3B",
+        "D90949",
+        "E845D9",
+        "F18844",
+        "76C321",
+        "0E1512",
+        "18D9FA",
+        "11C088",
+        "5B15E1",
+        "94637C",
+        "272472",
+        "23DB08",
+        "F179ED",
+        "39BFF6",
+        "4B604B"
+      ],
+      "expected_chunks": 990,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "60EA12",
+              "LIVBLM",
+              "FD6926",
+              "7E2DE6",
+              "842C93",
+              "A0F146",
+              "E99564",
+              "08V8N2",
+              "BF93F8",
+              "C5A8DF",
+              "D1AE3B",
+              "D90949",
+              "E845D9",
+              "F18844",
+              "76C321",
+              "0E1512",
+              "18D9FA",
+              "11C088",
+              "5B15E1",
+              "94637C",
+              "272472",
+              "23DB08",
+              "F179ED",
+              "39BFF6",
+              "4B604B"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 990
+      }
+    },
+    {
+      "basket_id": "low_basket_51",
+      "companies": [
+        "3A867F",
+        "2744EF",
+        "4FB770",
+        "E5D727",
+        "C6589B",
+        "6EA9B2",
+        "90F0CE",
+        "C03C8B",
+        "903AB4",
+        "1KJ5HN",
+        "9022A0",
+        "C0FA69",
+        "9C114A",
+        "28C976",
+        "B33E77",
+        "B6082A",
+        "5B4C40",
+        "C0BA36",
+        "BBBB41",
+        "E2AD6D",
+        "C1E0E5",
+        "47E5DE",
+        "F1EB39",
+        "E3B8F3",
+        "319E7D"
+      ],
+      "expected_chunks": 974,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "3A867F",
+              "2744EF",
+              "4FB770",
+              "E5D727",
+              "C6589B",
+              "6EA9B2",
+              "90F0CE",
+              "C03C8B",
+              "903AB4",
+              "1KJ5HN",
+              "9022A0",
+              "C0FA69",
+              "9C114A",
+              "28C976",
+              "B33E77",
+              "B6082A",
+              "5B4C40",
+              "C0BA36",
+              "BBBB41",
+              "E2AD6D",
+              "C1E0E5",
+              "47E5DE",
+              "F1EB39",
+              "E3B8F3",
+              "319E7D"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 974
+      }
+    },
+    {
+      "basket_id": "low_basket_52",
+      "companies": [
+        "77510C",
+        "1748B3",
+        "00067A",
+        "0F04E5",
+        "4E5784",
+        "9073E2",
+        "2FE28F",
+        "B848C9",
+        "332BD3",
+        "2C3348",
+        "2125F4",
+        "88923D",
+        "4D9F33",
+        "CE1002",
+        "B604DF",
+        "5E9934",
+        "B840EF",
+        "890255",
+        "A65489",
+        "44B959",
+        "2B3C93",
+        "A2415F",
+        "99028D",
+        "BDE82E",
+        "BD682F",
+        "BBRQPJ"
+      ],
+      "expected_chunks": 988,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "77510C",
+              "1748B3",
+              "00067A",
+              "0F04E5",
+              "4E5784",
+              "9073E2",
+              "2FE28F",
+              "B848C9",
+              "332BD3",
+              "2C3348",
+              "2125F4",
+              "88923D",
+              "4D9F33",
+              "CE1002",
+              "B604DF",
+              "5E9934",
+              "B840EF",
+              "890255",
+              "A65489",
+              "44B959",
+              "2B3C93",
+              "A2415F",
+              "99028D",
+              "BDE82E",
+              "BD682F",
+              "BBRQPJ"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 988
+      }
+    },
+    {
+      "basket_id": "low_basket_53",
+      "companies": [
+        "D78BF1",
+        "DC0998",
+        "0E64D4",
+        "816C29",
+        "E947BB",
+        "EC210B",
+        "BF23B0",
+        "12E454",
+        "BA9110",
+        "0F0DDA",
+        "0E2498",
+        "3635DE",
+        "C8A248",
+        "4D8E5E",
+        "48B24C",
+        "2F8752",
+        "B66653",
+        "830BDB",
+        "E85D55",
+        "AA6479",
+        "67A42B",
+        "6166D1",
+        "722756",
+        "5D5C9D",
+        "82B57E",
+        "85DE00"
+      ],
+      "expected_chunks": 969,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "D78BF1",
+              "DC0998",
+              "0E64D4",
+              "816C29",
+              "E947BB",
+              "EC210B",
+              "BF23B0",
+              "12E454",
+              "BA9110",
+              "0F0DDA",
+              "0E2498",
+              "3635DE",
+              "C8A248",
+              "4D8E5E",
+              "48B24C",
+              "2F8752",
+              "B66653",
+              "830BDB",
+              "E85D55",
+              "AA6479",
+              "67A42B",
+              "6166D1",
+              "722756",
+              "5D5C9D",
+              "82B57E",
+              "85DE00"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 969
+      }
+    },
+    {
+      "basket_id": "low_basket_54",
+      "companies": [
+        "96B4FF",
+        "FAB97A",
+        "B115EF",
+        "85DA04",
+        "8EE5D6",
+        "8E0E32",
+        "93C086",
+        "A851C2",
+        "94D329",
+        "E98437",
+        "9BA1B8",
+        "9B5968",
+        "93266F",
+        "F1272F",
+        "0ACF5D",
+        "5B2681",
+        "C00D71",
+        "B66928",
+        "DA1EBD",
+        "19D368",
+        "0095EF",
+        "DD0621",
+        "M2OK5O",
+        "535088",
+        "EF25A5",
+        "FBD92D",
+        "CF2C64"
+      ],
+      "expected_chunks": 998,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "96B4FF",
+              "FAB97A",
+              "B115EF",
+              "85DA04",
+              "8EE5D6",
+              "8E0E32",
+              "93C086",
+              "A851C2",
+              "94D329",
+              "E98437",
+              "9BA1B8",
+              "9B5968",
+              "93266F",
+              "F1272F",
+              "0ACF5D",
+              "5B2681",
+              "C00D71",
+              "B66928",
+              "DA1EBD",
+              "19D368",
+              "0095EF",
+              "DD0621",
+              "M2OK5O",
+              "535088",
+              "EF25A5",
+              "FBD92D",
+              "CF2C64"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 998
+      }
+    },
+    {
+      "basket_id": "low_basket_55",
+      "companies": [
+        "1D55F0",
+        "ABB7EE",
+        "7AB1D1",
+        "213039",
+        "4C7DB5",
+        "4EE14A",
+        "934CC3",
+        "71B0CF",
+        "68586A",
+        "931E75",
+        "925759",
+        "E6C8DC",
+        "850779",
+        "8617A8",
+        "8E82A6",
+        "AC775C",
+        "950AB7",
+        "9E298A",
+        "A63820",
+        "CE5664",
+        "DC486E",
+        "2F9C2F",
+        "D6C356",
+        "D07B07",
+        "F88A04",
+        "E72783",
+        "188CAC"
+      ],
+      "expected_chunks": 971,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "1D55F0",
+              "ABB7EE",
+              "7AB1D1",
+              "213039",
+              "4C7DB5",
+              "4EE14A",
+              "934CC3",
+              "71B0CF",
+              "68586A",
+              "931E75",
+              "925759",
+              "E6C8DC",
+              "850779",
+              "8617A8",
+              "8E82A6",
+              "AC775C",
+              "950AB7",
+              "9E298A",
+              "A63820",
+              "CE5664",
+              "DC486E",
+              "2F9C2F",
+              "D6C356",
+              "D07B07",
+              "F88A04",
+              "E72783",
+              "188CAC"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 971
+      }
+    },
+    {
+      "basket_id": "low_basket_56",
+      "companies": [
+        "8C995A",
+        "01DD5D",
+        "5176ED",
+        "35275C",
+        "304C94",
+        "73B927",
+        "6FF1A6",
+        "48F81B",
+        "53201F",
+        "4F0BA3",
+        "69FDFC",
+        "6D9B53",
+        "I285AT",
+        "68843C",
+        "D91D4E",
+        "9EA9E6",
+        "92B047",
+        "2781BD",
+        "D93A25",
+        "D8DBA3",
+        "C4B918",
+        "E2F130",
+        "E4NZUY",
+        "FD0CA4",
+        "E6EDED",
+        "33057B",
+        "BFE02C",
+        "5FCC02"
+      ],
+      "expected_chunks": 977,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "8C995A",
+              "01DD5D",
+              "5176ED",
+              "35275C",
+              "304C94",
+              "73B927",
+              "6FF1A6",
+              "48F81B",
+              "53201F",
+              "4F0BA3",
+              "69FDFC",
+              "6D9B53",
+              "I285AT",
+              "68843C",
+              "D91D4E",
+              "9EA9E6",
+              "92B047",
+              "2781BD",
+              "D93A25",
+              "D8DBA3",
+              "C4B918",
+              "E2F130",
+              "E4NZUY",
+              "FD0CA4",
+              "E6EDED",
+              "33057B",
+              "BFE02C",
+              "5FCC02"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 977
+      }
+    },
+    {
+      "basket_id": "low_basket_57",
+      "companies": [
+        "913C50",
+        "2031CE",
+        "5FC63E",
+        "2FA42F",
+        "3B20AB",
+        "5B6C11",
+        "8D5145",
+        "73A213",
+        "9F6B1A",
+        "A7A0C8",
+        "AB4A7E",
+        "E49380",
+        "930B0F",
+        "BBF349",
+        "E67C2C",
+        "ED9C04",
+        "A3902D",
+        "C54955",
+        "0B9E6F",
+        "JURUHW",
+        "157D9F",
+        "CNSLX3",
+        "FA1A32",
+        "223147",
+        "633054",
+        "35D67C",
+        "1E1125",
+        "6BC6F9",
+        "6B0784"
+      ],
+      "expected_chunks": 973,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "913C50",
+              "2031CE",
+              "5FC63E",
+              "2FA42F",
+              "3B20AB",
+              "5B6C11",
+              "8D5145",
+              "73A213",
+              "9F6B1A",
+              "A7A0C8",
+              "AB4A7E",
+              "E49380",
+              "930B0F",
+              "BBF349",
+              "E67C2C",
+              "ED9C04",
+              "A3902D",
+              "C54955",
+              "0B9E6F",
+              "JURUHW",
+              "157D9F",
+              "CNSLX3",
+              "FA1A32",
+              "223147",
+              "633054",
+              "35D67C",
+              "1E1125",
+              "6BC6F9",
+              "6B0784"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 973
+      }
+    },
+    {
+      "basket_id": "low_basket_58",
+      "companies": [
+        "9C512F",
+        "5B3FA2",
+        "5DADCB",
+        "BFF98A",
+        "76E80F",
+        "A39B17",
+        "A754E3",
+        "A2CAF7",
+        "9B0C9C",
+        "C44B3C",
+        "B31E27",
+        "BC77BC",
+        "C659EB",
+        "EAEBF3",
+        "F05B1B",
+        "QOO7LB",
+        "0BB903",
+        "1947F1",
+        "06C826",
+        "20BKQS",
+        "0E0694",
+        "7C1C76",
+        "5C00BC",
+        "26FD8B",
+        "346BF2",
+        "F39150",
+        "2CB4C9",
+        "23D060",
+        "394E6A",
+        "403546"
+      ],
+      "expected_chunks": 976,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "9C512F",
+              "5B3FA2",
+              "5DADCB",
+              "BFF98A",
+              "76E80F",
+              "A39B17",
+              "A754E3",
+              "A2CAF7",
+              "9B0C9C",
+              "C44B3C",
+              "B31E27",
+              "BC77BC",
+              "C659EB",
+              "EAEBF3",
+              "F05B1B",
+              "QOO7LB",
+              "0BB903",
+              "1947F1",
+              "06C826",
+              "20BKQS",
+              "0E0694",
+              "7C1C76",
+              "5C00BC",
+              "26FD8B",
+              "346BF2",
+              "F39150",
+              "2CB4C9",
+              "23D060",
+              "394E6A",
+              "403546"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 976
+      }
+    },
+    {
+      "basket_id": "low_basket_59",
+      "companies": [
+        "3A1B1C",
+        "3BF9CF",
+        "3E2C83",
+        "502C47",
+        "60A286",
+        "60A790",
+        "6830FE",
+        "9ABD30",
+        "73669A",
+        "877756",
+        "8AB37F",
+        "8AE457",
+        "859D62",
+        "800F03",
+        "9D2790",
+        "9DDE1B",
+        "UV1FFH",
+        "EE6F1C",
+        "FFAD82",
+        "F7ADEB",
+        "75F982",
+        "0CE204",
+        "034B61",
+        "E0B27B",
+        "1CD6C8",
+        "33E9D5",
+        "EE334F",
+        "8C1628",
+        "6E9442",
+        "394FAE",
+        "3AB306"
+      ],
+      "expected_chunks": 981,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "3A1B1C",
+              "3BF9CF",
+              "3E2C83",
+              "502C47",
+              "60A286",
+              "60A790",
+              "6830FE",
+              "9ABD30",
+              "73669A",
+              "877756",
+              "8AB37F",
+              "8AE457",
+              "859D62",
+              "800F03",
+              "9D2790",
+              "9DDE1B",
+              "UV1FFH",
+              "EE6F1C",
+              "FFAD82",
+              "F7ADEB",
+              "75F982",
+              "0CE204",
+              "034B61",
+              "E0B27B",
+              "1CD6C8",
+              "33E9D5",
+              "EE334F",
+              "8C1628",
+              "6E9442",
+              "394FAE",
+              "3AB306"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 981
+      }
+    },
+    {
+      "basket_id": "low_basket_60",
+      "companies": [
+        "4F185D",
+        "66E04A",
+        "E592F0",
+        "6248C7",
+        "701531",
+        "A1E3B3",
+        "AEA57C",
+        "763DBE",
+        "A0B7C8",
+        "C85A72",
+        "83AFBE",
+        "871966",
+        "7D5384",
+        "73C521",
+        "9AF3DC",
+        "954004",
+        "92D9C9",
+        "A43A65",
+        "B01111",
+        "E577ED",
+        "49L9OG",
+        "FCB6CC",
+        "FD1312",
+        "FEE4B0",
+        "1AB023",
+        "001F1B",
+        "0FABBD",
+        "RDMQFR",
+        "2262BD",
+        "2D2D43",
+        "27A356",
+        "3A113F"
+      ],
+      "expected_chunks": 984,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "4F185D",
+              "66E04A",
+              "E592F0",
+              "6248C7",
+              "701531",
+              "A1E3B3",
+              "AEA57C",
+              "763DBE",
+              "A0B7C8",
+              "C85A72",
+              "83AFBE",
+              "871966",
+              "7D5384",
+              "73C521",
+              "9AF3DC",
+              "954004",
+              "92D9C9",
+              "A43A65",
+              "B01111",
+              "E577ED",
+              "49L9OG",
+              "FCB6CC",
+              "FD1312",
+              "FEE4B0",
+              "1AB023",
+              "001F1B",
+              "0FABBD",
+              "RDMQFR",
+              "2262BD",
+              "2D2D43",
+              "27A356",
+              "3A113F"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 984
+      }
+    },
+    {
+      "basket_id": "low_basket_61",
+      "companies": [
+        "4988CD",
+        "LWVKQ0",
+        "835DB6",
+        "726DDF",
+        "67529E",
+        "FC01C0",
+        "9B730A",
+        "ED1A74",
+        "8E01JZ",
+        "8BAA15",
+        "73378C",
+        "751C8D",
+        "8CF6DD",
+        "84020C",
+        "7840D6",
+        "84A6B9",
+        "8F3231",
+        "994468",
+        "9E91C6",
+        "9F03CF",
+        "55D63C",
+        "F7902B",
+        "EA3D5C",
+        "E8306D",
+        "03CF95",
+        "2E61CC",
+        "CEC128",
+        "188394",
+        "5604F9",
+        "0C355F",
+        "3188EC",
+        "315EB0",
+        "8A596E"
+      ],
+      "expected_chunks": 981,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "4988CD",
+              "LWVKQ0",
+              "835DB6",
+              "726DDF",
+              "67529E",
+              "FC01C0",
+              "9B730A",
+              "ED1A74",
+              "8E01JZ",
+              "8BAA15",
+              "73378C",
+              "751C8D",
+              "8CF6DD",
+              "84020C",
+              "7840D6",
+              "84A6B9",
+              "8F3231",
+              "994468",
+              "9E91C6",
+              "9F03CF",
+              "55D63C",
+              "F7902B",
+              "EA3D5C",
+              "E8306D",
+              "03CF95",
+              "2E61CC",
+              "CEC128",
+              "188394",
+              "5604F9",
+              "0C355F",
+              "3188EC",
+              "315EB0",
+              "8A596E"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 981
+      }
+    },
+    {
+      "basket_id": "low_basket_62",
+      "companies": [
+        "372CBE",
+        "2DB344",
+        "76F067",
+        "0IBJ9P",
+        "72CB93",
+        "F2C97F",
+        "8817D5",
+        "81DAAD",
+        "8E9091",
+        "B8C039",
+        "9C5BA5",
+        "0F70DF",
+        "AC3584",
+        "A5C69D",
+        "560DEC",
+        "FDF799",
+        "E69E72",
+        "E802CE",
+        "33AD83",
+        "3A2757",
+        "9E575E",
+        "6CF43C",
+        "B9SG7N",
+        "16CA71",
+        "B0A85B",
+        "651C85",
+        "8E10BF",
+        "8FCA78",
+        "7E1D5D",
+        "8B3EA0",
+        "C86C8D",
+        "8C146F",
+        "A54719",
+        "AB1E82",
+        "A90D88"
+      ],
+      "expected_chunks": 998,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "372CBE",
+              "2DB344",
+              "76F067",
+              "0IBJ9P",
+              "72CB93",
+              "F2C97F",
+              "8817D5",
+              "81DAAD",
+              "8E9091",
+              "B8C039",
+              "9C5BA5",
+              "0F70DF",
+              "AC3584",
+              "A5C69D",
+              "560DEC",
+              "FDF799",
+              "E69E72",
+              "E802CE",
+              "33AD83",
+              "3A2757",
+              "9E575E",
+              "6CF43C",
+              "B9SG7N",
+              "16CA71",
+              "B0A85B",
+              "651C85",
+              "8E10BF",
+              "8FCA78",
+              "7E1D5D",
+              "8B3EA0",
+              "C86C8D",
+              "8C146F",
+              "A54719",
+              "AB1E82",
+              "A90D88"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 998
+      }
+    },
+    {
+      "basket_id": "low_basket_63",
+      "companies": [
+        "A666C8",
+        "926E1C",
+        "0BD199",
+        "1B9EC0",
+        "A8FD8C",
+        "EC9820",
+        "5B5647",
+        "6E705B",
+        "6EAA77",
+        "676D71",
+        "5A423F",
+        "83C0DD",
+        "8D01F2",
+        "SZ6HK6",
+        "748EB6",
+        "8377DB",
+        "3F6DEC",
+        "3F3301",
+        "4397ED",
+        "77AB64",
+        "6CGTFN",
+        "9B42DD",
+        "C3BCD5",
+        "EJR5DO",
+        "102231",
+        "34E9F9",
+        "39692D",
+        "B4C673",
+        "E7D47B",
+        "0E698B",
+        "9S61VZ",
+        "0DF75A",
+        "300AC5",
+        "444CC8",
+        "5E7E82",
+        "BDCZUV",
+        "131443",
+        "97693A",
+        "A4D173"
+      ],
+      "expected_chunks": 998,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "A666C8",
+              "926E1C",
+              "0BD199",
+              "1B9EC0",
+              "A8FD8C",
+              "EC9820",
+              "5B5647",
+              "6E705B",
+              "6EAA77",
+              "676D71",
+              "5A423F",
+              "83C0DD",
+              "8D01F2",
+              "SZ6HK6",
+              "748EB6",
+              "8377DB",
+              "3F6DEC",
+              "3F3301",
+              "4397ED",
+              "77AB64",
+              "6CGTFN",
+              "9B42DD",
+              "C3BCD5",
+              "EJR5DO",
+              "102231",
+              "34E9F9",
+              "39692D",
+              "B4C673",
+              "E7D47B",
+              "0E698B",
+              "9S61VZ",
+              "0DF75A",
+              "300AC5",
+              "444CC8",
+              "5E7E82",
+              "BDCZUV",
+              "131443",
+              "97693A",
+              "A4D173"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 998
+      }
+    },
+    {
+      "basket_id": "low_basket_64",
+      "companies": [
+        "PXVXKV",
+        "6A027C",
+        "F91AF7",
+        "172EJ9",
+        "2003A5",
+        "4C0E42",
+        "531EF1",
+        "9CEF72",
+        "7D29B1",
+        "DC2B00",
+        "A84DC3",
+        "6FD3C4",
+        "70CA28",
+        "91C82E",
+        "73B0E0",
+        "968966",
+        "DD1BA1",
+        "C4452A",
+        "F90151",
+        "27B191",
+        "64DE3B",
+        "68B03F",
+        "6CDFC6",
+        "61B740",
+        "8E1ED2",
+        "743C70",
+        "773FC0",
+        "A96867",
+        "C20B75",
+        "DB2D9E",
+        "F2E253",
+        "2EA6E9",
+        "16AAE0",
+        "4AF91D",
+        "4680CA",
+        "B1DF3C",
+        "CF7292",
+        "DB9829",
+        "F02170",
+        "995F22",
+        "PGLBFQ",
+        "SH4DFB",
+        "1A442F",
+        "5A6336",
+        "694749",
+        "782797",
+        "D29B44",
+        "D8EE79",
+        "DD5C33",
+        "CB3F2F",
+        "D8DA3D",
+        "89WQ47",
+        "21A365",
+        "168763",
+        "1CBF42",
+        "1866B2"
+      ],
+      "expected_chunks": 993,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "PXVXKV",
+              "6A027C",
+              "F91AF7",
+              "172EJ9",
+              "2003A5",
+              "4C0E42",
+              "531EF1",
+              "9CEF72",
+              "7D29B1",
+              "DC2B00",
+              "A84DC3",
+              "6FD3C4",
+              "70CA28",
+              "91C82E",
+              "73B0E0",
+              "968966",
+              "DD1BA1",
+              "C4452A",
+              "F90151",
+              "27B191",
+              "64DE3B",
+              "68B03F",
+              "6CDFC6",
+              "61B740",
+              "8E1ED2",
+              "743C70",
+              "773FC0",
+              "A96867",
+              "C20B75",
+              "DB2D9E",
+              "F2E253",
+              "2EA6E9",
+              "16AAE0",
+              "4AF91D",
+              "4680CA",
+              "B1DF3C",
+              "CF7292",
+              "DB9829",
+              "F02170",
+              "995F22",
+              "PGLBFQ",
+              "SH4DFB",
+              "1A442F",
+              "5A6336",
+              "694749",
+              "782797",
+              "D29B44",
+              "D8EE79",
+              "DD5C33",
+              "CB3F2F",
+              "D8DA3D",
+              "89WQ47",
+              "21A365",
+              "168763",
+              "1CBF42",
+              "1866B2"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 993
+      }
+    },
+    {
+      "basket_id": "low_basket_65",
+      "companies": [
+        "0EC508",
+        "652E62",
+        "4BDCA7",
+        "4D781B",
+        "6D0CAB",
+        "77C2D8",
+        "A4A612",
+        "9A602D",
+        "9A3FF4",
+        "B34137",
+        "CF2840",
+        "F750A8",
+        "E49AA3",
+        "17EDA5",
+        "E68733",
+        "3G0JVA",
+        "44D13D",
+        "4017AD",
+        "A21965",
+        "709AED",
+        "86F3CB",
+        "A4BCDE",
+        "CF9054",
+        "D7B2A0",
+        "C9E04B",
+        "B41C3E",
+        "CA212F",
+        "BRHLIH",
+        "F48162",
+        "5EI55T",
+        "21DED4",
+        "6F6559",
+        "467C65",
+        "55ACCB",
+        "945DE6",
+        "82BA2E",
+        "A8BA08",
+        "CD32ED",
+        "C71AD9",
+        "DEDE69",
+        "CDE51C",
+        "AE8CE0",
+        "C4A4CC",
+        "AD475F",
+        "F8B149",
+        "E48060",
+        "E0207A",
+        "19ACAF",
+        "8665BA",
+        "1F8S8M",
+        "RDU3ZQ",
+        "KEK4ZA",
+        "MRDI93",
+        "9C2AA7",
+        "02FB8E",
+        "0BA2EF",
+        "33AEDA",
+        "18DDE9",
+        "20D00A",
+        "609208",
+        "6F0096",
+        "5451F3",
+        "60D642",
+        "649CBD",
+        "5F9CE3",
+        "817ED9",
+        "7B9AFA",
+        "9CAC83",
+        "726EEA",
+        "900356",
+        "9673BD",
+        "A2A9BA",
+        "83A275",
+        "D69D42",
+        "C5CB9D",
+        "B45FD2"
+      ],
+      "expected_chunks": 999,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "0EC508",
+              "652E62",
+              "4BDCA7",
+              "4D781B",
+              "6D0CAB",
+              "77C2D8",
+              "A4A612",
+              "9A602D",
+              "9A3FF4",
+              "B34137",
+              "CF2840",
+              "F750A8",
+              "E49AA3",
+              "17EDA5",
+              "E68733",
+              "3G0JVA",
+              "44D13D",
+              "4017AD",
+              "A21965",
+              "709AED",
+              "86F3CB",
+              "A4BCDE",
+              "CF9054",
+              "D7B2A0",
+              "C9E04B",
+              "B41C3E",
+              "CA212F",
+              "BRHLIH",
+              "F48162",
+              "5EI55T",
+              "21DED4",
+              "6F6559",
+              "467C65",
+              "55ACCB",
+              "945DE6",
+              "82BA2E",
+              "A8BA08",
+              "CD32ED",
+              "C71AD9",
+              "DEDE69",
+              "CDE51C",
+              "AE8CE0",
+              "C4A4CC",
+              "AD475F",
+              "F8B149",
+              "E48060",
+              "E0207A",
+              "19ACAF",
+              "8665BA",
+              "1F8S8M",
+              "RDU3ZQ",
+              "KEK4ZA",
+              "MRDI93",
+              "9C2AA7",
+              "02FB8E",
+              "0BA2EF",
+              "33AEDA",
+              "18DDE9",
+              "20D00A",
+              "609208",
+              "6F0096",
+              "5451F3",
+              "60D642",
+              "649CBD",
+              "5F9CE3",
+              "817ED9",
+              "7B9AFA",
+              "9CAC83",
+              "726EEA",
+              "900356",
+              "9673BD",
+              "A2A9BA",
+              "83A275",
+              "D69D42",
+              "C5CB9D",
+              "B45FD2"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 999
+      }
+    },
+    {
+      "basket_id": "low_basket_66",
+      "companies": [
+        "D9B1C9",
+        "D77D62",
+        "E2AE3D",
+        "EEEA9F",
+        "KYKKKQ",
+        "BQUEX0",
+        "QHOFQM",
+        "S5BZE7",
+        "4B1SBB",
+        "2F19YD",
+        "O2F1YP",
+        "1201B5",
+        "1BFE5E",
+        "25A6CC",
+        "274BC2",
+        "301493",
+        "280B30",
+        "0294AC",
+        "694E5C",
+        "70FCEF",
+        "8D8792",
+        "7032D0",
+        "96BFF4",
+        "739268",
+        "881190",
+        "DF11D9",
+        "E4481F",
+        "DD0F15",
+        "DEC749",
+        "LQFR5Z",
+        "4C49AC",
+        "H0S3VB",
+        "12E063",
+        "09DDC4",
+        "278DC5",
+        "1AED41",
+        "102F04",
+        "00F26A",
+        "349DA4",
+        "1F2B5D",
+        "2F7A7E",
+        "083F72",
+        "29CEBF",
+        "0E3A77",
+        "4CF9F7",
+        "3E70FC",
+        "5D0EAE",
+        "54C679",
+        "6DD4DB",
+        "7FBA24",
+        "890FF4",
+        "885758",
+        "910DD6",
+        "DCA2E8",
+        "BB5142",
+        "AE2413",
+        "DF42A0",
+        "E2F66E",
+        "1921DD",
+        "6AB278",
+        "B13B68",
+        "P9B0IA",
+        "PPCM8I",
+        "TXZIC8",
+        "6FHAS1",
+        "204QRL",
+        "DNQ7AG",
+        "2E360C",
+        "31DB20",
+        "0D2781",
+        "35F4B5",
+        "0C2A0D",
+        "02E9EE",
+        "1AE9D5",
+        "07B8D2",
+        "350A25",
+        "002A99",
+        "31AA84",
+        "3BA002",
+        "3BB616",
+        "5415CA",
+        "5D63F1",
+        "6D4636",
+        "50C117",
+        "5E3C1A",
+        "69E8E1",
+        "841852",
+        "766047",
+        "81EAD4",
+        "A4B899",
+        "73F7F9",
+        "9AEBED",
+        "9981C6",
+        "A806FA",
+        "95C392",
+        "968B00",
+        "DF203E",
+        "DC2EDC",
+        "BCEF18",
+        "C52BEE",
+        "D06996"
+      ],
+      "expected_chunks": 998,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "D9B1C9",
+              "D77D62",
+              "E2AE3D",
+              "EEEA9F",
+              "KYKKKQ",
+              "BQUEX0",
+              "QHOFQM",
+              "S5BZE7",
+              "4B1SBB",
+              "2F19YD",
+              "O2F1YP",
+              "1201B5",
+              "1BFE5E",
+              "25A6CC",
+              "274BC2",
+              "301493",
+              "280B30",
+              "0294AC",
+              "694E5C",
+              "70FCEF",
+              "8D8792",
+              "7032D0",
+              "96BFF4",
+              "739268",
+              "881190",
+              "DF11D9",
+              "E4481F",
+              "DD0F15",
+              "DEC749",
+              "LQFR5Z",
+              "4C49AC",
+              "H0S3VB",
+              "12E063",
+              "09DDC4",
+              "278DC5",
+              "1AED41",
+              "102F04",
+              "00F26A",
+              "349DA4",
+              "1F2B5D",
+              "2F7A7E",
+              "083F72",
+              "29CEBF",
+              "0E3A77",
+              "4CF9F7",
+              "3E70FC",
+              "5D0EAE",
+              "54C679",
+              "6DD4DB",
+              "7FBA24",
+              "890FF4",
+              "885758",
+              "910DD6",
+              "DCA2E8",
+              "BB5142",
+              "AE2413",
+              "DF42A0",
+              "E2F66E",
+              "1921DD",
+              "6AB278",
+              "B13B68",
+              "P9B0IA",
+              "PPCM8I",
+              "TXZIC8",
+              "6FHAS1",
+              "204QRL",
+              "DNQ7AG",
+              "2E360C",
+              "31DB20",
+              "0D2781",
+              "35F4B5",
+              "0C2A0D",
+              "02E9EE",
+              "1AE9D5",
+              "07B8D2",
+              "350A25",
+              "002A99",
+              "31AA84",
+              "3BA002",
+              "3BB616",
+              "5415CA",
+              "5D63F1",
+              "6D4636",
+              "50C117",
+              "5E3C1A",
+              "69E8E1",
+              "841852",
+              "766047",
+              "81EAD4",
+              "A4B899",
+              "73F7F9",
+              "9AEBED",
+              "9981C6",
+              "A806FA",
+              "95C392",
+              "968B00",
+              "DF203E",
+              "DC2EDC",
+              "BCEF18",
+              "C52BEE",
+              "D06996"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 998
+      }
+    },
+    {
+      "basket_id": "low_basket_67",
+      "companies": [
+        "CDE42A",
+        "C357A3",
+        "D56D6D",
+        "E9E6FD",
+        "E23FB4",
+        "EF9E92",
+        "F2D6C8",
+        "EFAC45",
+        "E96965",
+        "E261E9",
+        "2F75E0",
+        "2D1EC7",
+        "9P81SV",
+        "346MBQ",
+        "86IY08",
+        "SUZM4J",
+        "6A0R13",
+        "M99BVW",
+        "5JPRLV",
+        "19FFE5",
+        "2BBE62",
+        "2F5256",
+        "18CE9F",
+        "0EF1AF",
+        "2E902B",
+        "2AE625",
+        "0BC853",
+        "3092CF",
+        "11A49E",
+        "34B97A",
+        "2F6782",
+        "29CD77",
+        "033B58",
+        "092958",
+        "0A022F",
+        "270B78",
+        "2396AE",
+        "1A8250",
+        "6ABCB8",
+        "41A93D",
+        "3F4497",
+        "620381",
+        "6DECE5",
+        "56765E",
+        "421A1A",
+        "3CBB3F",
+        "5C7601",
+        "8417F8",
+        "98BD44",
+        "97DE22",
+        "75BB1B",
+        "957A07",
+        "840FB5",
+        "94ECB8",
+        "8FF2EF",
+        "7B1156",
+        "AC9CE5",
+        "BA0D72",
+        "D0DE27",
+        "C42521",
+        "B9DA2F",
+        "D36686",
+        "CB7AB2",
+        "D139BC",
+        "C4A241",
+        "D3FA2C",
+        "CF211D",
+        "AE2D4F",
+        "F52ADA",
+        "FD5E6F",
+        "FBD2FD",
+        "ED0402",
+        "E1F30A",
+        "E0F4E5",
+        "F00879",
+        "A6828A",
+        "E1E093",
+        "ACCB4A",
+        "4AC072",
+        "QJNAJM",
+        "4E2F9F",
+        "245432",
+        "0A6824",
+        "2FEA66",
+        "0AD2E3",
+        "253B2F",
+        "1CC9A8",
+        "323B06",
+        "06BB2E",
+        "057C52",
+        "14BA06",
+        "09AEEF",
+        "07897D",
+        "5288FC",
+        "6ED519",
+        "3A3948",
+        "4C1BF2",
+        "648A80",
+        "6A091A",
+        "3F868D",
+        "51D28D",
+        "42D4DE",
+        "7B0BA6",
+        "7262F2",
+        "90B678",
+        "789A7D",
+        "8303CD",
+        "771985",
+        "98CEBB",
+        "A48593",
+        "9C25FF",
+        "82C202",
+        "9301A4",
+        "C4706C",
+        "D64EDF",
+        "C9616B",
+        "B73395",
+        "D79027",
+        "B5668A",
+        "B0B969",
+        "BEA527",
+        "AB6FDB",
+        "AA76A1",
+        "BB98AD",
+        "C9C62A",
+        "B303A6",
+        "ACF0B4",
+        "CA16F2",
+        "AA7ED5",
+        "CBDFEC"
+      ],
+      "expected_chunks": 995,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "CDE42A",
+              "C357A3",
+              "D56D6D",
+              "E9E6FD",
+              "E23FB4",
+              "EF9E92",
+              "F2D6C8",
+              "EFAC45",
+              "E96965",
+              "E261E9",
+              "2F75E0",
+              "2D1EC7",
+              "9P81SV",
+              "346MBQ",
+              "86IY08",
+              "SUZM4J",
+              "6A0R13",
+              "M99BVW",
+              "5JPRLV",
+              "19FFE5",
+              "2BBE62",
+              "2F5256",
+              "18CE9F",
+              "0EF1AF",
+              "2E902B",
+              "2AE625",
+              "0BC853",
+              "3092CF",
+              "11A49E",
+              "34B97A",
+              "2F6782",
+              "29CD77",
+              "033B58",
+              "092958",
+              "0A022F",
+              "270B78",
+              "2396AE",
+              "1A8250",
+              "6ABCB8",
+              "41A93D",
+              "3F4497",
+              "620381",
+              "6DECE5",
+              "56765E",
+              "421A1A",
+              "3CBB3F",
+              "5C7601",
+              "8417F8",
+              "98BD44",
+              "97DE22",
+              "75BB1B",
+              "957A07",
+              "840FB5",
+              "94ECB8",
+              "8FF2EF",
+              "7B1156",
+              "AC9CE5",
+              "BA0D72",
+              "D0DE27",
+              "C42521",
+              "B9DA2F",
+              "D36686",
+              "CB7AB2",
+              "D139BC",
+              "C4A241",
+              "D3FA2C",
+              "CF211D",
+              "AE2D4F",
+              "F52ADA",
+              "FD5E6F",
+              "FBD2FD",
+              "ED0402",
+              "E1F30A",
+              "E0F4E5",
+              "F00879",
+              "A6828A",
+              "E1E093",
+              "ACCB4A",
+              "4AC072",
+              "QJNAJM",
+              "4E2F9F",
+              "245432",
+              "0A6824",
+              "2FEA66",
+              "0AD2E3",
+              "253B2F",
+              "1CC9A8",
+              "323B06",
+              "06BB2E",
+              "057C52",
+              "14BA06",
+              "09AEEF",
+              "07897D",
+              "5288FC",
+              "6ED519",
+              "3A3948",
+              "4C1BF2",
+              "648A80",
+              "6A091A",
+              "3F868D",
+              "51D28D",
+              "42D4DE",
+              "7B0BA6",
+              "7262F2",
+              "90B678",
+              "789A7D",
+              "8303CD",
+              "771985",
+              "98CEBB",
+              "A48593",
+              "9C25FF",
+              "82C202",
+              "9301A4",
+              "C4706C",
+              "D64EDF",
+              "C9616B",
+              "B73395",
+              "D79027",
+              "B5668A",
+              "B0B969",
+              "BEA527",
+              "AB6FDB",
+              "AA76A1",
+              "BB98AD",
+              "C9C62A",
+              "B303A6",
+              "ACF0B4",
+              "CA16F2",
+              "AA7ED5",
+              "CBDFEC"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 995
+      }
+    },
+    {
+      "basket_id": "low_basket_68",
+      "companies": [
+        "BEB38E",
+        "D1706A",
+        "D3D945",
+        "F882AF",
+        "FAF8DB",
+        "EB03C7",
+        "FC1A6E",
+        "F02D0A",
+        "E28F22",
+        "F46EC9",
+        "520632",
+        "ED79D9",
+        "DC0DFD",
+        "2893E8",
+        "24FA23",
+        "0C2C8B",
+        "163D58",
+        "3224CC",
+        "1C4FBD",
+        "0FC6C1",
+        "0968A5",
+        "239106",
+        "09F623",
+        "1F9258",
+        "0BD48C",
+        "36C09B",
+        "0K5WAE",
+        "032819",
+        "032C6D",
+        "154272",
+        "2AF764",
+        "0AAB0B",
+        "0F4931",
+        "330F84",
+        "35A5CD",
+        "61E975",
+        "42EFC7",
+        "4924D9",
+        "548AC0",
+        "3770E8",
+        "524CE4",
+        "56632F",
+        "4C31F3",
+        "5C8D61",
+        "610A23",
+        "4ECD1A",
+        "68AB62",
+        "6D8B16",
+        "39CF0C",
+        "49593B",
+        "6BBD2D",
+        "6AACDD",
+        "64F2C1",
+        "6E025F",
+        "596116",
+        "5E1ED2",
+        "44ED36",
+        "665440",
+        "69E8D5",
+        "5A7350",
+        "6C987C",
+        "5E1D9C",
+        "6540FD",
+        "5EE233",
+        "756C80",
+        "A72FD9",
+        "A3D4CE",
+        "76CEFB",
+        "9856E0",
+        "A1CC7A",
+        "7122EB",
+        "7106C6",
+        "943239",
+        "793C11",
+        "94208D",
+        "7D97DE",
+        "965E36",
+        "971334",
+        "7176FB",
+        "A1A11B",
+        "96D34D",
+        "883D82",
+        "7C4F43",
+        "BFC847",
+        "DB126E",
+        "C72845",
+        "ADF1B0",
+        "AAEE21",
+        "CF8EF7",
+        "CEB9B3",
+        "B9B6B8",
+        "D4C0CB",
+        "B3A166",
+        "C8712E",
+        "B275C6",
+        "AC165D",
+        "D04C62",
+        "C55E47",
+        "CB22CD",
+        "C886B1",
+        "B37FB4",
+        "DE20DF",
+        "D7761D",
+        "AEEB76",
+        "F48427",
+        "E15736",
+        "E6E012",
+        "ED521A",
+        "E66F16",
+        "EFA7B2",
+        "E22153",
+        "F35729",
+        "E4E3B7",
+        "F5117C",
+        "E598FB",
+        "F66B58",
+        "F88147",
+        "ED192E",
+        "E8D221",
+        "E9FF33",
+        "03B8CF",
+        "619882",
+        "9417FE",
+        "3587B4",
+        "2AC5FC",
+        "873DB9",
+        "F8D387",
+        "K5CV7B",
+        "7F0F65",
+        "44A5F8",
+        "MOII79",
+        "FEBFC2",
+        "06D0CB",
+        "28E3EB",
+        "1A5D5D",
+        "1ACDC7",
+        "090427",
+        "1DB6A6",
+        "108A2B",
+        "17F6AD",
+        "3632D1",
+        "36529A",
+        "146E4F",
+        "0AAD90",
+        "0A1D77",
+        "031025",
+        "0A0D9E",
+        "1D9E55",
+        "250BEE",
+        "341759",
+        "15ABD0",
+        "04B630",
+        "061A3B",
+        "0527F8",
+        "075CF7",
+        "03905C",
+        "297DA8",
+        "0F8CC6",
+        "1A6A94",
+        "2B9DBB",
+        "3471C0",
+        "1A8848",
+        "1F8627",
+        "05AF14",
+        "2B69E6",
+        "5F4165",
+        "6A6BDC",
+        "5645BC",
+        "3DC887",
+        "409EE2",
+        "622DBE",
+        "6925EB",
+        "3B8484",
+        "55C289"
+      ],
+      "expected_chunks": 1000,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "BEB38E",
+              "D1706A",
+              "D3D945",
+              "F882AF",
+              "FAF8DB",
+              "EB03C7",
+              "FC1A6E",
+              "F02D0A",
+              "E28F22",
+              "F46EC9",
+              "520632",
+              "ED79D9",
+              "DC0DFD",
+              "2893E8",
+              "24FA23",
+              "0C2C8B",
+              "163D58",
+              "3224CC",
+              "1C4FBD",
+              "0FC6C1",
+              "0968A5",
+              "239106",
+              "09F623",
+              "1F9258",
+              "0BD48C",
+              "36C09B",
+              "0K5WAE",
+              "032819",
+              "032C6D",
+              "154272",
+              "2AF764",
+              "0AAB0B",
+              "0F4931",
+              "330F84",
+              "35A5CD",
+              "61E975",
+              "42EFC7",
+              "4924D9",
+              "548AC0",
+              "3770E8",
+              "524CE4",
+              "56632F",
+              "4C31F3",
+              "5C8D61",
+              "610A23",
+              "4ECD1A",
+              "68AB62",
+              "6D8B16",
+              "39CF0C",
+              "49593B",
+              "6BBD2D",
+              "6AACDD",
+              "64F2C1",
+              "6E025F",
+              "596116",
+              "5E1ED2",
+              "44ED36",
+              "665440",
+              "69E8D5",
+              "5A7350",
+              "6C987C",
+              "5E1D9C",
+              "6540FD",
+              "5EE233",
+              "756C80",
+              "A72FD9",
+              "A3D4CE",
+              "76CEFB",
+              "9856E0",
+              "A1CC7A",
+              "7122EB",
+              "7106C6",
+              "943239",
+              "793C11",
+              "94208D",
+              "7D97DE",
+              "965E36",
+              "971334",
+              "7176FB",
+              "A1A11B",
+              "96D34D",
+              "883D82",
+              "7C4F43",
+              "BFC847",
+              "DB126E",
+              "C72845",
+              "ADF1B0",
+              "AAEE21",
+              "CF8EF7",
+              "CEB9B3",
+              "B9B6B8",
+              "D4C0CB",
+              "B3A166",
+              "C8712E",
+              "B275C6",
+              "AC165D",
+              "D04C62",
+              "C55E47",
+              "CB22CD",
+              "C886B1",
+              "B37FB4",
+              "DE20DF",
+              "D7761D",
+              "AEEB76",
+              "F48427",
+              "E15736",
+              "E6E012",
+              "ED521A",
+              "E66F16",
+              "EFA7B2",
+              "E22153",
+              "F35729",
+              "E4E3B7",
+              "F5117C",
+              "E598FB",
+              "F66B58",
+              "F88147",
+              "ED192E",
+              "E8D221",
+              "E9FF33",
+              "03B8CF",
+              "619882",
+              "9417FE",
+              "3587B4",
+              "2AC5FC",
+              "873DB9",
+              "F8D387",
+              "K5CV7B",
+              "7F0F65",
+              "44A5F8",
+              "MOII79",
+              "FEBFC2",
+              "06D0CB",
+              "28E3EB",
+              "1A5D5D",
+              "1ACDC7",
+              "090427",
+              "1DB6A6",
+              "108A2B",
+              "17F6AD",
+              "3632D1",
+              "36529A",
+              "146E4F",
+              "0AAD90",
+              "0A1D77",
+              "031025",
+              "0A0D9E",
+              "1D9E55",
+              "250BEE",
+              "341759",
+              "15ABD0",
+              "04B630",
+              "061A3B",
+              "0527F8",
+              "075CF7",
+              "03905C",
+              "297DA8",
+              "0F8CC6",
+              "1A6A94",
+              "2B9DBB",
+              "3471C0",
+              "1A8848",
+              "1F8627",
+              "05AF14",
+              "2B69E6",
+              "5F4165",
+              "6A6BDC",
+              "5645BC",
+              "3DC887",
+              "409EE2",
+              "622DBE",
+              "6925EB",
+              "3B8484",
+              "55C289"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 1000
+      }
+    },
+    {
+      "basket_id": "low_basket_69",
+      "companies": [
+        "581FB3",
+        "467D4C",
+        "6634D9",
+        "6F6E42",
+        "4B6EF9",
+        "67S9OX",
+        "66BDA1",
+        "514685",
+        "54B889",
+        "5B782E",
+        "6F22E7",
+        "647143",
+        "69C99E",
+        "4A3CB5",
+        "3D4F88",
+        "3C0936",
+        "605F40",
+        "4806CE",
+        "3EE191",
+        "A05C43",
+        "74292A",
+        "732A9B",
+        "9E1755",
+        "9F5591",
+        "8EF425",
+        "795986",
+        "7DD584",
+        "931AE7",
+        "798996",
+        "7F3A5F",
+        "A21649",
+        "7843D0",
+        "905356",
+        "74404C",
+        "76BECC",
+        "8EBA9B",
+        "9043FE",
+        "82E6EC",
+        "96A2D3",
+        "7AF907",
+        "9EA947",
+        "9652E4",
+        "A8674F",
+        "8DA42F",
+        "D60BB2",
+        "E00373",
+        "D721C6",
+        "D7918D",
+        "D91903",
+        "ABAA03",
+        "B53C12",
+        "D62F5F",
+        "D63A65",
+        "C7F104",
+        "B508E5",
+        "AC0D3D",
+        "BCA1FA",
+        "C2DD02",
+        "BDCC11",
+        "D21D8A",
+        "CCD612",
+        "D6144F",
+        "D74E45",
+        "C5A764",
+        "BC948D",
+        "BB58FF",
+        "C50B26",
+        "BB02FB",
+        "CE3F39",
+        "CB6A9C",
+        "D38DAC",
+        "E10D31",
+        "F721A7",
+        "GMNGN6",
+        "F0E1E6",
+        "E5AAB0",
+        "E3B0EC",
+        "F04E05",
+        "ECE19E",
+        "FADF1A",
+        "EB764E",
+        "EF11AB",
+        "E19E65",
+        "F997BD",
+        "E38906",
+        "E1E36F",
+        "FC4652",
+        "228D42",
+        "E09E2B",
+        "B811D5",
+        "01329F",
+        "990AD0",
+        "69345C",
+        "CFF15D",
+        "DD92E7",
+        "734DCD",
+        "C97B2D",
+        "C062D4",
+        "2B7D7D",
+        "ED7F13",
+        "BAD655",
+        "CC385F",
+        "52436O",
+        "CW3UOZ",
+        "HYHRM3",
+        "WWLKHC",
+        "106EB2",
+        "C027D5",
+        "870TVX",
+        "ED3B90",
+        "A09134",
+        "30AB63",
+        "323C60",
+        "1BEEA1",
+        "24E1EC",
+        "215C82",
+        "34BBB2",
+        "0B73A7",
+        "143C52",
+        "03E779",
+        "018C11",
+        "2BD89C",
+        "2CBB58",
+        "264605",
+        "0DC050",
+        "042C91",
+        "33CD26",
+        "056045",
+        "1A7AC5",
+        "0E3436",
+        "064013",
+        "180DA0",
+        "241252",
+        "2AC0C1",
+        "1272B3",
+        "160825",
+        "5BFE94",
+        "3FF890",
+        "58D77A",
+        "66CB62",
+        "6ADA0F",
+        "66749D",
+        "5F45A0",
+        "6A171E",
+        "3B318A",
+        "3CA72F",
+        "642F7D",
+        "640FF7",
+        "448215",
+        "3DDE54",
+        "43A74A",
+        "446ADD",
+        "40B903",
+        "43407D",
+        "46E005",
+        "3BCF24",
+        "5120FB",
+        "3E77B2",
+        "622037",
+        "3EE65E",
+        "3AF7FD",
+        "5E83CF",
+        "6E1E61",
+        "615B6D",
+        "9FD634",
+        "8802B4",
+        "A7E438",
+        "88DD78",
+        "7587BA",
+        "6WOW8E",
+        "944E9A",
+        "7F6F0B",
+        "87486A",
+        "938D89",
+        "A5DC96",
+        "8AC511",
+        "8EEC0B",
+        "A8E72A",
+        "79340A",
+        "8064F6",
+        "7F9E16",
+        "93633B",
+        "7A5D58",
+        "750DFF",
+        "98D33E",
+        "7AD81E",
+        "72C2CE",
+        "7B8CB5",
+        "90DD65",
+        "7B492C",
+        "A5B913",
+        "7448A3",
+        "7B31BE",
+        "790D0D",
+        "9DF2E4",
+        "7532EC",
+        "746FBA",
+        "A9F866",
+        "C3FCCB",
+        "B642E8",
+        "BF8760",
+        "AECCA9",
+        "C3BDBB",
+        "AC702B",
+        "B06BB4",
+        "E48D04",
+        "F32F88",
+        "D90441",
+        "8D4486",
+        "57C822",
+        "D6489C",
+        "1EBF8D",
+        "1220D2",
+        "E124EB",
+        "EF1AD9",
+        "2F7201",
+        "25DD05",
+        "4AC91D",
+        "4D8313",
+        "C81E00",
+        "C3C127",
+        "ED0D7C",
+        "763724",
+        "B0A073",
+        "93CFA9",
+        "WKJH2W",
+        "F11649",
+        "H5A8C9",
+        "ENUHGY",
+        "11AA42",
+        "VUA3RK",
+        "SK5IFO",
+        "8UIT8O",
+        "51E52C",
+        "DDB616"
+      ],
+      "expected_chunks": 1000,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "581FB3",
+              "467D4C",
+              "6634D9",
+              "6F6E42",
+              "4B6EF9",
+              "67S9OX",
+              "66BDA1",
+              "514685",
+              "54B889",
+              "5B782E",
+              "6F22E7",
+              "647143",
+              "69C99E",
+              "4A3CB5",
+              "3D4F88",
+              "3C0936",
+              "605F40",
+              "4806CE",
+              "3EE191",
+              "A05C43",
+              "74292A",
+              "732A9B",
+              "9E1755",
+              "9F5591",
+              "8EF425",
+              "795986",
+              "7DD584",
+              "931AE7",
+              "798996",
+              "7F3A5F",
+              "A21649",
+              "7843D0",
+              "905356",
+              "74404C",
+              "76BECC",
+              "8EBA9B",
+              "9043FE",
+              "82E6EC",
+              "96A2D3",
+              "7AF907",
+              "9EA947",
+              "9652E4",
+              "A8674F",
+              "8DA42F",
+              "D60BB2",
+              "E00373",
+              "D721C6",
+              "D7918D",
+              "D91903",
+              "ABAA03",
+              "B53C12",
+              "D62F5F",
+              "D63A65",
+              "C7F104",
+              "B508E5",
+              "AC0D3D",
+              "BCA1FA",
+              "C2DD02",
+              "BDCC11",
+              "D21D8A",
+              "CCD612",
+              "D6144F",
+              "D74E45",
+              "C5A764",
+              "BC948D",
+              "BB58FF",
+              "C50B26",
+              "BB02FB",
+              "CE3F39",
+              "CB6A9C",
+              "D38DAC",
+              "E10D31",
+              "F721A7",
+              "GMNGN6",
+              "F0E1E6",
+              "E5AAB0",
+              "E3B0EC",
+              "F04E05",
+              "ECE19E",
+              "FADF1A",
+              "EB764E",
+              "EF11AB",
+              "E19E65",
+              "F997BD",
+              "E38906",
+              "E1E36F",
+              "FC4652",
+              "228D42",
+              "E09E2B",
+              "B811D5",
+              "01329F",
+              "990AD0",
+              "69345C",
+              "CFF15D",
+              "DD92E7",
+              "734DCD",
+              "C97B2D",
+              "C062D4",
+              "2B7D7D",
+              "ED7F13",
+              "BAD655",
+              "CC385F",
+              "52436O",
+              "CW3UOZ",
+              "HYHRM3",
+              "WWLKHC",
+              "106EB2",
+              "C027D5",
+              "870TVX",
+              "ED3B90",
+              "A09134",
+              "30AB63",
+              "323C60",
+              "1BEEA1",
+              "24E1EC",
+              "215C82",
+              "34BBB2",
+              "0B73A7",
+              "143C52",
+              "03E779",
+              "018C11",
+              "2BD89C",
+              "2CBB58",
+              "264605",
+              "0DC050",
+              "042C91",
+              "33CD26",
+              "056045",
+              "1A7AC5",
+              "0E3436",
+              "064013",
+              "180DA0",
+              "241252",
+              "2AC0C1",
+              "1272B3",
+              "160825",
+              "5BFE94",
+              "3FF890",
+              "58D77A",
+              "66CB62",
+              "6ADA0F",
+              "66749D",
+              "5F45A0",
+              "6A171E",
+              "3B318A",
+              "3CA72F",
+              "642F7D",
+              "640FF7",
+              "448215",
+              "3DDE54",
+              "43A74A",
+              "446ADD",
+              "40B903",
+              "43407D",
+              "46E005",
+              "3BCF24",
+              "5120FB",
+              "3E77B2",
+              "622037",
+              "3EE65E",
+              "3AF7FD",
+              "5E83CF",
+              "6E1E61",
+              "615B6D",
+              "9FD634",
+              "8802B4",
+              "A7E438",
+              "88DD78",
+              "7587BA",
+              "6WOW8E",
+              "944E9A",
+              "7F6F0B",
+              "87486A",
+              "938D89",
+              "A5DC96",
+              "8AC511",
+              "8EEC0B",
+              "A8E72A",
+              "79340A",
+              "8064F6",
+              "7F9E16",
+              "93633B",
+              "7A5D58",
+              "750DFF",
+              "98D33E",
+              "7AD81E",
+              "72C2CE",
+              "7B8CB5",
+              "90DD65",
+              "7B492C",
+              "A5B913",
+              "7448A3",
+              "7B31BE",
+              "790D0D",
+              "9DF2E4",
+              "7532EC",
+              "746FBA",
+              "A9F866",
+              "C3FCCB",
+              "B642E8",
+              "BF8760",
+              "AECCA9",
+              "C3BDBB",
+              "AC702B",
+              "B06BB4",
+              "E48D04",
+              "F32F88",
+              "D90441",
+              "8D4486",
+              "57C822",
+              "D6489C",
+              "1EBF8D",
+              "1220D2",
+              "E124EB",
+              "EF1AD9",
+              "2F7201",
+              "25DD05",
+              "4AC91D",
+              "4D8313",
+              "C81E00",
+              "C3C127",
+              "ED0D7C",
+              "763724",
+              "B0A073",
+              "93CFA9",
+              "WKJH2W",
+              "F11649",
+              "H5A8C9",
+              "ENUHGY",
+              "11AA42",
+              "VUA3RK",
+              "SK5IFO",
+              "8UIT8O",
+              "51E52C",
+              "DDB616"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 1000
+      }
+    },
+    {
+      "basket_id": "low_basket_70",
+      "companies": [
+        "VY6M08",
+        "GL991K",
+        "8BD141",
+        "344209",
+        "C273AE",
+        "L5L1KV",
+        "AC22C2",
+        "16C5CD",
+        "7D9283",
+        "4SX1MX",
+        "55EDAF",
+        "0FC895",
+        "6621D4",
+        "397A8F",
+        "32F24A",
+        "053EFF",
+        "366C3B",
+        "0A0CF0",
+        "45AD9F",
+        "26B640",
+        "4577FB",
+        "1CB9D3",
+        "35579D",
+        "21E992",
+        "096B8C",
+        "3B50FE",
+        "407036",
+        "4D91CE",
+        "214051",
+        "61BC66",
+        "337024",
+        "75E3IA",
+        "A3F598",
+        "A94A7B",
+        "B1A85D",
+        "B381D8",
+        "85F9CC",
+        "A7577D",
+        "BA9E0C",
+        "898641",
+        "980AA2",
+        "B1B268",
+        "6D752F",
+        "CC3EC4",
+        "71DCD7",
+        "CC35BE",
+        "82E14B",
+        "893904",
+        "D88862",
+        "9817E3",
+        "7B04B3",
+        "963A02",
+        "ACF97B",
+        "950CDB",
+        "9A4ECA",
+        "A37D68",
+        "B31FIB",
+        "A94637",
+        "909F61",
+        "7C4E43",
+        "D8EDD5",
+        "F8DE55",
+        "F3EDB4",
+        "ECF709",
+        "FF4E94",
+        "ED4960",
+        "F39E1E",
+        "F51DB0",
+        "F52DD6",
+        "1BC12C",
+        "75FB0A",
+        "0BF4BA",
+        "9B16D5",
+        "840EAB",
+        "03FAA6",
+        "070B45",
+        "0E3AB8",
+        "2L53YW",
+        "362955",
+        "2EC172",
+        "1F9D90",
+        "1E83DE",
+        "2E84E8",
+        "434F38",
+        "4030E2",
+        "16DFC3",
+        "9D5FA4",
+        "6137BF",
+        "6B5379",
+        "56EA2B",
+        "9743E5",
+        "808319",
+        "29BD75",
+        "4B5Z9N",
+        "30FDDB",
+        "207D79",
+        "7D2CCA",
+        "8F12C1",
+        "3A0161",
+        "0408C2",
+        "8QZGWY",
+        "624618",
+        "2A288A",
+        "3759FC",
+        "5D7765",
+        "5P04D9",
+        "6N8SGW",
+        "0V3G1C",
+        "777D4C",
+        "4410E7",
+        "7DRZ6V",
+        "42A373",
+        "14KMDO",
+        "6319SK",
+        "53E575",
+        "03015E",
+        "2DF666",
+        "5CA410",
+        "04ADEA",
+        "1096C6",
+        "5D3680",
+        "289359",
+        "06A456",
+        "9D0XAW",
+        "26647C",
+        "6D6BEB",
+        "94B448",
+        "WDJL5K",
+        "1F464F",
+        "33AA78",
+        "02CB9E",
+        "6A3C35",
+        "5EEBC1",
+        "68D31D",
+        "1A11D9",
+        "3A3D40",
+        "4D0DAA",
+        "530081",
+        "078D52",
+        "6284B5",
+        "49F284",
+        "1220D5",
+        "41C36B",
+        "578C09",
+        "1F6836",
+        "598870",
+        "039E10",
+        "13A3A4",
+        "098977",
+        "57E8E9",
+        "33E8C7",
+        "33D6AE",
+        "4032BA",
+        "2DBC3B",
+        "0DC680",
+        "58BED9",
+        "42D67A",
+        "3ACF46",
+        "4C76FA",
+        "3B3549",
+        "1B637E",
+        "50523F",
+        "61438D",
+        "423279",
+        "50702E",
+        "7A2A49",
+        "D2BE57",
+        "C8C5A3",
+        "94A326",
+        "C28EFD",
+        "9F2D98",
+        "BBFD98",
+        "AD9800",
+        "8D0EEA",
+        "CAC258",
+        "894BF0",
+        "A9ACC0",
+        "9667C6",
+        "736F6D",
+        "981656",
+        "7C75FD",
+        "A186CA",
+        "72FFB1",
+        "8729E6",
+        "CBBFBF",
+        "D1B713",
+        "AA847A",
+        "926A72",
+        "CCC18B",
+        "A604DD",
+        "9D5D35",
+        "AC642C",
+        "D01BE7",
+        "D3CBAC",
+        "6H0L6H",
+        "C1114B",
+        "C230FE",
+        "8661B6",
+        "C719FB",
+        "C483AF",
+        "CFB94C",
+        "E580D3",
+        "LGOZWV",
+        "DD6948",
+        "EC9483",
+        "F798D3",
+        "F67165",
+        "E399BC",
+        "E78692",
+        "DDB002",
+        "FB30FC",
+        "MWEPXI",
+        "E9C7C0",
+        "F5C8AB",
+        "DF5F14",
+        "E69BA5",
+        "F2C9CB",
+        "FFAB4A",
+        "EF544D",
+        "DCA470",
+        "17BF10",
+        "099A92",
+        "4D8124",
+        "37B618",
+        "4840C9",
+        "1C32D1",
+        "5A2125",
+        "3CDB78",
+        "63EAC1",
+        "43D87A",
+        "58836D",
+        "0F3506",
+        "0E3643",
+        "587D25",
+        "637FBD",
+        "5AAE17",
+        "64E615",
+        "5D6092",
+        "02604F",
+        "1AF7E2",
+        "371B0A",
+        "458A50",
+        "46C75C",
+        "676577",
+        "28F3D4",
+        "42978B",
+        "2C5F89",
+        "20208E",
+        "0B13E8",
+        "54D8C2",
+        "54FF75",
+        "57DCCE",
+        "51F541",
+        "2BAE5F",
+        "17315C",
+        "2A3ADE",
+        "4BE84D",
+        "371C01",
+        "3C9493",
+        "259E51",
+        "4E3AB2",
+        "373B06",
+        "44740A",
+        "57CE2C",
+        "1A1CB0",
+        "38C004",
+        "47B609",
+        "30BD41",
+        "551FA3",
+        "4ABF38",
+        "37020C",
+        "532D47",
+        "143654",
+        "0A0ADE",
+        "0FE2B4",
+        "5C529B",
+        "211A10",
+        "330E28"
+      ],
+      "expected_chunks": 567,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "VY6M08",
+              "GL991K",
+              "8BD141",
+              "344209",
+              "C273AE",
+              "L5L1KV",
+              "AC22C2",
+              "16C5CD",
+              "7D9283",
+              "4SX1MX",
+              "55EDAF",
+              "0FC895",
+              "6621D4",
+              "397A8F",
+              "32F24A",
+              "053EFF",
+              "366C3B",
+              "0A0CF0",
+              "45AD9F",
+              "26B640",
+              "4577FB",
+              "1CB9D3",
+              "35579D",
+              "21E992",
+              "096B8C",
+              "3B50FE",
+              "407036",
+              "4D91CE",
+              "214051",
+              "61BC66",
+              "337024",
+              "75E3IA",
+              "A3F598",
+              "A94A7B",
+              "B1A85D",
+              "B381D8",
+              "85F9CC",
+              "A7577D",
+              "BA9E0C",
+              "898641",
+              "980AA2",
+              "B1B268",
+              "6D752F",
+              "CC3EC4",
+              "71DCD7",
+              "CC35BE",
+              "82E14B",
+              "893904",
+              "D88862",
+              "9817E3",
+              "7B04B3",
+              "963A02",
+              "ACF97B",
+              "950CDB",
+              "9A4ECA",
+              "A37D68",
+              "B31FIB",
+              "A94637",
+              "909F61",
+              "7C4E43",
+              "D8EDD5",
+              "F8DE55",
+              "F3EDB4",
+              "ECF709",
+              "FF4E94",
+              "ED4960",
+              "F39E1E",
+              "F51DB0",
+              "F52DD6",
+              "1BC12C",
+              "75FB0A",
+              "0BF4BA",
+              "9B16D5",
+              "840EAB",
+              "03FAA6",
+              "070B45",
+              "0E3AB8",
+              "2L53YW",
+              "362955",
+              "2EC172",
+              "1F9D90",
+              "1E83DE",
+              "2E84E8",
+              "434F38",
+              "4030E2",
+              "16DFC3",
+              "9D5FA4",
+              "6137BF",
+              "6B5379",
+              "56EA2B",
+              "9743E5",
+              "808319",
+              "29BD75",
+              "4B5Z9N",
+              "30FDDB",
+              "207D79",
+              "7D2CCA",
+              "8F12C1",
+              "3A0161",
+              "0408C2",
+              "8QZGWY",
+              "624618",
+              "2A288A",
+              "3759FC",
+              "5D7765",
+              "5P04D9",
+              "6N8SGW",
+              "0V3G1C",
+              "777D4C",
+              "4410E7",
+              "7DRZ6V",
+              "42A373",
+              "14KMDO",
+              "6319SK",
+              "53E575",
+              "03015E",
+              "2DF666",
+              "5CA410",
+              "04ADEA",
+              "1096C6",
+              "5D3680",
+              "289359",
+              "06A456",
+              "9D0XAW",
+              "26647C",
+              "6D6BEB",
+              "94B448",
+              "WDJL5K",
+              "1F464F",
+              "33AA78",
+              "02CB9E",
+              "6A3C35",
+              "5EEBC1",
+              "68D31D",
+              "1A11D9",
+              "3A3D40",
+              "4D0DAA",
+              "530081",
+              "078D52",
+              "6284B5",
+              "49F284",
+              "1220D5",
+              "41C36B",
+              "578C09",
+              "1F6836",
+              "598870",
+              "039E10",
+              "13A3A4",
+              "098977",
+              "57E8E9",
+              "33E8C7",
+              "33D6AE",
+              "4032BA",
+              "2DBC3B",
+              "0DC680",
+              "58BED9",
+              "42D67A",
+              "3ACF46",
+              "4C76FA",
+              "3B3549",
+              "1B637E",
+              "50523F",
+              "61438D",
+              "423279",
+              "50702E",
+              "7A2A49",
+              "D2BE57",
+              "C8C5A3",
+              "94A326",
+              "C28EFD",
+              "9F2D98",
+              "BBFD98",
+              "AD9800",
+              "8D0EEA",
+              "CAC258",
+              "894BF0",
+              "A9ACC0",
+              "9667C6",
+              "736F6D",
+              "981656",
+              "7C75FD",
+              "A186CA",
+              "72FFB1",
+              "8729E6",
+              "CBBFBF",
+              "D1B713",
+              "AA847A",
+              "926A72",
+              "CCC18B",
+              "A604DD",
+              "9D5D35",
+              "AC642C",
+              "D01BE7",
+              "D3CBAC",
+              "6H0L6H",
+              "C1114B",
+              "C230FE",
+              "8661B6",
+              "C719FB",
+              "C483AF",
+              "CFB94C",
+              "E580D3",
+              "LGOZWV",
+              "DD6948",
+              "EC9483",
+              "F798D3",
+              "F67165",
+              "E399BC",
+              "E78692",
+              "DDB002",
+              "FB30FC",
+              "MWEPXI",
+              "E9C7C0",
+              "F5C8AB",
+              "DF5F14",
+              "E69BA5",
+              "F2C9CB",
+              "FFAB4A",
+              "EF544D",
+              "DCA470",
+              "17BF10",
+              "099A92",
+              "4D8124",
+              "37B618",
+              "4840C9",
+              "1C32D1",
+              "5A2125",
+              "3CDB78",
+              "63EAC1",
+              "43D87A",
+              "58836D",
+              "0F3506",
+              "0E3643",
+              "587D25",
+              "637FBD",
+              "5AAE17",
+              "64E615",
+              "5D6092",
+              "02604F",
+              "1AF7E2",
+              "371B0A",
+              "458A50",
+              "46C75C",
+              "676577",
+              "28F3D4",
+              "42978B",
+              "2C5F89",
+              "20208E",
+              "0B13E8",
+              "54D8C2",
+              "54FF75",
+              "57DCCE",
+              "51F541",
+              "2BAE5F",
+              "17315C",
+              "2A3ADE",
+              "4BE84D",
+              "371C01",
+              "3C9493",
+              "259E51",
+              "4E3AB2",
+              "373B06",
+              "44740A",
+              "57CE2C",
+              "1A1CB0",
+              "38C004",
+              "47B609",
+              "30BD41",
+              "551FA3",
+              "4ABF38",
+              "37020C",
+              "532D47",
+              "143654",
+              "0A0ADE",
+              "0FE2B4",
+              "5C529B",
+              "211A10",
+              "330E28"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 567
+      }
+    },
+    {
+      "basket_id": "high_basket_71",
+      "companies": [
+        "FF8514"
+      ],
+      "expected_chunks": 918,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "FF8514"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 918
+      }
+    },
+    {
+      "basket_id": "high_basket_72",
+      "companies": [
+        "061856"
+      ],
+      "expected_chunks": 570,
+      "period_start": "2021-01-01",
+      "period_end": "2021-01-31",
+      "query": {
+        "auto_enrich_filters": false,
+        "text": "the company announced a new product",
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-01-31T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "061856"
+            ]
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          }
+        },
+        "max_chunks": 570
+      }
+    }
+  ],
+  "planning_metadata": {
+    "total_companies": 4731,
+    "companies_with_chunks": 4731,
+    "comention_queries": 19,
+    "baskets_created": 73,
+    "uses_smart_batching": true
+  }
+}
