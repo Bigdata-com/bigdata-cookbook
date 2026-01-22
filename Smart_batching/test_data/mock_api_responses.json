@@ -1,0 +1,61 @@
+{
+  "comention_response": {
+    "results": {
+      "companies": [
+        {
+          "id": "B8EF97",
+          "total_chunks_count": 100
+        },
+        {
+          "id": "BB07E4",
+          "total_chunks_count": 50
+        },
+        {
+          "id": "3461CF",
+          "total_chunks_count": 75
+        }
+      ]
+    }
+  },
+  "search_response_success": {
+    "results": {
+      "chunks": [
+        {
+          "text": "Sample chunk text about earnings",
+          "relevance": 0.95,
+          "document_id": "doc_123",
+          "headline": "Company Reports Strong Earnings",
+          "timestamp": "2023-06-15T10:30:00Z",
+          "source_name": "Financial Times",
+          "entity_id": "B8EF97",
+          "sentiment": 0.8,
+          "chunk_index": 0
+        },
+        {
+          "text": "Another chunk about revenue growth",
+          "relevance": 0.87,
+          "document_id": "doc_124",
+          "headline": "Revenue Growth Exceeds Expectations",
+          "timestamp": "2023-06-16T14:20:00Z",
+          "source_name": "Wall Street Journal",
+          "entity_id": "B8EF97",
+          "sentiment": 0.9,
+          "chunk_index": 1
+        }
+      ]
+    }
+  },
+  "search_response_empty": {
+    "results": {
+      "chunks": []
+    }
+  },
+  "error_429": {
+    "error": "Rate limit exceeded",
+    "status_code": 429
+  },
+  "error_403": {
+    "error": "Forbidden",
+    "status_code": 403
+  }
+}

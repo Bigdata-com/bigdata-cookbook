@@ -47,18 +47,21 @@ class SmartBatchingPlanner:
     - Exporting planning results to CSV files
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, api_base_url: Optional[str] = None):
         """
         Initialize the planner.
 
         Args:
             api_key: BigData API key. If None, will try to get from environment variable BIGDATA_API_KEY.
+            api_base_url: API base URL. If None, will use API_BASE_URL from config or environment variable.
         """
         self.api_key = api_key or os.getenv("BIGDATA_API_KEY")
         if not self.api_key:
             raise ValueError("API key must be provided or set in BIGDATA_API_KEY environment variable")
         
-        self.api_url = f"{API_BASE_URL}{COMENTION_ENDPOINT}"
+        # Use provided api_base_url, or fall back to config/environment
+        self.api_base_url = api_base_url or os.getenv("BIGDATA_API_BASE_URL") or API_BASE_URL
+        self.api_url = f"{self.api_base_url}{COMENTION_ENDPOINT}"
         self.headers = {
             "X-API-KEY": self.api_key,
             "Content-Type": "application/json",

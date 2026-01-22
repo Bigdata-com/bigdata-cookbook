@@ -220,15 +220,22 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Desk notes per ticker with source attribution
 - Automated report generation with deal tables, summaries, and source links
 
-### 📦 [Smart Batching](./Smart_batching/)
-**Optimized Semantic Search Query Planning for Large Company Universes**
+### 📦 [Smart Batching](./Smart_Batching/)
+**Optimized Semantic Search with Intelligent Query Planning and Large-Scale Execution**
 
-- Two-phase approach: single full-period query followed by adaptive batching
-- Automatic granularity determination (yearly, quarterly, monthly, weekly) based on company volume
-- Volume-based basket creation maximizing query efficiency while staying under limits
-- Reduces total queries by 100-1000x compared to naive approaches
-- CSV export for entities and baskets with full time period coverage
-- Efficiency metrics reporting total queries, utilization, and optimization statistics
+- **Two-Step System**: Planning phase creates optimized baskets, execution phase performs search with proportional sampling
+- **Query Optimization**: Reduces API queries by 67-99% (varies by topic specificity) through intelligent company grouping
+  - Niche topics: Up to 99.86% reduction (e.g., "Customer Trust Erosion": 16 queries vs 11,357 naive)
+  - Specialized topics: 96-97% reduction (e.g., "Higher ESG Compliance Costs": 437 queries)
+  - Broad topics: 32-67% reduction (e.g., "Earnings": 3,699 queries)
+- **Large-Scale Search Execution**: Follows Search_Large_Scale pattern with:
+  - Parallel processing using ThreadPoolExecutor for high-throughput searches
+  - Multi-layered rate limiting (sliding window algorithm + concurrency semaphore)
+  - Automatic retry with exponential backoff for robust error handling
+  - Proportional sampling to retrieve percentage of results while preserving distribution
+- **Volume-Based Batching**: Automatic granularity determination and basket creation maximizing efficiency
+- **Production Ready**: Comprehensive error handling, logging, and plan persistence for reuse
+- **Scalable**: Efficiently handles universes with 10,000+ companies
 
 ## Quick Start
 
@@ -403,7 +410,7 @@ bigdata-cookbook/
 │   ├── services/
 │   ├── requirements.txt
 │   └── README.md
-├── Smart_batching/                                  # Optimized query planning
+├── Smart_Batching/                                  # Optimized query planning
 │   ├── ...
 │   └── README.md
 └── README.md                                        # This file

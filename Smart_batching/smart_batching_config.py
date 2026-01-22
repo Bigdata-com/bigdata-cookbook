@@ -8,16 +8,17 @@ including API endpoints, limits, time periods, and file paths.
 import os
 
 # API Configuration
-API_BASE_URL = "https://api.stg.bigdata.com"
+# Use environment variable or default to production API
+API_BASE_URL = os.getenv("BIGDATA_API_BASE_URL", "https://api.bigdata.com")
 COMENTION_ENDPOINT = "/v1/search/co-mentions/entities"
 MAX_ENTITIES_PER_QUERY = 1000  # Max entities the API can return in a single response
 MAX_ENTITIES_IN_ANY_OF = 500   # Max entities we can send in any_of filter (API complexity limit)
 MAX_CHUNKS_PER_BASKET = 1000   # Maximum chunks per basket to stay within query limits
 
 # Authentication
-API_KEY = os.environ.get("BIGDATA_API_KEY")
-if not API_KEY:
-    raise ValueError("BIGDATA_API_KEY environment variable not set.")
+# Note: API_KEY is not required at import time - it's passed to SmartBatchingPlanner
+# This allows the module to be imported without errors
+API_KEY = os.environ.get("BIGDATA_API_KEY")  # Optional at import time
 
 # Time Period Configuration
 # Default date range: 2 years from January 2021 to December 2022
