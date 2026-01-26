@@ -220,7 +220,7 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Desk notes per ticker with source attribution
 - Automated report generation with deal tables, summaries, and source links
 
-### 📦 [Smart Batching](./Smart_Batching/)
+### 📦 [Smart Batching](./Smart_batching/)
 **Optimized Semantic Search with Intelligent Query Planning and Large-Scale Execution**
 
 - **Two-Step System**: Planning phase creates optimized baskets, execution phase performs search with proportional sampling
