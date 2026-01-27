@@ -16,21 +16,21 @@ from bigdata_client.query_type import QueryType
 
 def convert_smart_batching_to_documents(raw_results: List[Dict]) -> List[Document]:
     """
-    Converte l'output di Smart_batching (list of dicts) in oggetti Document.
+    Convert Smart_batching output (list of dicts) to Document objects.
     
     Args:
-        raw_results: Lista di documenti raw da Smart_batching execute_search()
+        raw_results: List of raw documents from Smart_batching execute_search()
         
     Returns:
-        Lista di oggetti Document compatibili con ThematicScreener
+        List of Document objects compatible with ThematicScreener
     """
     documents = []
     
     for raw_doc in raw_results:
-        # Converti chunks
+        # Convert chunks
         chunks = []
         for raw_chunk in raw_doc.get("chunks", []):
-            # Converti detections in DocumentSentenceEntity
+            # Convert detections to DocumentSentenceEntity
             entities = []
             for detection in raw_chunk.get("detections", []):
                 query_type = QueryType.ENTITY if detection.get("type") == "entity" else QueryType.TOPIC
@@ -46,7 +46,7 @@ def convert_smart_batching_to_documents(raw_results: List[Dict]) -> List[Documen
                 text=raw_chunk.get("text", ""),
                 chunk=raw_chunk.get("cnum", 0),
                 entities=entities,
-                sentences=[],  # Non disponibile in Smart_batching
+                sentences=[],  # Not available in Smart_batching
                 relevance=raw_chunk.get("relevance", 0.0),
                 sentiment=raw_chunk.get("sentiment", 0.0),
                 section_metadata=None,
@@ -54,7 +54,7 @@ def convert_smart_batching_to_documents(raw_results: List[Dict]) -> List[Documen
             )
             chunks.append(chunk)
         
-        # Converti source
+        # Convert source
         raw_source = raw_doc.get("source", {})
         source = DocumentSource(
             key=raw_source.get("id", ""),
@@ -62,13 +62,13 @@ def convert_smart_batching_to_documents(raw_results: List[Dict]) -> List[Documen
             rank=_parse_rank(raw_source.get("rank", "RANK_1"))
         )
         
-        # Converti timestamp
+        # Convert timestamp
         timestamp = _parse_timestamp(raw_doc.get("timestamp", ""))
         
-        # Calcola sentiment medio del documento
+        # Calculate average document sentiment
         doc_sentiment = _calculate_doc_sentiment(chunks)
         
-        # Crea Document
+        # Create Document
         doc = Document(
             id=raw_doc.get("id", ""),
             headline=raw_doc.get("headline", ""),
@@ -90,7 +90,7 @@ def convert_smart_batching_to_documents(raw_results: List[Dict]) -> List[Documen
 
 
 def _parse_rank(rank_str) -> int:
-    """Converte 'RANK_1' -> 0, 'RANK_2' -> 1, etc."""
+    """Convert 'RANK_1' -> 0, 'RANK_2' -> 1, etc."""
     if isinstance(rank_str, int):
         return rank_str
     if rank_str and isinstance(rank_str, str) and rank_str.startswith("RANK_"):
@@ -102,11 +102,11 @@ def _parse_rank(rank_str) -> int:
 
 
 def _parse_timestamp(ts_str: str) -> datetime:
-    """Converte timestamp string in datetime con timezone UTC."""
+    """Convert timestamp string to datetime with UTC timezone."""
     if not ts_str:
         return datetime.now(timezone.utc)
     try:
-        # Formato: "2021-01-04T14:32:06" o "2021-01-04T14:32:06Z"
+        # Format: "2021-01-04T14:32:06" or "2021-01-04T14:32:06Z"
         dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
@@ -116,7 +116,7 @@ def _parse_timestamp(ts_str: str) -> datetime:
 
 
 def _calculate_doc_sentiment(chunks: List[DocumentChunk]) -> float:
-    """Calcola sentiment medio del documento dai chunks."""
+    """Calculate average document sentiment from chunks."""
     sentiments = [c.sentiment for c in chunks if c.sentiment is not None]
     if sentiments:
         return sum(sentiments) / len(sentiments)
@@ -125,67 +125,67 @@ def _calculate_doc_sentiment(chunks: List[DocumentChunk]) -> float:
 
 def convert_to_dataframe(raw_results: List[Dict]) -> pd.DataFrame:
     """
-    Converte l'output di Smart_batching in un DataFrame esploso per chunk.
+    Convert Smart_batching output to a DataFrame exploded by chunk.
     
-    Ogni documento viene espanso in multiple righe, una per ogni chunk.
+    Each document is expanded into multiple rows, one per chunk.
     
     Args:
-        raw_results: Lista di documenti raw da Smart_batching execute_search()
+        raw_results: List of raw documents from Smart_batching execute_search()
         
     Returns:
-        DataFrame con una riga per chunk, contenente:
-        - Colonne documento: date, doc_id, headline, source_id, source_name, source_rank
-        - Colonne chunk: chunk_index, chunk_text, chunk_relevance, chunk_sentiment
-        - Colonne entity: entity_ids
-        - Colonne finali: url, reporting_entities
+        DataFrame with one row per chunk, containing:
+        - Document columns: date, doc_id, headline, source_id, source_name, source_rank
+        - Chunk columns: chunk_index, chunk_text, chunk_relevance, chunk_sentiment
+        - Entity columns: entity_ids
+        - Final columns: url, reporting_entities
     """
     rows = []
     
     for raw_doc in raw_results:
-        # Estrai info documento
+        # Extract document info
         doc_id = raw_doc.get("id", "")
         headline = raw_doc.get("headline", "")
         timestamp = raw_doc.get("timestamp", "")
         url = raw_doc.get("url", "")
         reporting_entities = raw_doc.get("reporting_entities", [])
         
-        # Estrai info source
+        # Extract source info
         raw_source = raw_doc.get("source", {})
         source_id = raw_source.get("id", "")
         source_name = raw_source.get("name", "")
         source_rank = raw_source.get("rank", "")
         
-        # Esplodi chunks
+        # Explode chunks
         chunks = raw_doc.get("chunks", [])
         
         if not chunks:
-            # Se non ci sono chunks, crea comunque una riga con valori vuoti
+            # If no chunks, still create a row with empty values
             rows.append({
-                # Documento
+                # Document
                 "date": timestamp,
                 "doc_id": doc_id,
                 "headline": headline,
                 "source_id": source_id,
                 "source_name": source_name,
                 "source_rank": source_rank,
-                # Chunk (vuoti)
+                # Chunk (empty)
                 "chunk_index": None,
                 "chunk_text": "",
                 "chunk_relevance": None,
                 "chunk_sentiment": None,
                 # Entity
                 "entity_ids": [],
-                # Finali
+                # Final
                 "url": url,
                 "reporting_entities": reporting_entities,
             })
         else:
             for chunk in chunks:
-                # Entity IDs (aggiunti da execute_search)
+                # Entity IDs (added by execute_search)
                 entity_ids = chunk.get("entity_ids", [])
                 
                 rows.append({
-                    # Documento
+                    # Document
                     "date": timestamp,
                     "doc_id": doc_id,
                     "headline": headline,
@@ -199,15 +199,15 @@ def convert_to_dataframe(raw_results: List[Dict]) -> pd.DataFrame:
                     "chunk_sentiment": chunk.get("sentiment"),
                     # Entity
                     "entity_ids": entity_ids,
-                    # Finali
+                    # Final
                     "url": url,
                     "reporting_entities": reporting_entities,
                 })
     
-    # Crea DataFrame
+    # Create DataFrame
     df = pd.DataFrame(rows)
     
-    # Converti date in Date (solo data, senza orario)
+    # Convert date to Date (date only, no time)
     if "date" in df.columns and not df.empty:
         df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True).dt.date
     
