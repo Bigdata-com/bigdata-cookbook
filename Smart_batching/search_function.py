@@ -336,7 +336,7 @@ def get_smart_batching_planner(api_key: Optional[str] = None, api_base_url: Opti
 
 def plan_search(
     text: str,
-    universe_csv_path: str,
+    companies: List[str],
     start_date: str,
     end_date: str,
     api_key: Optional[str] = None,
@@ -346,14 +346,14 @@ def plan_search(
     Plan a search using smart batching approach.
     
     This function organizes the search by:
-    1. Loading universe of companies from CSV
+    1. Loading universe of companies
     2. Getting comention volumes for all companies
     3. Creating optimized baskets
     4. Building complete query structures with text embedded
     
     Args:
         text: Search query text
-        universe_csv_path: Path to CSV file with entity IDs (one per line)
+        companies: List of companies
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format
         api_key: API key (defaults to BIGDATA_API_KEY env var)
@@ -381,8 +381,7 @@ def plan_search(
     logger.info(f"Date range: {start_date} to {end_date}")
     
     # Load universe
-    companies = load_universe_from_csv(universe_csv_path)
-    logger.info(f"Loaded {len(companies)} companies from universe")
+    logger.info(f"Loaded {len(companies)} companies")
     
     # Try to use SmartBatchingPlanner if available
     planner = get_smart_batching_planner(api_key=api_key, api_base_url=api_base_url)
@@ -592,15 +591,70 @@ def make_search_request(
     return None
 
 
+def deduplicate_documents(documents: List[Dict]) -> List[Dict]:
+    """
+    Deduplicate documents, merging chunks from duplicate documents.
+    
+    When the same document appears multiple times (e.g., from different baskets
+    searching for different entities), this function merges their chunks to
+    ensure no chunk is lost.
+    
+    Args:
+        documents: List of document dictionaries (each containing a chunks array)
+        
+    Returns:
+        List of unique documents with merged chunks
+    """
+    doc_map = {}  # doc_id -> document with merged chunks
+    docs_without_id = []
+    
+    for doc in documents:
+        doc_id = doc.get("id", "")
+        if not doc_id:
+            # Keep documents without ID as-is
+            docs_without_id.append(doc)
+        elif doc_id not in doc_map:
+            # First occurrence - store a copy with chunks as a list
+            doc_copy = doc.copy()
+            doc_copy["chunks"] = list(doc.get("chunks", []))
+            doc_map[doc_id] = doc_copy
+        else:
+            # Duplicate document - merge chunks, avoiding duplicates
+            existing_doc = doc_map[doc_id]
+            existing_chunks = existing_doc.get("chunks", [])
+            
+            # Build set of existing chunk identifiers (using chunk_index or text hash as fallback)
+            existing_chunk_ids = set()
+            for chunk in existing_chunks:
+                chunk_id = chunk.get("chunk_index")
+                if chunk_id is None:
+                    # Fallback: use hash of text content
+                    chunk_id = hash(chunk.get("text", ""))
+                existing_chunk_ids.add(chunk_id)
+            
+            # Add new chunks that don't already exist
+            for chunk in doc.get("chunks", []):
+                chunk_id = chunk.get("chunk_index")
+                if chunk_id is None:
+                    chunk_id = hash(chunk.get("text", ""))
+                if chunk_id not in existing_chunk_ids:
+                    existing_chunks.append(chunk)
+                    existing_chunk_ids.add(chunk_id)
+    
+    original_count = len(documents)
+    unique_documents = list(doc_map.values()) + docs_without_id
+    logger.info(f"Deduplicated: {len(unique_documents)} unique documents from {original_count} total (chunks merged)")
+    
+    return unique_documents
+
+
 def execute_search(
     search_plan: Dict,
     chunk_percentage: float,
     requests_per_minute: int = DEFAULT_REQUESTS_PER_MINUTE,
     api_key: Optional[str] = None,
     api_base_url: Optional[str] = None,
-    max_workers: int = DEFAULT_MAX_WORKERS,
-    sort_results: bool = True,
-    deduplicate_results: bool = False
+    max_workers: int = DEFAULT_MAX_WORKERS
 ) -> List[Dict]:
     """
     Execute search with proportional sampling.
@@ -612,11 +666,10 @@ def execute_search(
         api_key: API key (defaults to BIGDATA_API_KEY env var)
         api_base_url: API base URL
         max_workers: Number of parallel workers
-        sort_results: Whether to sort results by relevance
-        deduplicate_results: Whether to remove duplicate chunks
         
     Returns:
-        List of chunk dictionaries
+        List of document dictionaries (each containing a chunks array).
+        Note: Use deduplicate_documents() after this to merge duplicate documents.
     """
     # Input validation
     validate_chunk_percentage(chunk_percentage)
@@ -630,8 +683,10 @@ def execute_search(
     
     api_base_url = api_base_url or os.getenv("BIGDATA_API_BASE_URL", DEFAULT_API_BASE_URL)
     
+    total_expected = search_plan.get('total_expected_chunks', 0)
+    target_chunks = int(total_expected * chunk_percentage)
     logger.info(f"Executing search with {chunk_percentage*100:.1f}% of chunks")
-    logger.info(f"Total expected chunks: {search_plan.get('total_expected_chunks', 0):,}")
+    logger.info(f"Total maximum expected chunks: {target_chunks:,}")
     
     # Initialize rate limiter and concurrency limiter
     rate_limiter = SlidingWindowRateLimiter(max_requests=requests_per_minute)
@@ -642,7 +697,8 @@ def execute_search(
     for basket in search_plan["baskets"]:
         expected = basket.get("expected_chunks", 0)
         if expected > 0:
-            proportional_chunks = max(1, int(expected * chunk_percentage))
+            # Calculate proportional chunks, capped at API limit (1000)
+            proportional_chunks = min(max(1, int(expected * chunk_percentage)), MAX_CHUNKS_PER_BASKET)
             basket_query = basket["query"].copy()
             basket_query["max_chunks"] = proportional_chunks
             baskets_to_search.append({
@@ -656,12 +712,12 @@ def execute_search(
     logger.info(f"Searching {len(baskets_to_search)} baskets")
     
     # Execute searches in parallel
-    all_chunks = []
+    all_documents = []
     failed_baskets = []
     start_time = time.time()
     
     def search_basket(basket_info):
-        """Search a single basket."""
+        """Search a single basket and return documents with enriched chunks."""
         try:
             # Get entity IDs from the basket (companies we're searching for)
             # This is the most reliable source since we know which companies are in each basket
@@ -679,7 +735,9 @@ def execute_search(
             
             if response and "results" in response:
                 # results is an array of documents, each with a chunks array
-                all_chunks = []
+                documents = response["results"]
+                total_chunks = 0
+                
                 # Also try to get entity IDs from the query filters as backup
                 query_entity_ids = []
                 query_filters = basket_info.get("query", {}).get("filters", {})
@@ -695,8 +753,9 @@ def execute_search(
                 # Debug: Log structure of first response to understand format
                 first_doc_logged = False
                 
-                for document in response["results"]:
+                for document in documents:
                     document_chunks = document.get("chunks", [])
+                    total_chunks += len(document_chunks)
                     # Get document-level entity information (try both snake_case and camelCase)
                     reporting_entities = document.get("reporting_entities") or document.get("reportingEntities") or []
                     
@@ -708,15 +767,8 @@ def execute_search(
                         logger.debug(f"First chunk entities: {document_chunks[0].get('entities')}")
                         first_doc_logged = True
                     
-                    # Enrich each chunk with document-level metadata
+                    # Enrich each chunk with entity information
                     for chunk in document_chunks:
-                        chunk["document_id"] = document.get("id", "")
-                        chunk["headline"] = document.get("headline", "")
-                        chunk["timestamp"] = document.get("timestamp", "")
-                        chunk["source_name"] = document.get("source", {}).get("name", "Unknown")
-                        chunk["document_type"] = document.get("document_type", "")
-                        chunk["url"] = document.get("url", "")
-                        
                         # Extract entity information from chunk
                         # Try multiple possible field names and structures
                         entity_ids = []
@@ -761,10 +813,9 @@ def execute_search(
                         # Store entity information (always set, even if empty)
                         chunk["entity_ids"] = entity_ids
                         chunk["primary_entity_id"] = entity_ids[0] if entity_ids else None
-                    all_chunks.extend(document_chunks)
                 
-                logger.info(f"Basket {basket_info['basket_id']}: Retrieved {len(all_chunks)} chunks")
-                return all_chunks, basket_info["basket_id"]
+                logger.info(f"Basket {basket_info['basket_id']}: Retrieved {len(documents)} documents with {total_chunks} chunks")
+                return documents, basket_info["basket_id"]
             else:
                 logger.warning(f"Basket {basket_info['basket_id']}: No results or error")
                 return [], basket_info["basket_id"]
@@ -783,9 +834,9 @@ def execute_search(
             completed += 1
             basket_info = futures[future]
             try:
-                chunks, basket_id = future.result()
-                if chunks:
-                    all_chunks.extend(chunks)
+                documents, basket_id = future.result()
+                if documents:
+                    all_documents.extend(documents)
                 else:
                     failed_baskets.append(basket_id)
             except Exception as e:
@@ -797,26 +848,14 @@ def execute_search(
     
     elapsed = time.time() - start_time
     
-    # Process results
-    if sort_results:
-        all_chunks.sort(key=lambda x: x.get("relevance", 0), reverse=True)
+    # Count total chunks across all documents
+    total_chunks = sum(len(doc.get("chunks", [])) for doc in all_documents)
     
-    if deduplicate_results:
-        seen = set()
-        unique_chunks = []
-        for chunk in all_chunks:
-            chunk_id = chunk.get("document_id", "") + "_" + str(chunk.get("chunk_index", ""))
-            if chunk_id not in seen:
-                seen.add(chunk_id)
-                unique_chunks.append(chunk)
-        all_chunks = unique_chunks
-        logger.info(f"Deduplicated: {len(unique_chunks)} unique chunks from {len(all_chunks) + len(unique_chunks) - len(unique_chunks)} total")
-    
-    logger.info(f"Search complete: {len(all_chunks)} chunks retrieved in {elapsed:.2f}s")
+    logger.info(f"Search complete: {len(all_documents)} documents with {total_chunks} chunks retrieved in {elapsed:.2f}s")
     if failed_baskets:
         logger.warning(f"Failed baskets: {len(failed_baskets)}")
     
-    return all_chunks
+    return all_documents
 
 
 def save_plan(plan: Dict, file_path: str) -> None:

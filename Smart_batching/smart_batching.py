@@ -170,7 +170,7 @@ class SmartBatchingPlanner:
                 for company_data in companies_data:
                     company_id = company_data.get("id")
                     chunks_count = company_data.get("total_chunks_count", 0)
-                    if company_id:
+                    if company_id and company_id in batch:
                         company_volumes[company_id] = chunks_count
                         found_company_ids.add(company_id)
                 
@@ -461,8 +461,9 @@ class SmartBatchingPlanner:
             }
 
             for company_id, chunks in companies_list:
-                # Check if adding this company would exceed the limit
-                if current_basket["total_chunks"] + chunks > max_chunks:
+                # Check if adding this company would exceed the chunk limit OR entity limit
+                if (current_basket["total_chunks"] + chunks > max_chunks or
+                    len(current_basket["companies"]) >= MAX_ENTITIES_IN_ANY_OF):
                     # Save current basket and start a new one
                     if current_basket["companies"]:
                         baskets.append({
