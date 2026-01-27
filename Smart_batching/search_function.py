@@ -336,7 +336,7 @@ def get_smart_batching_planner(api_key: Optional[str] = None, api_base_url: Opti
 
 def plan_search(
     text: str,
-    companies: List[str],
+    universe_csv_path: str,
     start_date: str,
     end_date: str,
     api_key: Optional[str] = None,
@@ -346,14 +346,14 @@ def plan_search(
     Plan a search using smart batching approach.
     
     This function organizes the search by:
-    1. Loading universe of companies
+    1. Loading universe of companies from CSV
     2. Getting comention volumes for all companies
     3. Creating optimized baskets
     4. Building complete query structures with text embedded
     
     Args:
         text: Search query text
-        companies: List of companies
+        universe_csv_path: Path to CSV file with entity IDs (one per line)
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format
         api_key: API key (defaults to BIGDATA_API_KEY env var)
@@ -381,7 +381,8 @@ def plan_search(
     logger.info(f"Date range: {start_date} to {end_date}")
     
     # Load universe
-    logger.info(f"Loaded {len(companies)} companies")
+    companies = load_universe_from_csv(universe_csv_path)
+    logger.info(f"Loaded {len(companies)} companies from universe")
     
     # Try to use SmartBatchingPlanner if available
     planner = get_smart_batching_planner(api_key=api_key, api_base_url=api_base_url)
