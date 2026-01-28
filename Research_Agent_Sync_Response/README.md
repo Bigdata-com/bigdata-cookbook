@@ -1,16 +1,19 @@
-# Research Agent API Client
+# Research Agent API - Synchronous Client
 
-A Python wrapper for the Bigdata.com Research Agent API that provides synchronous-style responses with comprehensive citations.
+A robust Python client for the [Bigdata.com Research Agent API](https://docs.bigdata.com/research-agent) that provides synchronous responses with complete citations, automatic retry handling, and network resilience.
 
-> **Note:** The Research Agent API is constantly evolving. This client wrapper implements few parameters as of January 2026. 
+> **Note:** The Research Agent API is constantly evolving. This client wrapper implements key parameters as of January 2026.
 
 ## Features
 
-- **Simple Interface**: Single method call returns complete research results
-- **Synchronous Experience**: No need to handle streaming—results returned when ready
-- **Bigdata.com Citation Format**: Citations follow the standard Bigdata.com JSON structure
-- **Inline Citations**: Get answers with `[1]`, `[2]` markers linked to numbered references
-- **Flexible Output**: Access just the answer, just citations, or both
+| Feature | Description |
+|---------|-------------|
+| **Synchronous Interface** | Simple blocking API - no async/await complexity |
+| **Automatic Retries** | Exponential backoff for connection errors, timeouts, and server errors |
+| **Stream Timeout Detection** | Detects stalled connections and automatically triggers retries |
+| **Conversation Continuity** | Resumes interrupted conversations using `chat_id` with the original message |
+| **Bigdata.com Citations** | Structured citations with source info, timestamps, and text chunks |
+| **Inline Citations** | Answer text with `[1]`, `[2]` markers linked to numbered references |
 
 ---
 
@@ -18,10 +21,7 @@ A Python wrapper for the Bigdata.com Research Agent API that provides synchronou
 
 ### 1. Set Your API Key
 
-#### Note: Should get from secret manager in Prod env
-
 ```python
-
 import os
 os.environ["BIGDATA_API_KEY"] = "your-api-key-here"
 ```
@@ -51,10 +51,15 @@ print(result.get_citations_json())
 
 ## Installation
 
-Copy `research_client.py` to your project. No external dependencies beyond the Python standard library.
+Copy `research_client.py` to your project. Only requires the `requests` library.
+
+```bash
+pip install requests
+```
 
 **Requirements:**
 - Python 3.7+
+- `requests` library
 - `BIGDATA_API_KEY` environment variable
 
 ---
@@ -64,13 +69,28 @@ Copy `research_client.py` to your project. No external dependencies beyond the P
 ### `ResearchClient`
 
 ```python
-client = ResearchClient(api_key=None, base_url=None)
+client = ResearchClient(
+    api_key=None,           # Or set BIGDATA_API_KEY env var
+    base_url=None,          # Defaults to production URL
+    timeout=300,            # Connection timeout (seconds)
+    stream_timeout=30.0,    # Max wait for streaming data (seconds)
+    max_retries=3,          # Retry attempts for transient failures
+    retry_delay=1.0,        # Initial retry delay (seconds)
+    retry_backoff=2.0,      # Exponential backoff multiplier
+    retry_max_delay=60.0    # Maximum retry delay cap (seconds)
+)
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `api_key` | `str` | `None` | API key. If not provided, reads from `BIGDATA_API_KEY` env var |
 | `base_url` | `str` | `None` | API endpoint. Defaults to Bigdata.com production URL |
+| `timeout` | `int` | `300` | Connection timeout in seconds |
+| `stream_timeout` | `float` | `30.0` | Max seconds to wait for data during streaming. Triggers retry if exceeded |
+| `max_retries` | `int` | `3` | Maximum retry attempts for transient failures |
+| `retry_delay` | `float` | `1.0` | Initial delay between retries in seconds |
+| `retry_backoff` | `float` | `2.0` | Exponential backoff multiplier |
+| `retry_max_delay` | `float` | `60.0` | Maximum delay cap between retries |
 
 ### `client.research()`
 
@@ -116,6 +136,90 @@ result2 = client.follow_up(
 | `message` | `str` | Your follow-up question |
 | `previous_result` | `ResearchResult` | Result from previous `research()` or `follow_up()` call |
 | `research_effort` | `str` | Research depth: `"lite"` or `"standard"` |
+
+---
+
+## Retry Mechanism
+
+The client includes built-in retry logic with exponential backoff for network resilience.
+
+### Retryable Errors (automatic retry)
+
+| Error Type | Description |
+|------------|-------------|
+| `ConnectionError` | Network unreachable, DNS failures |
+| `Timeout` | Connection timeout |
+| `ReadTimeout` | No data received within read timeout |
+| `StreamTimeoutError` | No data received within `stream_timeout` |
+| `ChunkedEncodingError` | Connection broken during streaming |
+| HTTP 408 | Request Timeout |
+| HTTP 429 | Too Many Requests (rate limiting) |
+| HTTP 500, 502, 503, 504 | Server errors |
+
+### Non-Retryable Errors (raised immediately)
+
+| Error Type | Description |
+|------------|-------------|
+| HTTP 400 | Bad Request |
+| HTTP 401 | Unauthorized (invalid API key) |
+| HTTP 403 | Forbidden |
+| HTTP 404 | Not Found |
+| `ValueError` | Invalid parameters |
+
+### Conversation Continuity
+
+When a network interruption occurs mid-stream:
+1. The client captures any partial data and the conversation `chat_id`
+2. On retry, it sends the original message with the `chat_id` to resume
+3. Partial responses are accumulated across retries for a complete answer
+
+### Custom Retry Configuration
+
+```python
+# For unstable networks
+client = ResearchClient(
+    stream_timeout=60.0,    # Wait longer for data
+    max_retries=5,          # More retry attempts
+    retry_delay=2.0,        # Start with 2s delay
+    retry_backoff=2.0,      # Double delay each retry
+    retry_max_delay=120.0   # Cap at 2 minutes
+)
+```
+
+---
+
+## Logging
+
+Enable logging to monitor retry attempts, connection status, and API responses:
+
+```python
+from research_client import ResearchClient, setup_logging
+import logging
+
+# Configure logging
+setup_logging(
+    log_file="research_client.log",  # Log file path
+    level=logging.INFO,               # Log level
+    console=True,                     # Also print to console
+    file_mode="w"                     # "w" to overwrite, "a" to append
+)
+
+client = ResearchClient()
+result = client.research("Your query")
+```
+
+**Sample log output:**
+
+```
+2026-01-28 16:01:35 - research_client - INFO - Starting research query (effort=standard, chat_id=new)
+2026-01-28 16:01:35 - research_client - INFO - Starting request attempt 1/4
+2026-01-28 16:01:41 - research_client - INFO - Received chat_id: 17696340...
+2026-01-28 16:01:41 - research_client - INFO - Received message type: THINKING
+2026-01-28 16:02:47 - research_client - WARNING - Retryable error on attempt 1/4: ReadTimeout: ...
+2026-01-28 16:02:47 - research_client - WARNING - Retry attempt 1/3 after 2.0s delay (resuming chat_id=17696340...)
+2026-01-28 16:02:49 - research_client - INFO - Starting request attempt 2/4
+2026-01-28 16:03:54 - research_client - INFO - Request succeeded after 2 retry attempt(s)
+```
 
 ---
 
@@ -196,17 +300,6 @@ full_result = result.to_dict()
 full_json = result.to_json()
 ```
 
-Returns:
-
-```json
-{
-  "answer": "The research answer...",
-  "citations": [...],
-  "chat_id": "...",
-  "processing_time_ms": 12580
-}
-```
-
 ### D. Answer with Inline Citation Numbers
 
 ```python
@@ -217,63 +310,29 @@ answer_with_refs = result.get_answer_with_citations()
 numbered_refs = result.get_numbered_citations()
 ```
 
-**Example output:**
-
-```
-NVIDIA faces several key risks [1] [2]:
-
-*   **Intensifying Competition** [3] [4]: The company faces pressure...
-*   **Supply Chain Challenges** [5]: NVIDIA has struggled to meet orders...
-```
-
-The `numbered_refs` list contains citations with a `number` field:
-
-```json
-[
-  {
-    "number": 1,
-    "id": "B7B9DA8A52A784BA285FCCA91F66555F",
-    "headline": "Why Nvidia Could Have a Terrible Year",
-    "source": {"name": "Yahoo! Finance"},
-    "url": "https://...",
-    "chunks": [...]
-  },
-  {
-    "number": 2,
-    ...
-  }
-]
-```
-
-### Export with Inline Citations
-
-```python
-# As dictionary
-data = result.to_dict_with_inline_citations()
-
-# As JSON file
-with open("result.json", "w") as f:
-    f.write(result.to_json_with_inline_citations())
-```
-
 ---
 
 ## Complete Example
 
 ```python
 import os
-import json
-from research_client import ResearchClient
+import logging
+from research_client import ResearchClient, setup_logging
 
-# Setup
-os.environ["BIGDATA_API_KEY"] = "your-api-key"
-client = ResearchClient()
+# Setup logging
+setup_logging(log_file="research.log", console=True)
+
+# Setup client with custom retry config
+client = ResearchClient(
+    stream_timeout=60.0,  # 60s stream timeout
+    max_retries=3         # 3 retry attempts
+)
 
 # Execute research
 print("Researching...")
 result = client.research(
     message="What are the key risks facing NVIDIA?",
-    research_effort="lite"
+    research_effort="standard"
 )
 
 print(f"Done in {result.processing_time_ms}ms")
@@ -302,75 +361,60 @@ print("\n✅ Saved to research_output.json")
 
 ---
 
-## Citation Format Reference
-
-### Source Ranks
-
-| Rank | Description |
-|------|-------------|
-| `RANK_1` | Premium/Primary sources (e.g., CNBC, Benzinga, Reuters) |
-| `RANK_2` | Major sources (e.g., Yahoo Finance, Nasdaq) |
-| `RANK_3` | Secondary sources |
-
-### Chunk Fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `cnum` | `int` | Chunk number within the document |
-| `text` | `str` | Relevant text excerpt |
-| `relevance` | `float` | Relevance score (0.0 - 1.0) |
-| `sentiment` | `float` | Sentiment score |
-
----
-
 ## Error Handling
 
 ```python
+from requests.exceptions import HTTPError, ConnectionError, Timeout
+
 try:
     result = client.research("Your question")
 except ValueError as e:
     print(f"Configuration error: {e}")
+except HTTPError as e:
+    print(f"API error (non-retryable): {e}")
+except (ConnectionError, Timeout) as e:
+    print(f"Network error (after all retries): {e}")
 except Exception as e:
-    print(f"API error: {e}")
+    print(f"Unexpected error: {e}")
 ```
 
 Common errors:
 - **Missing API key**: Set `BIGDATA_API_KEY` environment variable
-- **Invalid API key**: Check your key is correct and active
-- **Rate limiting**: Reduce request frequency
+- **Invalid API key**: Check your key is correct and active (HTTP 401)
+- **Rate limiting**: Request frequency exceeded (HTTP 429)
+- **Network issues**: Check connectivity; client will retry automatically
 
 ---
 
 ## Tips
 
-1. **Research Effort Levels** (only two supported):
-   - `"lite"`: Quick response, best for simple factual queries (~10-20 seconds)
-   - `"standard"`: Deep research with multi-step reasoning, recommended for complex analysis (~20-60 seconds)
+1. **Research Effort Levels**:
+   - `"lite"`: Quick response (~10-20 seconds), best for simple factual queries
+   - `"standard"`: Deep research (~20-60 seconds), recommended for complex analysis
 
 2. **Follow-up Questions**: Use `follow_up()` or pass `chat_id` for multi-turn dialogue:
    ```python
-   # Option 1: Using follow_up() helper
    result1 = client.research("What are NVIDIA's main products?")
    result2 = client.follow_up("How do they compare to AMD?", result1)
    result3 = client.follow_up("Compare their valuations", result2)
-   
-   # Option 2: Using chat_id directly
-   result1 = client.research("What are NVIDIA's main products?")
-   result2 = client.research(
-       "How do they compare to AMD?",
-       chat_id=result1.chat_id
-   )
    ```
 
-3. **Time-Based Queries**: Include time references naturally in your message:
+3. **Stream Timeout**: Increase `stream_timeout` for slow/unstable networks:
+   ```python
+   client = ResearchClient(stream_timeout=60.0)  # 60 seconds
+   ```
+
+4. **Disable Stream Timeout**: Set to `None` for no timeout checking:
+   ```python
+   client = ResearchClient(stream_timeout=None)
+   ```
+
+5. **Time-Based Queries**: Include time references naturally:
    ```python
    result = client.research("What happened to Tesla stock in the last 24 hours?")
-   result = client.research("Summarize Apple's news from this week")
    ```
 
-4. **Citation Deduplication**: The client automatically deduplicates citations from multiple sources.
-
-5. **API Status**: The Research Agent API is currently in **Beta**. Parameters and behavior may evolve.
+6. **Citation Deduplication**: The client automatically deduplicates citations from multiple sources.
 
 ---
 
@@ -379,12 +423,11 @@ Common errors:
 | File | Description |
 |------|-------------|
 | `research_client.py` | Main client library |
-| `usage.ipynb` | Interactive examples (Jupyter notebook) |
+| `research_client_usage.ipynb` | Interactive examples (Jupyter notebook) |
 | `README.md` | This documentation |
 
 ---
 
 ## Support
 
-For API issues or questions, contact your Bigdata.com representative.
-
+For API issues or questions, contact your Bigdata.com representative or visit [docs.bigdata.com](https://docs.bigdata.com).
