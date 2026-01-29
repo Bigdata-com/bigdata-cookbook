@@ -188,6 +188,12 @@ client = ResearchClient(
 
 ---
 
+## Thread Safety
+
+`ResearchClient` is **thread-safe**. A single instance may be shared across threads—for example, one client in a server handling 100+ requests per second. Each `research()` or `follow_up()` call uses only local state; instance attributes are read-only during requests. Call `setup_logging()` once at application startup, not from request handlers.
+
+---
+
 ## Logging
 
 Enable logging to monitor retry attempts, connection status, and API responses:

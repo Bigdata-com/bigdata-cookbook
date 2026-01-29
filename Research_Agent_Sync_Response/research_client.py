@@ -96,6 +96,15 @@ Exceptions
 - requests.HTTPError: Raised for non-retryable HTTP errors
 - ValueError: Raised for invalid parameters
 
+Thread Safety
+-------------
+ResearchClient is thread-safe. A single instance may be shared across threads
+(e.g. one client serving 100+ requests per second). Each research() or
+follow_up() call uses only local state; instance attributes are read-only
+during requests. The requests library is used without a shared Session, and
+Python's logging is thread-safe. Call setup_logging() once at application
+startup, not from request handlers.
+
 For more information, see: https://docs.bigdata.com/research-agent
 """
 
@@ -535,6 +544,9 @@ class ResearchClient:
     This client provides a simple interface for executing research queries
     with built-in retry logic, network resilience, and conversation continuity.
     
+    Thread-safe: a single instance may be shared across threads (e.g. in a
+    server handling many concurrent requests).
+    
     Attributes:
         api_key (str): Bigdata.com API key
         base_url (str): API base URL
@@ -780,7 +792,7 @@ class ResearchClient:
                         payload["message"] = message
                         logger.warning(
                             f"Retry attempt {attempt}/{self.max_retries} after {retry_delay:.1f}s delay "
-                            f"(resuming chat_id={session_chat_id[:8]}...)"
+                            f"(resuming chat_id={session_chat_id})"
                         )
                     else:
                         logger.warning(
@@ -839,7 +851,7 @@ class ResearchClient:
                             response_chat_id = event.get("chat_id")
                             if response_chat_id and not session_chat_id:
                                 session_chat_id = response_chat_id
-                                logger.info(f"Received chat_id: {session_chat_id[:8]}...")
+                                logger.info(f"Received chat_id: {session_chat_id}")
                                 _flush_handlers()
                         
                         msg = event.get("message", {})
@@ -924,7 +936,7 @@ class ResearchClient:
                         f"{type(e).__name__}: {str(e)}"
                     )
                     if session_chat_id:
-                        logger.info(f"Will resume conversation with chat_id={session_chat_id[:8]}... on next attempt")
+                        logger.info(f"Will resume conversation with chat_id={session_chat_id} on next attempt")
                     _flush_handlers()  # Ensure error is logged before retry
                     continue
                 else:
