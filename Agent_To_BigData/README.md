@@ -15,8 +15,8 @@ This demo showcases a multi-source AI agent that can:
 
 | File | Description |
 |------|-------------|
-| `langgraph_core.py` | Reusable core module with all functions |
-| `research_client.py` | Bigdata.com Research Agent client with citation support |
+| `langgraph_core.py` | Reusable core module with logging, retry, KG cache, and tools |
+| `research_client.py` | Bigdata.com Research Agent client with retry, logging, and full chat_id |
 | `agent_to_search.ipynb` | Demo: Agent using Search & Knowledge Graph APIs |
 | `agent_to_research_agent.ipynb` | Demo: Hierarchical agent with Research Agent escalation |
 
@@ -98,15 +98,21 @@ print(result['response'])
 display_agent_response(agent, "Analyze NVIDIA position")
 ```
 
+## Production Features
+
+- **Logging**: Module-level logging for Bigdata API calls; full `chat_id` logged for research tool completion and Research Client (when `setup_logging()` is used).
+- **Retry**: Exponential backoff for Bigdata Search and Knowledge Graph calls; Research Agent uses built-in retry and stream timeout detection.
+- **Knowledge Graph cache**: Entity lookups by ticker/company name are cached in memory to avoid repeated API calls for the same entity.
+
 ## Available Tools
 
 ### External Tools (Bigdata.com)
 
 | Tool | API | Description |
 |------|-----|-------------|
-| `bigdata_lookup_company` | Knowledge Graph | Resolve ticker to entity ID |
-| `bigdata_search_news` | Search | Search financial news and headlines |
-| `bigdata_research_agent` | Research Agent | Deep research with citations (20-60s) |
+| `bigdata_lookup_company` | Knowledge Graph | Resolve ticker/company name to entity ID (cached by ticker/name) |
+| `bigdata_search_news` | Search | Search financial news and headlines (retry on transient failures) |
+| `bigdata_research_agent` | Research Agent | Deep research with citations (20-60s); retry and full chat_id logging |
 
 ### Internal Tools (Company Systems)
 

@@ -22,12 +22,16 @@ Usage:
 
 import os
 import json
+import logging
 import sqlite3
 import random
+import time
 import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Callable
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 # LangChain imports
 from langchain.tools import tool
@@ -58,6 +62,15 @@ class Config:
 # Global config instance
 _config: Optional[Config] = None
 _vector_store: Optional[FAISS] = None
+
+# Knowledge Graph entity cache: key = normalized ticker/company name -> value = entity payload (dict)
+_kg_entity_cache: Dict[str, Dict[str, Any]] = {}
+
+# Retry configuration for Bigdata API calls
+BIGDATA_RETRY_MAX_ATTEMPTS = 3
+BIGDATA_RETRY_DELAY = 1.0
+BIGDATA_RETRY_BACKOFF = 2.0
+BIGDATA_RETRY_STATUS_CODES = {408, 429, 500, 502, 503, 504}
 
 
 def setup_environment(
@@ -446,6 +459,66 @@ def get_vector_store() -> FAISS:
 # BIGDATA.COM API TOOLS
 # ============================================================================
 
+def _normalize_kg_key(ticker_or_name: str) -> str:
+    """Normalize ticker/company name for KG cache key (uppercase, stripped)."""
+    return (ticker_or_name or "").strip().upper() or "_"
+
+
+def _bigdata_request_with_retry(
+    method: str,
+    url: str,
+    headers: Dict[str, str],
+    json_body: Optional[Dict[str, Any]] = None,
+    timeout: int = 60,
+) -> requests.Response:
+    """Execute Bigdata API request with exponential backoff retry."""
+    last_exception = None
+    for attempt in range(BIGDATA_RETRY_MAX_ATTEMPTS + 1):
+        try:
+            if method.upper() == "POST":
+                resp = requests.post(
+                    url, headers=headers, json=json_body or {}, timeout=timeout
+                )
+            else:
+                resp = requests.get(url, headers=headers, timeout=timeout)
+            resp.raise_for_status()
+            return resp
+        except (requests.ConnectionError, requests.Timeout) as e:
+            last_exception = e
+            if attempt < BIGDATA_RETRY_MAX_ATTEMPTS:
+                delay = BIGDATA_RETRY_DELAY * (BIGDATA_RETRY_BACKOFF ** attempt)
+                logger.warning(
+                    "Bigdata request retry attempt %s/%s after %.1fs: %s",
+                    attempt + 1,
+                    BIGDATA_RETRY_MAX_ATTEMPTS + 1,
+                    delay,
+                    type(e).__name__,
+                )
+                time.sleep(delay)
+            else:
+                raise
+        except requests.HTTPError as e:
+            if e.response is not None and e.response.status_code in BIGDATA_RETRY_STATUS_CODES:
+                last_exception = e
+                if attempt < BIGDATA_RETRY_MAX_ATTEMPTS:
+                    delay = BIGDATA_RETRY_DELAY * (BIGDATA_RETRY_BACKOFF ** attempt)
+                    logger.warning(
+                        "Bigdata request retry attempt %s/%s after %.1fs: HTTP %s",
+                        attempt + 1,
+                        BIGDATA_RETRY_MAX_ATTEMPTS + 1,
+                        delay,
+                        e.response.status_code,
+                    )
+                    time.sleep(delay)
+                else:
+                    raise
+            else:
+                raise
+    if last_exception:
+        raise last_exception
+    raise RuntimeError("Unexpected error in retry loop")
+
+
 def get_bigdata_tools() -> List[Callable]:
     """
     Get Bigdata.com API tools for the agent.
@@ -454,36 +527,47 @@ def get_bigdata_tools() -> List[Callable]:
         List of tool functions for Knowledge Graph and Search APIs
     """
     config = get_config()
-    
+    global _kg_entity_cache
+
     @tool
     def bigdata_lookup_company(ticker: str) -> str:
         """Look up a company's Bigdata entity ID using the Knowledge Graph API.
         
+        Results are cached by ticker/company name. Use ticker (e.g. AAPL, NVDA)
+        or company name for lookup.
+        
         Args:
-            ticker: Stock ticker symbol (e.g., 'AAPL', 'NVDA')
+            ticker: Stock ticker symbol or company name (e.g., 'AAPL', 'NVDA', 'NVIDIA')
         
         Returns:
             JSON string with entity ID and company details
         """
         try:
+            key = _normalize_kg_key(ticker)
+            if key in _kg_entity_cache:
+                logger.info("KG entity cache hit for key=%r", key)
+                return json.dumps(_kg_entity_cache[key], indent=2)
             url = f"{config.bigdata_base_url}/knowledge-graph/companies"
             headers = {"X-API-KEY": config.bigdata_api_key, "Content-Type": "application/json"}
-            
-            response = requests.post(url, headers=headers, json={"query": ticker}, timeout=30)
-            response.raise_for_status()
-            
+            response = _bigdata_request_with_retry(
+                "POST", url, headers, json_body={"query": ticker}, timeout=30
+            )
             results = response.json().get("results", [])
             if results:
                 company = results[0]
-                return json.dumps({
+                payload = {
                     "ticker": ticker,
                     "entity_id": company.get("id"),
                     "name": company.get("name"),
                     "country": company.get("country"),
-                    "description": company.get("description", "")[:200]
-                }, indent=2)
+                    "description": (company.get("description") or "")[:200],
+                }
+                _kg_entity_cache[key] = payload
+                logger.info("KG entity cached for key=%r entity_id=%s", key, payload.get("entity_id"))
+                return json.dumps(payload, indent=2)
             return json.dumps({"error": f"No entity found for ticker {ticker}"})
         except Exception as e:
+            logger.exception("bigdata_lookup_company failed for ticker=%r", ticker)
             return json.dumps({"error": str(e)})
 
     @tool
@@ -494,6 +578,8 @@ def get_bigdata_tools() -> List[Callable]:
         max_results: int = 10
     ) -> str:
         """Search Bigdata.com for financial news and market intelligence.
+        
+        Uses retry with exponential backoff on transient failures.
         
         Args:
             query: Natural language search query (e.g., 'AI chip demand', 'earnings guidance')
@@ -507,10 +593,8 @@ def get_bigdata_tools() -> List[Callable]:
         try:
             url = f"{config.bigdata_base_url}/search"
             headers = {"X-API-KEY": config.bigdata_api_key, "Content-Type": "application/json"}
-            
             end_date = datetime.utcnow()
             start_date = end_date - timedelta(days=days_back)
-            
             request_body = {
                 "query": {
                     "text": query,
@@ -519,23 +603,17 @@ def get_bigdata_tools() -> List[Callable]:
                             "start": start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
                             "end": end_date.strftime("%Y-%m-%dT%H:%M:%S.999Z")
                         },
-                        "category": {
-                            "mode": "INCLUDE",
-                            "values": ["news_public"]
-                        }
+                        "category": {"mode": "INCLUDE", "values": ["news_public"]},
                     },
-                    "max_chunks": max_results * 2
+                    "max_chunks": max_results * 2,
                 }
             }
-            
             if entity_id:
                 request_body["query"]["filters"]["entity"] = {"any_of": [entity_id]}
-            
-            response = requests.post(url, headers=headers, json=request_body, timeout=60)
-            response.raise_for_status()
-            
+            response = _bigdata_request_with_retry(
+                "POST", url, headers, json_body=request_body, timeout=60
+            )
             results = response.json().get("results", [])
-            
             formatted = []
             for doc in results[:max_results]:
                 chunks_text = " | ".join([c.get("text", "")[:300] for c in doc.get("chunks", [])[:2]])
@@ -547,9 +625,10 @@ def get_bigdata_tools() -> List[Callable]:
                     "url": doc.get("url"),
                     "relevant_text": chunks_text[:500]
                 })
-            
+            logger.info("bigdata_search_news query=%r entity_id=%s results_count=%s", query, entity_id, len(formatted))
             return json.dumps({"query": query, "results_count": len(formatted), "results": formatted}, indent=2)
         except Exception as e:
+            logger.exception("bigdata_search_news failed query=%r", query)
             return json.dumps({"error": str(e)})
     
     return [bigdata_lookup_company, bigdata_search_news]
@@ -591,24 +670,23 @@ def get_research_agent_tool() -> List[Callable]:
             JSON string with answer containing inline citations and numbered source details
         """
         try:
-            # Use ResearchClient for robust citation handling
+            # ResearchClient has built-in retry and full chat_id logging
             client = ResearchClient(api_key=config.bigdata_api_key)
             result: ResearchResult = client.research(
                 message=query,
                 research_effort=research_effort,
-                days_back=90,  # Last 90 days
-                source_categories=["news_public"]  # Filter to public news only
             )
-            
-            # Get answer with inline citation numbers [1], [2], etc.
+            # Log full chat_id at tool level for production traceability
+            logger.info(
+                "bigdata_research_agent complete chat_id=%r citations=%s processing_time_ms=%s",
+                result.chat_id,
+                len(result.citations),
+                result.processing_time_ms,
+            )
             answer_with_citations = result.get_answer_with_citations()
-            
-            # Get numbered citations that match the inline numbers
             numbered_citations = result.get_numbered_citations()
-            
-            # Format citations for display
             formatted_citations = []
-            for citation in numbered_citations[:25]:  # Limit to 25
+            for citation in numbered_citations[:25]:
                 formatted_citation = {
                     "number": citation.get("number"),
                     "headline": citation.get("headline"),
@@ -616,12 +694,10 @@ def get_research_agent_tool() -> List[Callable]:
                     "timestamp": citation.get("timestamp"),
                     "url": citation.get("url"),
                 }
-                # Add text excerpt if available from chunks
                 if citation.get("chunks"):
                     first_chunk = citation["chunks"][0] if citation["chunks"] else {}
                     formatted_citation["text"] = first_chunk.get("text", "")[:300]
                 formatted_citations.append(formatted_citation)
-            
             return json.dumps({
                 "query": query,
                 "answer": answer_with_citations,
@@ -630,8 +706,8 @@ def get_research_agent_tool() -> List[Callable]:
                 "processing_time_ms": result.processing_time_ms,
                 "chat_id": result.chat_id
             }, indent=2)
-            
         except Exception as e:
+            logger.exception("bigdata_research_agent failed query=%r", query)
             return json.dumps({"error": str(e)})
     
     return [bigdata_research_agent]
@@ -1019,6 +1095,155 @@ def run_agent_query(
     return result
 
 
+def display_query(query: str) -> None:
+    """Display the user query in a styled box (for Jupyter)."""
+    from IPython.display import display, HTML
+    import html as html_lib
+    formatted = html_lib.escape((query or "").strip()).replace("\n", "<br>")
+    display(HTML(
+        f'<div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; margin: 10px 0;">'
+        f'<h3 style="color: white; margin: 0;">🔍 Query</h3>'
+        f'<p style="color: #e0e0e0; margin: 10px 0 0 0; font-size: 14px;">{formatted}</p></div>'
+    ))
+
+
+def display_response(result: Dict[str, Any]) -> None:
+    """Display the agent response from result (messages or response key) for Jupyter."""
+    from IPython.display import display, Markdown, HTML
+    response_content = ""
+    if result.get("response") is not None:
+        response_content = result.get("response") or ""
+    elif result.get("messages"):
+        last = result["messages"][-1]
+        response_content = getattr(last, "content", None) or (last.get("content") if isinstance(last, dict) else "") or ""
+    display(HTML(
+        '<div style="background: #e8f5e9; padding: 15px 20px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #4CAF50;">'
+        '<b style="color: #2E7D32;">📝 Response:</b></div>'
+    ))
+    display(Markdown(response_content) if response_content else HTML("<p style='color: #666; font-style: italic;'>No response content.</p>"))
+
+
+def display_tools_used(result: Dict[str, Any]) -> None:
+    """Display which tools were used from result (messages or tools key) for Jupyter."""
+    from IPython.display import display, HTML
+    import html as html_lib
+    tools_used = []
+    if result.get("tools"):
+        tools_used = [t.get("name", "") for t in result["tools"] if t.get("name")]
+    elif result.get("messages"):
+        seen = set()
+        for msg in result["messages"]:
+            if getattr(msg, "tool_calls", None):
+                for tc in msg.tool_calls:
+                    n = tc.get("name", "")
+                    if n and n not in seen:
+                        seen.add(n)
+                        tools_used.append(n)
+    if tools_used:
+        tags = " ".join(
+            f"<span style='background: #1565C0; color: #fff; padding: 6px 12px; border-radius: 6px; margin: 4px; display: inline-block; font-family: monospace;'>{html_lib.escape(t)}</span>"
+            for t in tools_used
+        )
+        display(HTML(
+            f'<div style="background: #263238; padding: 16px 20px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #42A5F5;">'
+            f'<b style="color: #90CAF9;">📊 Tools Used ({len(tools_used)}):</b><div style="margin-top: 12px;">{tags}</div></div>'
+        ))
+
+
+def display_citations(result: Dict[str, Any]) -> None:
+    """Display citations/sources from tool results (messages or tool_results) for Jupyter."""
+    from IPython.display import display, HTML
+    import html as html_lib
+    research_citations = []
+    search_results = []
+    tool_results = result.get("tool_results", [])
+    if not tool_results and result.get("messages"):
+        for msg in result["messages"]:
+            if type(msg).__name__ == "ToolMessage":
+                try:
+                    tool_results.append(getattr(msg, "content", None) or "")
+                except Exception:
+                    pass
+    for content in tool_results:
+        if not content:
+            continue
+        try:
+            data = json.loads(content) if isinstance(content, str) else content
+            if "citations" in data and data.get("citations"):
+                for c in data["citations"]:
+                    research_citations.append({
+                        "number": c.get("number"),
+                        "headline": c.get("headline", "Untitled"),
+                        "source": c.get("source", {}).get("name") if isinstance(c.get("source"), dict) else c.get("source", "Bigdata.com"),
+                        "url": c.get("url"),
+                        "timestamp": str(c.get("timestamp", ""))[:10],
+                        "text": (c.get("text") or "")[:200],
+                    })
+            elif "results" in data and isinstance(data.get("results"), list):
+                for r in data["results"]:
+                    if r.get("headline"):
+                        search_results.append({
+                            "headline": r.get("headline", "Untitled"),
+                            "source": r.get("source", "Bigdata.com"),
+                            "url": r.get("url"),
+                            "timestamp": str(r.get("timestamp", ""))[:10],
+                            "text": (r.get("relevant_text") or "")[:200],
+                            "sentiment": r.get("sentiment"),
+                        })
+        except (json.JSONDecodeError, TypeError):
+            pass
+    if research_citations:
+        research_citations.sort(key=lambda x: x.get("number") or 999)
+        parts = []
+        for c in research_citations[:20]:
+            h = html_lib.escape(str(c.get("headline", ""))[:100])
+            s = html_lib.escape(str(c.get("source", "Bigdata.com")))
+            u = c.get("url") or "#"
+            t = c.get("timestamp", "")
+            ex = (html_lib.escape((c.get("text") or "")[:150]) + "...") if c.get("text") else ""
+            parts.append(
+                f'<div style="padding: 12px; margin: 8px 0; background: #fafafa; border-radius: 6px; border-left: 3px solid #1976D2;">'
+                f'<div><span style="background: #1976D2; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold;">{c.get("number")}</span> '
+                f'<a href="{u}" target="_blank" style="color: #1565C0;">{h}</a></div>'
+                f'<div style="margin-top: 6px; font-size: 12px; color: #666;">{s} • {t}</div>'
+                + (f'<div style="margin-top: 6px; font-size: 12px; font-style: italic;">{ex}</div>' if ex else "")
+                + "</div>"
+            )
+        more = f'<div style="margin-top: 8px; font-size: 11px; color: #666;">... and {len(research_citations) - 20} more</div>' if len(research_citations) > 20 else ""
+        display(HTML(
+            f'<div style="background: #E3F2FD; padding: 16px 20px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #1976D2;">'
+            f'<b style="color: #1565C0;">📚 Sources from Bigdata.com ({len(research_citations)} citations)</b>'
+            f'<span style="background: #1976D2; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">VERIFIED</span>'
+            f'{"".join(parts)}{more}</div>'
+        ))
+    elif search_results:
+        seen = set()
+        unique = []
+        for x in search_results:
+            u = x.get("url")
+            if u and u not in seen:
+                seen.add(u)
+                unique.append(x)
+        if not unique:
+            unique = search_results[:10]
+        parts = []
+        for r in unique[:10]:
+            h = html_lib.escape(str(r.get("headline", ""))[:100])
+            s = html_lib.escape(str(r.get("source", "Bigdata.com")))
+            u = r.get("url", "#")
+            t = r.get("timestamp", "")
+            parts.append(
+                f'<div style="padding: 12px; margin: 8px 0; background: #fafafa; border-radius: 6px;">'
+                f'<a href="{u}" target="_blank" style="color: #1565C0;">{h}</a>'
+                f'<div style="font-size: 12px; color: #666;">{s} • {t}</div></div>'
+            )
+        if parts:
+            display(HTML(
+                f'<div style="background: #E3F2FD; padding: 16px 20px; border-radius: 8px; margin: 10px 0;">'
+                f'<b style="color: #1565C0;">📰 News Sources ({len(unique)} articles)</b>{"".join(parts)}</div>'
+            ))
+
+
 def display_agent_response(
     agent,
     query: str,
@@ -1113,10 +1338,18 @@ def display_agent_response(
                 tool_index += 1
             
             # Extract from Research Agent citations
+            # FIXED: Preserve the citation's assigned number to match inline citations
             if "citations" in parsed_result and parsed_result.get("citations"):
                 for citation in parsed_result["citations"]:
+                    # Use the citation's own number if available
+                    citation_number = citation.get("number")
+                    if citation_number is None:
+                        citation_number = citation_counter
+                        citation_counter += 1
+                    else:
+                        citation_counter = max(citation_counter, citation_number + 1)
                     all_sources.append({
-                        "number": citation.get("number", citation_counter),
+                        "number": citation_number,
                         "headline": citation.get("headline", "Untitled"),
                         "source": citation.get("source", "Bigdata.com"),
                         "url": citation.get("url"),
@@ -1125,9 +1358,8 @@ def display_agent_response(
                         "type": "research",
                         "context": tool_context
                     })
-                    citation_counter += 1
             
-            # Extract from Search API results
+            # Extract from Search API results (these don't have pre-assigned numbers)
             elif "results" in parsed_result and parsed_result.get("results"):
                 for item in parsed_result["results"]:
                     if item.get("headline"):  # Only include items with headlines
@@ -1160,10 +1392,11 @@ def display_agent_response(
                 seen_keys.add(dedup_key)
                 unique_sources.append(src)
         
-        # Keep original sequential numbering (preserves correlation with LLM citations)
-        # Don't re-number - use display_number for UI only
-        for i, src in enumerate(unique_sources, 1):
-            src["display_number"] = i
+        # FIXED: Sort by citation number and use that for display
+        # This ensures [13] in the text corresponds to source #13 in the list
+        unique_sources.sort(key=lambda s: s.get("number", 9999))
+        for src in unique_sources:
+            src["display_number"] = src.get("number", 0)
         
         citations_html = []
         for source in unique_sources[:15]:  # Limit to 15 for display
