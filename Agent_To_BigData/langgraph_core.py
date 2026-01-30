@@ -1,23 +1,15 @@
 """
 Agentic AI Demo Core Module
 
-Reusable components for building AI agents that integrate:
+Reusable components for notebooks that integrate:
 - Bigdata.com Search & Knowledge Graph APIs
-- SQLite financial database
-- FAISS vector store for research documents
+- Bigdata.com Research Agent (agent-to-agent)
+- SQLite financial database and FAISS vector store
 - LangSmith observability
 
-Usage:
-    from langgraph_core import (
-        setup_environment,
-        create_financial_database,
-        create_vector_store,
-        get_bigdata_tools,
-        get_database_tools,
-        get_vectorstore_tools,
-        create_agent,
-        run_agent_query
-    )
+Notebooks use: setup_environment, create_financial_database, create_vector_store,
+get_bigdata_tools, get_database_tools, get_vectorstore_tools, get_research_agent_tool,
+run_agent_query, display_query, display_response, display_tools_used, display_citations.
 """
 
 import os
@@ -38,8 +30,6 @@ from langchain.tools import tool
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
-from langchain.agents import create_agent as langchain_create_agent
-
 # Local imports for Research Agent
 from research_client import ResearchClient, ResearchResult
 
@@ -49,7 +39,12 @@ from research_client import ResearchClient, ResearchResult
 
 @dataclass
 class Config:
-    """Configuration for the demo environment."""
+    """
+    Configuration for the demo environment.
+
+    Holds API keys, LangSmith project, database path, and feature flags.
+    Populated by setup_environment() from arguments or environment variables.
+    """
     bigdata_api_key: str = ""
     openai_api_key: str = ""
     langsmith_api_key: str = ""
@@ -82,18 +77,22 @@ def setup_environment(
     enable_tracing: bool = True
 ) -> Config:
     """
-    Setup environment with API keys and configure LangSmith tracing.
-    
+    Load API keys and configure LangSmith tracing for agent notebooks.
+
+    Reads keys from arguments or environment (BIGDATA_API_KEY, OPENAI_API_KEY,
+    LANGSMITH_API_KEY). Creates the output directory and sets LANGCHAIN_*
+    env vars when tracing is enabled. Call this once at the start of a notebook.
+
     Args:
         bigdata_api_key: Bigdata.com API key (or use BIGDATA_API_KEY env var)
         openai_api_key: OpenAI API key (or use OPENAI_API_KEY env var)
         langsmith_api_key: LangSmith API key (or use LANGSMITH_API_KEY env var)
         langsmith_project: LangSmith project name for tracing
-        db_path: Path to SQLite database
-        enable_tracing: Enable LangSmith tracing
-    
+        db_path: Path to SQLite database for create_financial_database
+        enable_tracing: If True, enable LangSmith tracing when key is set
+
     Returns:
-        Config object with all settings
+        Config object with all settings (also stored globally for get_config()).
     """
     global _config
     
@@ -135,7 +134,15 @@ def setup_environment(
 
 
 def get_config() -> Config:
-    """Get current configuration."""
+    """
+    Return the current demo configuration.
+
+    If setup_environment() has not been called yet, calls it with defaults
+    so that config is always available to tools and display helpers.
+
+    Returns:
+        Config instance with API keys, db_path, and tracing settings.
+    """
     global _config
     if _config is None:
         _config = setup_environment()
@@ -148,13 +155,18 @@ def get_config() -> Config:
 
 def create_financial_database(db_path: Optional[str] = None) -> str:
     """
-    Create and populate SQLite database with realistic financial transactions.
-    
+    Create and populate a SQLite database with sample portfolio data.
+
+    Drops and recreates tables: accounts, portfolios, holdings, transactions.
+    Inserts sample accounts (e.g. ACC001–ACC003), portfolios (PF001–PF003),
+    holdings for common tickers, and random transactions over the last 90 days.
+    Used by notebooks to demo internal_query_database and internal_portfolio_summary.
+
     Args:
-        db_path: Path to database file (uses config default if not provided)
-    
+        db_path: Path to the database file; uses config.db_path if None.
+
     Returns:
-        Path to created database
+        Path to the created database file.
     """
     config = get_config()
     db_path = db_path or config.db_path
@@ -423,13 +435,18 @@ HEDGING RECOMMENDATIONS:
 
 def create_vector_store(documents: Optional[List[Document]] = None) -> FAISS:
     """
-    Create FAISS vector store from research documents.
-    
+    Build a FAISS vector store from research documents for semantic search.
+
+    Uses OpenAI text-embedding-3-small. If no documents are given, uses
+    RESEARCH_DOCUMENTS (sample theses, risk assessments, strategy memos).
+    The store is cached globally and returned by get_vector_store() for
+    internal_search_research.
+
     Args:
-        documents: List of Document objects (uses default research docs if not provided)
-    
+        documents: Optional list of LangChain Documents; defaults to RESEARCH_DOCUMENTS.
+
     Returns:
-        FAISS vector store instance
+        FAISS index instance (also stored globally).
     """
     global _vector_store
     
@@ -448,7 +465,15 @@ def create_vector_store(documents: Optional[List[Document]] = None) -> FAISS:
 
 
 def get_vector_store() -> FAISS:
-    """Get current vector store instance."""
+    """
+    Return the shared FAISS vector store used by internal_search_research.
+
+    Lazily creates the store via create_vector_store() if it has not been
+    initialized yet (e.g. after create_vector_store() was never called).
+
+    Returns:
+        FAISS vector store instance.
+    """
     global _vector_store
     if _vector_store is None:
         _vector_store = create_vector_store()
@@ -460,7 +485,18 @@ def get_vector_store() -> FAISS:
 # ============================================================================
 
 def _normalize_kg_key(ticker_or_name: str) -> str:
-    """Normalize ticker/company name for KG cache key (uppercase, stripped)."""
+    """
+    Normalize a ticker or company name for use as a Knowledge Graph cache key.
+
+    Converts to uppercase and strips whitespace so "nvda", "NVDA", and " NVIDIA "
+    map to the same cache entry.
+
+    Args:
+        ticker_or_name: Ticker symbol or company name (e.g. "AAPL", "NVIDIA").
+
+    Returns:
+        Uppercase, stripped string, or "_" if input is empty.
+    """
     return (ticker_or_name or "").strip().upper() or "_"
 
 
@@ -471,7 +507,27 @@ def _bigdata_request_with_retry(
     json_body: Optional[Dict[str, Any]] = None,
     timeout: int = 60,
 ) -> requests.Response:
-    """Execute Bigdata API request with exponential backoff retry."""
+    """
+    Send an HTTP request to a Bigdata.com API endpoint with retries.
+
+    Retries on connection errors, timeouts, and HTTP status codes in
+    BIGDATA_RETRY_STATUS_CODES (e.g. 408, 429, 5xx). Uses exponential
+    backoff (BIGDATA_RETRY_DELAY * BIGDATA_RETRY_BACKOFF^attempt).
+    Raises after BIGDATA_RETRY_MAX_ATTEMPTS + 1 attempts.
+
+    Args:
+        method: HTTP method ("GET" or "POST").
+        url: Full request URL.
+        headers: Request headers (e.g. X-API-KEY, Content-Type).
+        json_body: Optional JSON body for POST requests.
+        timeout: Request timeout in seconds.
+
+    Returns:
+        requests.Response with raise_for_status() already called.
+
+    Raises:
+        requests.RequestException: On final failure after retries.
+    """
     last_exception = None
     for attempt in range(BIGDATA_RETRY_MAX_ATTEMPTS + 1):
         try:
@@ -521,10 +577,17 @@ def _bigdata_request_with_retry(
 
 def get_bigdata_tools() -> List[Callable]:
     """
-    Get Bigdata.com API tools for the agent.
-    
+    Return LangChain tools that call Bigdata.com Knowledge Graph and Search APIs.
+
+    Tools included:
+    - bigdata_lookup_company: Resolve ticker/company name to entity ID (cached).
+    - bigdata_search_news: Search financial news with optional entity filter.
+
+    Both use _bigdata_request_with_retry for resilience. Used by agent_to_search
+    and by hierarchical agent notebooks for entity lookup.
+
     Returns:
-        List of tool functions for Knowledge Graph and Search APIs
+        List of two @tool-decorated callables.
     """
     config = get_config()
     global _kg_entity_cache
@@ -636,15 +699,16 @@ def get_bigdata_tools() -> List[Callable]:
 
 def get_research_agent_tool() -> List[Callable]:
     """
-    Get the Bigdata Research Agent tool for deep research queries.
-    
-    The Research Agent performs multi-step reasoning with RAG across
-    web, premium sources, and uploaded content.
-    
-    Uses the ResearchClient from research_client.py for robust citation handling.
-    
+    Return a LangChain tool that calls the Bigdata.com Research Agent.
+
+    The tool (bigdata_research_agent) runs deep research with multi-step
+    reasoning and RAG. Results include an answer with inline citations and
+    a structured citations list. Uses ResearchClient from research_client.py
+    (retries, stream timeout, citation numbering). Typical latency 20–60s
+    for "standard" effort. Used by agent_to_research_agent notebooks.
+
     Returns:
-        List containing the research agent tool
+        List of one @tool-decorated callable (bigdata_research_agent).
     """
     config = get_config()
     
@@ -719,13 +783,19 @@ def get_research_agent_tool() -> List[Callable]:
 
 def get_database_tools(db_path: Optional[str] = None) -> List[Callable]:
     """
-    Get SQLite database tools for the agent.
-    
+    Return LangChain tools that query the internal SQLite financial database.
+
+    Tools included:
+    - internal_query_database: Run SELECT queries (accounts, portfolios, holdings, transactions).
+    - internal_portfolio_summary: Get holdings and performance for a portfolio ID (e.g. PF001).
+
+    The database is created by create_financial_database(). Only SELECT is allowed.
+
     Args:
-        db_path: Path to SQLite database (uses config default if not provided)
-    
+        db_path: Path to the SQLite file; uses config.db_path if None.
+
     Returns:
-        List of tool functions for database queries
+        List of two @tool-decorated callables.
     """
     config = get_config()
     _db_path = db_path or config.db_path
@@ -809,10 +879,15 @@ def get_database_tools(db_path: Optional[str] = None) -> List[Callable]:
 
 def get_vectorstore_tools() -> List[Callable]:
     """
-    Get vector store search tools for the agent.
-    
+    Return a LangChain tool for semantic search over the internal research docs.
+
+    The tool (internal_search_research) queries the FAISS vector store from
+    get_vector_store() with a natural-language query and top_k. Used for
+    investment theses, risk assessments, and strategy memos. Requires
+    create_vector_store() to have been called first.
+
     Returns:
-        List of tool functions for semantic search
+        List of one @tool-decorated callable (internal_search_research).
     """
     @tool
     def internal_search_research(query: str, top_k: int = 3) -> str:
@@ -852,172 +927,6 @@ def get_vectorstore_tools() -> List[Callable]:
 # AGENT CREATION
 # ============================================================================
 
-DEFAULT_SYSTEM_PROMPT = """You are an intelligent financial research assistant with access to multiple data sources:
-
-**External Data (Bigdata.com APIs):**
-1. `bigdata_lookup_company` - Look up company entity IDs from the Knowledge Graph
-2. `bigdata_search_news` - Search financial news and market intelligence with source citations
-
-**Internal Data (Company Systems):**
-3. `internal_query_database` - Execute SQL queries on portfolio/transaction database
-4. `internal_portfolio_summary` - Get portfolio holdings and performance summary
-5. `internal_search_research` - Search internal investment research documents
-
-Guidelines:
-- For company news, first use `bigdata_lookup_company` to get the entity_id, then use it in `bigdata_search_news`
-- For portfolio questions, use `internal_portfolio_summary` or `internal_query_database` with SQL
-- Combine external market data with internal holdings/research for comprehensive analysis
-
-**Source Attribution:**
-- Use inline citations [1], [2], [3] when referencing specific news articles or external data
-- For internal data: Briefly mention "From internal database" or "According to internal research"
-- DO NOT include a "Sources:" list at the end of your response - sources are displayed separately
-
-Available portfolios: PF001 (US Large Cap Growth), PF002 (AI & Semiconductor Focus), PF003 (Diversified Tech Leaders)
-"""
-
-
-def create_agent(
-    tools: Optional[List[Callable]] = None,
-    system_prompt: str = DEFAULT_SYSTEM_PROMPT,
-    model: str = "gpt-4o",
-    temperature: float = 0
-):
-    """
-    Create a LangGraph ReAct agent with the specified tools.
-    
-    Args:
-        tools: List of tool functions (uses all default tools if not provided)
-        system_prompt: System prompt for the agent
-        model: OpenAI model to use
-        temperature: Model temperature
-    
-    Returns:
-        LangGraph agent instance
-    """
-    config = get_config()
-    
-    # Default tools if not provided
-    if tools is None:
-        tools = (
-            get_bigdata_tools() + 
-            get_database_tools() + 
-            get_vectorstore_tools()
-        )
-    
-    llm = ChatOpenAI(
-        model=model,
-        temperature=temperature,
-        api_key=config.openai_api_key
-    )
-    
-    agent = langchain_create_agent(llm, tools, system_prompt=system_prompt)
-    
-    print(f"✅ Agent created with {len(tools)} tools")
-    return agent
-
-
-# ============================================================================
-# HIERARCHICAL AGENT (Agent-to-Agent)
-# ============================================================================
-
-HIERARCHICAL_SYSTEM_PROMPT = """You are a senior financial research analyst with access to both internal company systems and the Bigdata.com Research Agent for external research.
-
-**IMPORTANT: Follow this research hierarchy:**
-
-1. **ALWAYS check internal sources FIRST:**
-   - `internal_query_database` - Check our portfolio positions, transactions, and account data
-   - `internal_portfolio_summary` - Get quick overview of specific portfolios  
-   - `internal_search_research` - Search our internal research documents, investment theses, and analyst notes
-
-2. **For entity resolution (optional):**
-   - `bigdata_lookup_company` - Get Bigdata entity IDs for companies (useful for identification)
-
-3. **ESCALATE to Research Agent when internal sources are insufficient:**
-   - `bigdata_research_agent` - Use when you need:
-     * Deep analysis requiring synthesis across many external sources
-     * Market-wide trends, macro analysis, or competitive intelligence
-     * Information about companies we don't hold or haven't researched internally
-     * Current events, regulatory changes, breaking news, or credit analysis
-     * Any question that internal sources cannot answer
-   - Note: Research Agent takes 20-60 seconds but provides comprehensive analysis with citations
-
-**Decision Framework:**
-- Portfolio/holdings questions → Internal DB first
-- Company we hold → Internal research first, escalate to Research Agent if more info needed
-- Company we don't hold → Research Agent
-- Market trends/macro/credit analysis → Research Agent
-- Current news/events → Research Agent
-
-**Source Attribution:**
-- ALWAYS preserve inline citation numbers [1], [2], [3] from Bigdata.com Research Agent responses
-- These citations link to verified sources - DO NOT remove or modify them
-- For internal data: Briefly mention "From internal database" or "According to internal research"
-- DO NOT include a "Sources:" list at the end of your response - sources are displayed separately
-
-**Available Portfolios:** PF001 (US Large Cap Growth), PF002 (AI & Semiconductor Focus), PF003 (Diversified Tech Leaders)
-
-Check internal sources first, then escalate to Research Agent for external data.
-"""
-
-
-def create_hierarchical_agent(
-    model: str = "gpt-4o",
-    temperature: float = 0,
-    include_research_agent: bool = True
-):
-    """
-    Create a hierarchical agent that checks internal sources first, then escalates to Research Agent.
-    
-    This implements an agent-to-agent pattern where:
-    1. Internal tools (DB, vector store) are checked first
-    2. Entity lookup for company identification
-    3. Bigdata Research Agent for deep research when internal sources are insufficient
-    
-    Note: This agent does NOT include bigdata_search_news - it's designed for
-    internal-first research with escalation to the Research Agent for external data.
-    
-    Args:
-        model: OpenAI model to use
-        temperature: Model temperature
-        include_research_agent: Whether to include the deep research agent tool
-    
-    Returns:
-        LangGraph agent instance configured for hierarchical research
-    """
-    config = get_config()
-    
-    # Build tool list - internal first
-    tools = (
-        get_database_tools() +           # Internal DB
-        get_vectorstore_tools()          # Internal research docs
-    )
-    
-    # Add only bigdata_lookup_company (not search) for entity resolution
-    bigdata_tools = get_bigdata_tools()
-    lookup_tool = [t for t in bigdata_tools if t.name == 'bigdata_lookup_company']
-    tools += lookup_tool
-    
-    # Add research agent for escalation (the main external tool)
-    if include_research_agent:
-        tools += get_research_agent_tool()
-    
-    llm = ChatOpenAI(
-        model=model,
-        temperature=temperature,
-        api_key=config.openai_api_key
-    )
-    
-    agent = langchain_create_agent(llm, tools, system_prompt=HIERARCHICAL_SYSTEM_PROMPT)
-    
-    tool_names = [t.name for t in tools]
-    print(f"✅ Hierarchical agent created with {len(tools)} tools:")
-    print(f"   Internal: {[n for n in tool_names if n.startswith('internal_')]}")
-    print(f"   External: {[n for n in tool_names if n.startswith('bigdata_')]}")
-    
-    return agent
-
-
 # ============================================================================
 # AGENT EXECUTION
 # ============================================================================
@@ -1029,16 +938,21 @@ def run_agent_query(
     return_tools: bool = False
 ) -> Dict[str, Any]:
     """
-    Run a query through the agent and return results.
-    
+    Execute a single user query with the agent and collect the final answer and tool usage.
+
+    Streams the agent (stream_mode="values"), gathers tool calls and tool results,
+    and returns the last AI message content as the response. Use with display_query,
+    display_tools_used, display_response, and display_citations for notebook output.
+
     Args:
-        agent: LangGraph agent instance
-        query: User query string
-        verbose: Print tool calls during execution
-        return_tools: Include tool call details in return value
-    
+        agent: LangChain/LangGraph agent (e.g. from create_agent or notebook-built agent).
+        query: User question or instruction string.
+        verbose: If True, print each tool name and truncated args to stdout.
+        return_tools: If True, include "tools" and "tool_results" in the returned dict.
+
     Returns:
-        Dict with 'response' and optionally 'tools' keys
+        Dict with "response" (str) and "tools_count" (int). If return_tools is True,
+        also "tools" (list of {"name", "args"}) and "tool_results" (list of raw tool outputs).
     """
     messages = [{"role": "user", "content": query}]
     final_response = None
@@ -1096,7 +1010,15 @@ def run_agent_query(
 
 
 def display_query(query: str) -> None:
-    """Display the user query in a styled box (for Jupyter)."""
+    """
+    Render the user query in a styled purple gradient box in a Jupyter notebook.
+
+    Use before run_agent_query so the reader sees the question that was sent
+    to the agent. Escapes HTML and converts newlines to <br> for safety.
+
+    Args:
+        query: The question or instruction string to display.
+    """
     from IPython.display import display, HTML
     import html as html_lib
     formatted = html_lib.escape((query or "").strip()).replace("\n", "<br>")
@@ -1108,7 +1030,16 @@ def display_query(query: str) -> None:
 
 
 def display_response(result: Dict[str, Any]) -> None:
-    """Display the agent response from result (messages or response key) for Jupyter."""
+    """
+    Render the agent's final answer in a green-bordered block with Markdown formatting.
+
+    Accepts the dict returned by run_agent_query (uses "response" key) or
+    an agent invoke result (uses last message content from "messages").
+    Renders as Markdown so inline links and citations display correctly.
+
+    Args:
+        result: Dict with "response" (str) or "messages" (list with last AI content).
+    """
     from IPython.display import display, Markdown, HTML
     response_content = ""
     if result.get("response") is not None:
@@ -1124,7 +1055,16 @@ def display_response(result: Dict[str, Any]) -> None:
 
 
 def display_tools_used(result: Dict[str, Any]) -> None:
-    """Display which tools were used from result (messages or tools key) for Jupyter."""
+    """
+    Render the list of tools that were called during the agent run in a dark styled block.
+
+    Reads tool names from result["tools"] (from run_agent_query(..., return_tools=True))
+    or from result["messages"] by scanning for tool_calls. Shows each tool name as a
+    blue pill-style tag. No output if no tools were used.
+
+    Args:
+        result: Dict with "tools" (list of {"name", "args"}) or "messages" (with tool_calls).
+    """
     from IPython.display import display, HTML
     import html as html_lib
     tools_used = []
@@ -1151,7 +1091,18 @@ def display_tools_used(result: Dict[str, Any]) -> None:
 
 
 def display_citations(result: Dict[str, Any]) -> None:
-    """Display citations/sources from tool results (messages or tool_results) for Jupyter."""
+    """
+    Render a "Sources" block from Research Agent or Search API tool results in Jupyter.
+
+    Parses result["tool_results"] or result["messages"] for ToolMessage content.
+    If the tool returned JSON with "citations" (Research Agent), shows headline/source/url
+    as clickable links with optional excerpt. If the tool returned "results" (Search API),
+    shows news articles with headline, source, and date. Sources are shown as hyperlinks
+    only (no citation numbers). Up to 20 research citations or 10 search results shown.
+
+    Args:
+        result: Dict with "tool_results" (list of JSON strings) or "messages" (ToolMessages).
+    """
     from IPython.display import display, HTML
     import html as html_lib
     research_citations = []
@@ -1201,10 +1152,10 @@ def display_citations(result: Dict[str, Any]) -> None:
             u = c.get("url") or "#"
             t = c.get("timestamp", "")
             ex = (html_lib.escape((c.get("text") or "")[:150]) + "...") if c.get("text") else ""
+            # Show only hyperlink (source/headline), no citation number badge
             parts.append(
                 f'<div style="padding: 12px; margin: 8px 0; background: #fafafa; border-radius: 6px; border-left: 3px solid #1976D2;">'
-                f'<div><span style="background: #1976D2; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold;">{c.get("number")}</span> '
-                f'<a href="{u}" target="_blank" style="color: #1565C0;">{h}</a></div>'
+                f'<div><a href="{u}" target="_blank" style="color: #1565C0;">{h}</a></div>'
                 f'<div style="margin-top: 6px; font-size: 12px; color: #666;">{s} • {t}</div>'
                 + (f'<div style="margin-top: 6px; font-size: 12px; font-style: italic;">{ex}</div>' if ex else "")
                 + "</div>"
@@ -1242,248 +1193,4 @@ def display_citations(result: Dict[str, Any]) -> None:
                 f'<div style="background: #E3F2FD; padding: 16px 20px; border-radius: 8px; margin: 10px 0;">'
                 f'<b style="color: #1565C0;">📰 News Sources ({len(unique)} articles)</b>{"".join(parts)}</div>'
             ))
-
-
-def display_agent_response(
-    agent,
-    query: str,
-    verbose: bool = True,
-    show_json: bool = False
-):
-    """
-    Run agent query and display results with nice formatting (for Jupyter notebooks).
-    Shows citations prominently for Bigdata.com Research Agent responses.
-    
-    Args:
-        agent: LangGraph agent instance
-        query: User query string
-        verbose: Print tool calls during execution
-        show_json: Show raw JSON response at the end (default: False)
-    """
-    from IPython.display import display, Markdown, HTML
-    import html as html_lib
-    
-    # Header
-    display(HTML(f"""
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; margin: 10px 0;">
-        <h3 style="color: white; margin: 0;">🔍 Query</h3>
-        <p style="color: #e0e0e0; margin: 10px 0 0 0; font-size: 14px;">{html_lib.escape(query.strip())}</p>
-    </div>
-    """))
-    
-    result = run_agent_query(agent, query, verbose=verbose, return_tools=True)
-    
-    # Tools summary
-    if result.get("tools"):
-        tools_html = "".join([
-            f"<span style='background: #1565C0; color: #ffffff; padding: 6px 12px; border-radius: 6px; margin: 4px; display: inline-block; font-family: monospace; font-size: 13px; font-weight: 500;'>{html_lib.escape(t['name'])}</span>" 
-            for t in result["tools"]
-        ])
-        display(HTML(f"""
-        <div style="background: #263238; padding: 16px 20px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #42A5F5;">
-            <b style="color: #90CAF9; font-size: 14px;">📊 Tools Used ({result['tools_count']}):</b>
-            <div style="margin-top: 12px;">{tools_html}</div>
-        </div>
-        """))
-    
-    # Response - format nicely
-    response_text = result.get("response") or "No response generated"
-    
-    # Check if response is JSON and format it nicely
-    try:
-        if response_text.strip().startswith('{') or response_text.strip().startswith('['):
-            parsed = json.loads(response_text)
-            # Format as a nice summary if it's a DB result
-            if isinstance(parsed, dict) and 'results' in parsed:
-                formatted_parts = []
-                if 'query' in parsed:
-                    formatted_parts.append(f"**Query:** `{parsed['query']}`")
-                if 'row_count' in parsed:
-                    formatted_parts.append(f"**Results:** {parsed['row_count']} rows")
-                if parsed.get('results'):
-                    formatted_parts.append("\n**Data:**\n```json\n" + json.dumps(parsed['results'], indent=2) + "\n```")
-                response_text = "\n\n".join(formatted_parts)
-            else:
-                response_text = "```json\n" + json.dumps(parsed, indent=2) + "\n```"
-    except (json.JSONDecodeError, TypeError):
-        pass  # Not JSON, use as-is
-    
-    display(HTML(f"""
-    <div style="background: #e8f5e9; padding: 15px 20px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #4CAF50;">
-        <b style="color: #2E7D32;">📝 Response:</b>
-    </div>
-    """))
-    
-    display(Markdown(response_text))
-    
-    # Extract sources from both Research Agent (citations) and Search API (results)
-    all_sources = []
-    citation_counter = 1
-    
-    # Track tool names with their results for better context
-    tools_list = result.get("tools", [])
-    tool_index = 0
-    
-    for tool_result in result.get("tool_results", []):
-        try:
-            parsed_result = json.loads(tool_result)
-            
-            # Get context from corresponding tool call (for search_news queries)
-            tool_context = ""
-            if tool_index < len(tools_list):
-                tool_name = tools_list[tool_index].get("name", "")
-                tool_args = tools_list[tool_index].get("args", {})
-                if tool_name == "bigdata_search_news":
-                    tool_context = tool_args.get("query", "")
-                tool_index += 1
-            
-            # Extract from Research Agent citations
-            # FIXED: Preserve the citation's assigned number to match inline citations
-            if "citations" in parsed_result and parsed_result.get("citations"):
-                for citation in parsed_result["citations"]:
-                    # Use the citation's own number if available
-                    citation_number = citation.get("number")
-                    if citation_number is None:
-                        citation_number = citation_counter
-                        citation_counter += 1
-                    else:
-                        citation_counter = max(citation_counter, citation_number + 1)
-                    all_sources.append({
-                        "number": citation_number,
-                        "headline": citation.get("headline", "Untitled"),
-                        "source": citation.get("source", "Bigdata.com"),
-                        "url": citation.get("url"),
-                        "timestamp": citation.get("timestamp"),
-                        "text": citation.get("text", ""),
-                        "type": "research",
-                        "context": tool_context
-                    })
-            
-            # Extract from Search API results (these don't have pre-assigned numbers)
-            elif "results" in parsed_result and parsed_result.get("results"):
-                for item in parsed_result["results"]:
-                    if item.get("headline"):  # Only include items with headlines
-                        all_sources.append({
-                            "number": citation_counter,
-                            "headline": item.get("headline", "Untitled"),
-                            "source": item.get("source", "Bigdata.com"),
-                            "url": item.get("url"),
-                            "timestamp": item.get("timestamp"),
-                            "text": item.get("relevant_text", ""),
-                            "sentiment": item.get("sentiment"),
-                            "type": "search",
-                            "context": tool_context
-                        })
-                        citation_counter += 1
-                        
-        except (json.JSONDecodeError, TypeError):
-            pass
-    
-    # Display sources if found
-    if all_sources:
-        # Deduplicate by URL (more precise) or full headline if no URL
-        seen_keys = set()
-        unique_sources = []
-        for src in all_sources:
-            # Use URL as primary dedup key, fallback to full headline
-            # Handle None values explicitly (get() returns None if key exists with None value)
-            dedup_key = src.get("url") or (src.get("headline") or "")
-            if dedup_key and dedup_key not in seen_keys:
-                seen_keys.add(dedup_key)
-                unique_sources.append(src)
-        
-        # FIXED: Sort by citation number and use that for display
-        # This ensures [13] in the text corresponds to source #13 in the list
-        unique_sources.sort(key=lambda s: s.get("number", 9999))
-        for src in unique_sources:
-            src["display_number"] = src.get("number", 0)
-        
-        citations_html = []
-        for source in unique_sources[:15]:  # Limit to 15 for display
-            num = source.get("display_number") or source.get("number") or ""
-            headline = html_lib.escape(str(source.get("headline") or "Untitled")[:100])
-            src_name = html_lib.escape(str(source.get("source") or "Bigdata.com"))
-            url = source.get("url") or ""
-            timestamp = str(source.get("timestamp") or "")[:10] if source.get("timestamp") else ""
-            text = source.get("text") or ""
-            excerpt = html_lib.escape(text[:150]) + "..." if text else ""
-            
-            # Sentiment indicator for search results
-            sentiment = source.get("sentiment")
-            sentiment_badge = ""
-            if sentiment is not None:
-                if sentiment > 0.3:
-                    sentiment_badge = '<span style="background: #4CAF50; color: white; padding: 1px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">POSITIVE</span>'
-                elif sentiment < -0.3:
-                    sentiment_badge = '<span style="background: #F44336; color: white; padding: 1px 6px; border-radius: 3px; font-size: 10px; margin-left: 8px;">NEGATIVE</span>'
-            
-            # Format date if present
-            date_str = f" • {timestamp}" if timestamp else ""
-            
-            # Build source HTML
-            if url:
-                source_html = f"""
-                <div style="padding: 12px; margin: 8px 0; background: #fafafa; border-radius: 6px; border-left: 3px solid #1976D2;">
-                    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
-                        <span style="background: #1976D2; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px;">{num}</span>
-                        <a href="{url}" target="_blank" style="color: #1565C0; text-decoration: none; font-weight: 500;">{headline}</a>
-                        {sentiment_badge}
-                    </div>
-                    <div style="margin-top: 6px; font-size: 12px; color: #666;">
-                        <span style="font-weight: 500;">{src_name}</span>{date_str}
-                    </div>
-                    {f'<div style="margin-top: 6px; font-size: 12px; color: #444; font-style: italic;">{excerpt}</div>' if excerpt else ''}
-                </div>
-                """
-            else:
-                source_html = f"""
-                <div style="padding: 12px; margin: 8px 0; background: #fafafa; border-radius: 6px; border-left: 3px solid #1976D2;">
-                    <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
-                        <span style="background: #1976D2; color: white; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px;">{num}</span>
-                        <span style="color: #333; font-weight: 500;">{headline}</span>
-                        {sentiment_badge}
-                    </div>
-                    <div style="margin-top: 6px; font-size: 12px; color: #666;">
-                        <span style="font-weight: 500;">{src_name}</span>{date_str}
-                    </div>
-                    {f'<div style="margin-top: 6px; font-size: 12px; color: #444; font-style: italic;">{excerpt}</div>' if excerpt else ''}
-                </div>
-                """
-            citations_html.append(source_html)
-        
-        if citations_html:
-            source_type = "citations" if any(s.get("type") == "research" for s in unique_sources) else "sources"
-            display(HTML(f"""
-            <div style="background: #E3F2FD; padding: 16px 20px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #1976D2;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                    <b style="color: #1565C0; font-size: 14px;">📚 Sources from Bigdata.com ({len(unique_sources)} {source_type})</b>
-                    <span style="background: #1976D2; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px;">VERIFIED</span>
-                </div>
-                {''.join(citations_html)}
-                {f'<div style="margin-top: 8px; font-size: 11px; color: #666;">... and {len(unique_sources) - 15} more sources</div>' if len(unique_sources) > 15 else ''}
-            </div>
-            """))
-    
-    # Only return JSON result if explicitly requested (reduces notebook output clutter)
-    if show_json:
-        return result
-    return None
-
-
-# ============================================================================
-# CONVENIENCE FUNCTION
-# ============================================================================
-
-def quick_setup() -> tuple:
-    """
-    Quick setup for demos - initializes everything and returns agent.
-    
-    Returns:
-        Tuple of (config, agent)
-    """
-    config = setup_environment()
-    create_financial_database()
-    create_vector_store()
-    agent = create_agent()
-    return config, agent
 

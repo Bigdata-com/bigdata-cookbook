@@ -1,19 +1,18 @@
 """
-Research Agent API - Synchronous Client (FIXED CITATION HANDLING)
+Research Agent API - Synchronous client for Bigdata.com Research Agent.
 
-A simple Python wrapper that provides synchronous-like responses from the
-Research Agent streaming API with complete citations in Bigdata.com format.
+Provides synchronous-style responses from the Research Agent streaming API with
+complete citations in Bigdata.com format. Citation numbers align between answer
+text and source list.
 
-FIXED: Citation numbers now properly match between answer text and source list.
+Used by notebooks via langgraph_core.get_research_agent_tool() (agent_to_research_agent).
 
 Usage:
     from research_client import ResearchClient
-    
     client = ResearchClient()
     result = client.research("What are the key risks facing NVIDIA?")
-    
     print(result.answer)
-    print(result.citations)
+    print(result.get_numbered_citations())
 """
 
 import os
