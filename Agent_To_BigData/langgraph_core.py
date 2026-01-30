@@ -707,6 +707,8 @@ def get_research_agent_tool() -> List[Callable]:
     Uses ResearchClient from research_client.py (retries, stream timeout,
     citation numbering). Used by agent_to_research_agent notebooks.
 
+    **Note:** It uses "lite" effort (10-20s) for faster responses, can be changed to "standard" for deeper research.
+
     Returns:
         List of one @tool-decorated callable (bigdata_research_agent).
     """
