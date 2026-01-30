@@ -702,10 +702,10 @@ def get_research_agent_tool() -> List[Callable]:
     Return a LangChain tool that calls the Bigdata.com Research Agent.
 
     The tool (bigdata_research_agent) runs deep research with multi-step
-    reasoning and RAG. Results include an answer with inline citations and
-    a structured citations list. Uses ResearchClient from research_client.py
-    (retries, stream timeout, citation numbering). Typical latency 20–60s
-    for "standard" effort. Used by agent_to_research_agent notebooks.
+    reasoning and RAG, always with research_effort="lite" (10–20s). Results
+    include an answer with inline citations and a structured citations list.
+    Uses ResearchClient from research_client.py (retries, stream timeout,
+    citation numbering). Used by agent_to_research_agent notebooks.
 
     Returns:
         List of one @tool-decorated callable (bigdata_research_agent).
@@ -713,32 +713,29 @@ def get_research_agent_tool() -> List[Callable]:
     config = get_config()
     
     @tool
-    def bigdata_research_agent(
-        query: str,
-        research_effort: str = "standard"
-    ) -> str:
+    def bigdata_research_agent(query: str) -> str:
         """Perform deep research using Bigdata.com Research Agent with full citations.
         
         Use this tool for complex research questions that require:
         - Multi-step reasoning and analysis
         - Synthesis across multiple sources
-        - Comprehensive answers with inline citations [1], [2], etc.
+        - Comprehensive answers with inline citations (source-name hyperlinks).
         
-        This is more powerful than bigdata_search_news but takes longer (20-60 seconds).
+        Always uses "lite" effort (10-20s) for faster responses. More powerful than
+        bigdata_search_news but takes longer than simple search.
         
         Args:
             query: Research question or analysis request. Can include formatting instructions.
-            research_effort: "lite" (10-20s, quick facts) or "standard" (20-60s, deep analysis)
         
         Returns:
-            JSON string with answer containing inline citations and numbered source details
+            JSON string with answer containing inline citations and source details
         """
         try:
-            # ResearchClient has built-in retry and full chat_id logging
+            # ResearchClient has built-in retry and full chat_id logging; always use lite effort
             client = ResearchClient(api_key=config.bigdata_api_key)
             result: ResearchResult = client.research(
                 message=query,
-                research_effort=research_effort,
+                research_effort="lite",
             )
             # Log full chat_id at tool level for production traceability
             logger.info(
