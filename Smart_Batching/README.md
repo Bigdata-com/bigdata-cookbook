@@ -38,7 +38,7 @@ This module provides a two-step system for efficient semantic search:
    - [Example 2: Multiple Percentage Runs](#example-2-multiple-percentage-runs)
    - [Example 3: Production Configuration](#example-3-production-configuration)
    - [Example 4: Large-Scale Search with Error Handling](#example-4-large-scale-search-with-error-handling)
-9. [Large-Scale Search & Performance](#large-scale-search--performance)
+9. [Large-Scale Search & Performance](#large-scale-search-performance)
    - [Rate Limiting (Sliding Window Algorithm)](#rate-limiting-sliding-window-algorithm)
    - [Concurrency Control (Semaphore)](#concurrency-control-semaphore)
    - [Large-Scale Search Considerations](#large-scale-search-considerations)
