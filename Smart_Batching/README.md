@@ -78,6 +78,11 @@ This module provides a two-step system for efficient semantic search:
 - **Input Validation**: Comprehensive validation of dates, percentages, and file inputs
 - **Plan Persistence**: Save and load search plans for reuse with different percentages
 - **Comprehensive Testing**: Unit tests, validation tests, and integration tests
+  
+## Future improvement
+
+Generalize the splitting logic to use adaptive, volume-aware bucket sizing—dynamically selecting boundaries based on the daily volume time series—to preserve the underlying distribution more accurately (especially across periods with spikes, seasonality, or sparse activity).
+
 
 ## Installation
 
