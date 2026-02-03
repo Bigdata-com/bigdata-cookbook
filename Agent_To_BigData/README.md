@@ -24,7 +24,15 @@ This demo showcases a multi-source AI agent that can:
 
 ## Quick Start
 
-### 1. Set Environment Variables
+### 1. Install Dependencies
+
+From the project root:
+
+```bash
+uv pip install -r requirements.txt
+```
+
+### 2. Set Environment Variables
 
 ```bash
 export BIGDATA_API_KEY="your-bigdata-api-key"
@@ -32,7 +40,7 @@ export OPENAI_API_KEY="your-openai-api-key"
 export LANGSMITH_API_KEY="your-langsmith-api-key"  # Optional, for tracing
 ```
 
-### 2. Run the Demo
+### 3. Run the Demo
 
 ```python
 from langchain.agents import create_agent as langchain_create_agent
@@ -271,16 +279,16 @@ Traces include:
 
 ## Dependencies
 
-Install from requirements file:
+Install with **uv** (recommended):
 
 ```bash
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
-Or install manually:
+Or sync from a uv project:
 
 ```bash
-pip install langchain langchain-openai langchain-community faiss-cpu requests python-dotenv
+uv sync
 ```
 
 **For MCP demo** (`agent_to_bigdata_mcp.ipynb`), also install:
