@@ -36,7 +36,7 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Generates investment intelligence from AI transformation narratives
 - Creates structured reports ranking companies by AI resilience
 
-### ⚖️ [Regulatory Issues in Tech Report Generator](./Report_Generator_Regulatory_Isses_in_Tech/)
+### ⚖️ [Regulatory Issues in Tech Report Generator](./Report_Generator_Regulatory_Issues_in_Tech/)
 **Automated Analysis of Regulatory Risks and Company Mitigation Strategies**
 
 - Maps sector-wide regulatory issues across technology domains
@@ -220,14 +220,13 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Desk notes per ticker with source attribution
 - Automated report generation with deal tables, summaries, and source links
 
-### 📦 [Smart Batching](./Smart_batching/)
+### 📦 [Smart Batching](./Smart_Batching/)
 **Optimized Semantic Search with Intelligent Query Planning and Large-Scale Execution**
 
 - **Two-Step System**: Planning phase creates optimized baskets, execution phase performs search with proportional sampling
-- **Query Optimization**: Reduces API queries by 67-99% (varies by topic specificity) through intelligent company grouping
-  - Niche topics: Up to 99.86% reduction (e.g., "Customer Trust Erosion": 16 queries vs 11,357 naive)
-  - Specialized topics: 96-97% reduction (e.g., "Higher ESG Compliance Costs": 437 queries)
-  - Broad topics: 32-67% reduction (e.g., "Earnings": 3,699 queries)
+- **Query Optimization**: Reduces API queries by 96-99% (varies by topic specificity) through intelligent company grouping
+  - Niche topics: Up to 99.85% reduction (e.g., "Customer Trust Erosion": 17 queries vs 11,357 naive)
+  - Specialized topics: 96-97% reduction (e.g., "Higher ESG Compliance Costs": 435 queries)
 - **Large-Scale Search Execution**: Follows Search_Large_Scale pattern with:
   - Parallel processing using ThreadPoolExecutor for high-throughput searches
   - Multi-layered rate limiting (sliding window algorithm + concurrency semaphore)
