@@ -1,220 +1,184 @@
-# 🤖 Agentic AI with Bigdata.com API
+# Agentic AI with Bigdata.com API
 
-A modular framework for building AI agents that integrate Bigdata.com APIs with internal data sources, featuring **LangSmith** observability for production monitoring.
+A modular framework for building AI agents that integrate Bigdata.com APIs with internal data sources, featuring **LangSmith** observability for production monitoring. Suitable for equity research, credit research, and risk workflows.
+
+---
 
 ## Overview
 
-This demo showcases a multi-source AI agent that can:
-- Query **Bigdata.com Search API** for real-time financial news
-- Use **Bigdata.com Knowledge Graph API** for entity resolution
+This repository showcases a multi-source AI agent that can:
+
+- Query **Bigdata.com Search API** for real-time financial news, filings, and transcripts
+- Use **Bigdata.com Knowledge Graph API** for entity resolution (ticker/company → entity ID)
 - Use **Bigdata.com Research Agent API** for deep research with citations
-- Query **SQLite Database** for portfolio/transaction data
-- Search **FAISS Vector Store** for internal research documents
+- Connect via **Bigdata.com MCP** for automatic tool discovery (search, tearsheets, events calendar)
+- Query **SQLite** for portfolio and transaction data
+- Search a **FAISS vector store** for internal research documents
+
+The demos use LangChain and LangSmith; the integration patterns apply to other agentic frameworks (CrewAI, AutoGen, etc.).
+
+---
 
 ## Files
 
 | File | Description |
 |------|-------------|
-| `langgraph_core.py` | Reusable core module with all functions |
-| `research_client.py` | Bigdata.com Research Agent client with citation support |
-| `agent_to_search.ipynb` | Demo: Agent using Search & Knowledge Graph APIs |
-| `agent_to_research_agent.ipynb` | Demo: Hierarchical agent with Research Agent escalation |
+| `langgraph_core.py` | Reusable core module: logging, retry, KG cache, and tool definitions |
+| `research_client.py` | Bigdata.com Research Agent client with retry, logging, and chat_id handling |
+| `agent_to_search.ipynb` | Demo: Agent using Search & Knowledge Graph APIs with internal DB and vector store |
+| `agent_to_research_agent.ipynb` | Demo: Hierarchical agent—internal sources first, then Research Agent escalation |
+| `agent_to_bigdata_mcp.ipynb` | Demo: Agent using Bigdata.com via MCP (automatic tool discovery) |
 
-## Quick Start
-
-### 1. Set Environment Variables
-
-```bash
-export BIGDATA_API_KEY="your-bigdata-api-key"
-export OPENAI_API_KEY="your-openai-api-key"
-export LANGSMITH_API_KEY="your-langsmith-api-key"  # Optional, for tracing
-```
-
-### 2. Run the Demo
-
-```python
-from langgraph_core import quick_setup, display_agent_response
-
-# Initialize everything
-config, agent = quick_setup()
-
-# Run a query
-display_agent_response(agent, "What are our NVIDIA holdings across all portfolios?")
-```
-
-## Core Module Usage
-
-### Setup Environment
-
-```python
-from langgraph_core import setup_environment
-
-config = setup_environment(
-    langsmith_project='my-project',  # LangSmith project name
-    enable_tracing=True              # Enable observability
-)
-```
-
-### Create Data Sources
-
-```python
-from langgraph_core import create_financial_database, create_vector_store
-
-# Create SQLite DB with sample financial data
-create_financial_database()
-
-# Create FAISS vector store with research docs
-create_vector_store()
-```
-
-### Create Agent with Custom Tools
-
-```python
-from langgraph_core import (
-    create_agent,
-    get_bigdata_tools,
-    get_database_tools,
-    get_vectorstore_tools
-)
-
-# Use all default tools
-agent = create_agent()
-
-# Or customize which tools to include
-tools = get_bigdata_tools() + get_database_tools()
-agent = create_agent(tools=tools)
-```
-
-### Run Queries
-
-```python
-from langgraph_core import run_agent_query, display_agent_response
-
-# Programmatic access (returns dict)
-result = run_agent_query(agent, "Analyze NVIDIA position")
-print(result['response'])
-
-# Jupyter display (formatted HTML output)
-display_agent_response(agent, "Analyze NVIDIA position")
-```
+---
 
 ## Available Tools
 
-### External Tools (Bigdata.com)
+### External (Bigdata.com)
 
 | Tool | API | Description |
 |------|-----|-------------|
-| `bigdata_lookup_company` | Knowledge Graph | Resolve ticker to entity ID |
-| `bigdata_search_news` | Search | Search financial news and headlines |
-| `bigdata_research_agent` | Research Agent | Deep research with citations (20-60s) |
+| `bigdata_lookup_company` | Knowledge Graph | Resolve ticker/company name to entity ID (cached) |
+| `bigdata_search_news` | Search | Search financial news and headlines (with retry) |
+| `bigdata_research_agent` | Research Agent | Deep research with citations (20–60s); retry and full chat_id logging |
 
-### Internal Tools (Company Systems)
+### Internal (Company Systems)
 
 | Tool | Source | Description |
 |------|--------|-------------|
-| `internal_query_database` | SQLite | Execute SQL queries on portfolios |
-| `internal_portfolio_summary` | SQLite | Get portfolio holdings summary |
+| `internal_query_database` | SQLite | Execute SQL on portfolios |
+| `internal_portfolio_summary` | SQLite | Portfolio holdings summary |
 | `internal_search_research` | FAISS | Semantic search on research documents |
 
-## Hierarchical Agent (Agent-to-Agent)
+---
 
-For complex research workflows, use the hierarchical agent that:
-1. **Checks internal sources first** (faster, proprietary data)
-2. **Escalates to Research Agent** when internal data is insufficient
+## MCP Integration
 
-```python
-from langgraph_core import create_hierarchical_agent, display_agent_response
+You can connect to **Bigdata.com via MCP (Model Context Protocol)** for automatic tool discovery. With MCP, your agent gets current and future Bigdata.com tools (search, tearsheets, events calendar, company lookup) without code changes when new capabilities are added.
 
-# Create hierarchical agent
-agent = create_hierarchical_agent(include_research_agent=True)
+**Benefits:**
 
-# Queries automatically route to appropriate tools
-display_agent_response(agent, "Analyze our NVIDIA position vs market sentiment")
-```
+- **Automatic tool discovery** — MCP exposes tools dynamically; new Bigdata.com capabilities become available to your agent automatically
+- **Single integration** — One MCP connection replaces multiple API wrappers
+- **Framework-agnostic** — Works with LangChain, CrewAI, AutoGen, and others via MCP adapters
 
-**Use Cases:**
-- 📈 **Equity Research**: Thesis validation, competitive analysis
-- 💳 **Credit Research**: Debt analysis, refinancing risk
-- ⚠️ **Credit Risk**: Counterparty exposure, stress testing
+**Configuration:**
 
-See `agent_to_research_agent.ipynb` for detailed examples.
+- **URL:** `https://mcp.bigdata.com/`
+- **Transport:** HTTP (streamable)
+- **Authentication:** `x-api-key` header with your Bigdata API key
+
+For full setup and usage, see **`agent_to_bigdata_mcp.ipynb`** and install `langchain-mcp-adapters` as noted in Quick Start.
+
+---
+
+## Hierarchical Agent
+
+For complex research workflows, a **hierarchical agent**:
+
+1. **Checks internal sources first** (DB, vector store) for speed and proprietary data
+2. **Escalates to the Research Agent** when internal data is insufficient
+
+Use cases: equity research (thesis validation, competitive analysis), credit research (debt analysis, refinancing risk), and credit risk (counterparty exposure, stress testing).
+
+Full system prompt and examples are in **`agent_to_research_agent.ipynb`**.
+
+---
+
+## Sample Data
+
+### SQLite database
+
+- 3 accounts (Institutional, Hedge Fund, Pension)
+- 3 portfolios (PF001, PF002, PF003)
+- 15 holdings (NVDA, AAPL, MSFT, etc.)
+- 100+ transactions
+
+### Vector store documents
+
+- Investment theses (NVDA, AAPL, MSFT, AMD)
+- Q1 2025 Portfolio Strategy memo
+- Technology Sector Risk Assessment
+
+---
 
 ## LangSmith Integration
 
-The framework includes built-in LangSmith support for agent observability:
+The framework supports **LangSmith** for agent observability. When enabled, traces at [smith.langchain.com](https://smith.langchain.com) include:
 
-```python
-# Enable tracing
-config = setup_environment(
-    langsmith_api_key="your-key",
-    langsmith_project="bigdata-agent-demo",
-    enable_tracing=True
-)
-```
-
-View traces at: **https://smith.langchain.com**
-
-Traces include:
 - Tool calls and their inputs/outputs
 - LLM reasoning steps
 - Token usage and latency
 - Error handling
 
-## Reusing Core Module
+Set `LANGSMITH_API_KEY` and optionally configure the project name in your environment or in `setup_environment()` (see the notebooks).
 
-Import `langgraph_core.py` in other notebooks or scripts:
+---
 
-```python
-# In another notebook
-import sys
-sys.path.append('../Agent_To_BigData')
+## Quick Start
 
-from langgraph_core import (
-    setup_environment,
-    create_agent,
-    run_agent_query,
-    get_bigdata_tools,
-    get_research_agent_tool
-)
+Follow these steps to run the notebooks locally. No sample code is required in this section—each notebook is self-contained.
 
-# Create a specialized agent
-config = setup_environment()
-research_agent = create_agent(
-    tools=get_bigdata_tools() + get_research_agent_tool(),
-    system_prompt="You are a market research specialist..."
-)
+### 1. Environment setup with uv
 
-# Use in multi-agent workflow
-result = run_agent_query(research_agent, "Research NVDA competitive position")
-```
-
-## Sample Data
-
-### SQLite Database
-- 3 Accounts (Institutional, Hedge Fund, Pension)
-- 3 Portfolios (PF001, PF002, PF003)
-- 15 Holdings (NVDA, AAPL, MSFT, etc.)
-- 100+ Transactions
-
-### Vector Store Documents
-- Investment theses (NVDA, AAPL, MSFT, AMD)
-- Q1 2025 Portfolio Strategy memo
-- Technology Sector Risk Assessment
-
-## Dependencies
-
-Install from requirements file:
+From the project root, create a virtual environment and install dependencies using [uv](https://docs.astral.sh/uv/):
 
 ```bash
-pip install -r requirements.txt
+# Create venv and install dependencies (uses pyproject.toml / requirements.txt)
+uv sync
 ```
 
-Or install manually:
+If you prefer to use only `requirements.txt` with an existing venv:
 
 ```bash
-pip install langchain langchain-openai langchain-community faiss-cpu requests python-dotenv
+uv pip install -r requirements.txt
 ```
+
+For the **MCP notebook** (`agent_to_bigdata_mcp.ipynb`), `langchain-mcp-adapters` is already listed in `requirements.txt`; it will be installed by the above. Ensure your Python version matches the project (e.g. `>=3.13` per `pyproject.toml`; uv will use `.python-version` if present).
+
+### 2. Environment variables
+
+Set these before launching Jupyter or running any notebook:
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `BIGDATA_API_KEY` | Yes | Your Bigdata.com API key |
+| `OPENAI_API_KEY` | Yes | OpenAI API key for the LLM |
+| `LANGSMITH_API_KEY` | No | For LangSmith tracing; omit to disable |
+
+Example (Unix-like shells):
+
+```bash
+export BIGDATA_API_KEY="your-bigdata-api-key"
+export OPENAI_API_KEY="your-openai-api-key"
+export LANGSMITH_API_KEY="your-langsmith-api-key"   # optional
+```
+
+Use a `.env` file or your platform’s standard way to set variables if you prefer.
+
+### 3. Launch the notebooks
+
+Start Jupyter from the project root:
+
+```bash
+uv run jupyter notebook
+```
+
+Or, if the environment is already activated:
+
+```bash
+jupyter notebook
+```
+
+Then open one of the following:
+
+- **`agent_to_search.ipynb`** — Introduces the agent wired to Bigdata.com Search and Knowledge Graph APIs plus internal SQLite and FAISS. Use this to see how to combine external market data with internal portfolios and research in a single, cited flow.
+- **`agent_to_research_agent.ipynb`** — Shows the hierarchical pattern: the agent uses internal DB and vector store first, then escalates to the Bigdata.com Research Agent for deep, cited research when needed. Best for understanding when and how to call the Research Agent.
+- **`agent_to_bigdata_mcp.ipynb`** — Connects to Bigdata.com via MCP so tools (search, tearsheets, events, company lookup) are discovered automatically. Use this to integrate without hard-coding each API and to get new Bigdata.com tools as they are added.
+
+Run the cells in order; each notebook includes its own setup and usage instructions.
+
+---
 
 ## License
 
-See the main repository LICENSE file.
+See the repository’s LICENSE file.

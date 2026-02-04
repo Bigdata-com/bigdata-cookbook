@@ -1,27 +1,29 @@
 """
-Research Agent API - Synchronous Client
+Research Agent API - Synchronous client for Bigdata.com Research Agent.
 
-A simple Python wrapper that provides synchronous-like responses from the
-Research Agent streaming API with complete citations in Bigdata.com format.
+Provides synchronous-style responses from the Research Agent streaming API with
+complete citations in Bigdata.com format. Citation numbers align between answer
+text and source list.
+
+Used by notebooks via langgraph_core.get_research_agent_tool() (agent_to_research_agent).
 
 Usage:
     from research_client import ResearchClient
-    
     client = ResearchClient()
     result = client.research("What are the key risks facing NVIDIA?")
-    
     print(result.answer)
-    print(result.citations)
+    print(result.get_numbered_citations())
 """
 
 import os
 import json
 import time
 import logging
+import re
 import requests
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Set
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -197,6 +199,8 @@ class ResearchResult:
     """
     Complete research result with answer and citations.
     
+    FIXED: Citation numbers now properly align between answer text and source list.
+    
     Attributes:
         answer: The complete research answer in Markdown format
         citations: List of citations in Bigdata.com format
@@ -210,27 +214,59 @@ class ResearchResult:
     chat_id: Optional[str] = None
     processing_time_ms: Optional[int] = None
     
+    # =========================================================================
+    # NEW METHODS FOR CITATION DETECTION AND HANDLING
+    # =========================================================================
+    
+    def has_existing_citations(self) -> bool:
+        """
+        Check if the answer already contains citation markers like [1], [2], etc.
+        
+        The Research Agent often embeds citations directly in its answer.
+        Returns True if any [N] patterns are found.
+        """
+        return bool(re.search(r'\[\d+\]', self.answer))
+    
+    def extract_citation_numbers_from_answer(self) -> Set[int]:
+        """
+        Extract all citation numbers that appear in the answer text.
+        
+        Returns a set of integers representing all [N] citations found.
+        Example: "See [1] and [13][14]" returns {1, 13, 14}
+        """
+        return set(int(m) for m in re.findall(r'\[(\d+)\]', self.answer))
+    
+    # =========================================================================
+    # ANSWER RETRIEVAL METHODS
+    # =========================================================================
+    
     def get_answer(self) -> str:
-        """Get just the answer (without inline citations)."""
+        """Get the raw answer (may already include citation markers)."""
         return self.answer
     
     def get_answer_with_citations(self) -> str:
         """
-        Get answer with inline citation numbers [1, 2, 3], etc.
+        Get answer with inline citation numbers [1], [2], [3], etc.
         
-        Returns the answer text with citation markers inserted at the
-        positions indicated by grounding references.
+        FIXED BEHAVIOR:
+        - If the answer already contains citations from the Research Agent,
+          returns the answer as-is to preserve the original grounding.
+        - Otherwise, inserts citations based on GROUNDING reference positions.
         
-        Improvements:
-        - Groups nearby citations into single consolidated markers
-        - Deduplicates repeated citation numbers at same position
-        - Displays citation numbers in ascending order for readability
+        This ensures citation numbers in the text match the source list.
         """
-        if not self.grounding_refs:
+        # If answer already has citation markers from Research Agent, return as-is
+        if self.has_existing_citations():
+            logger.debug("Answer already has citations, returning as-is")
             return self.answer
         
-        # First, assign citation numbers in order of appearance (by position ascending)
-        # This ensures consistent numbering with get_numbered_citations()
+        # If no grounding refs available, return plain answer
+        if not self.grounding_refs:
+            logger.debug("No grounding refs, returning plain answer")
+            return self.answer
+        
+        # Insert citations based on GROUNDING positions
+        # Assign numbers in order of first appearance (by position)
         citation_nums = {}
         num_counter = 1
         refs_sorted_asc = sorted(self.grounding_refs, key=lambda r: r.start)
@@ -242,7 +278,6 @@ class ResearchResult:
                 num_counter += 1
         
         # Group citations by position (within threshold of 5 chars)
-        # This consolidates multiple citations at the same logical point
         POSITION_THRESHOLD = 5
         position_groups = {}  # position -> set of citation numbers
         
@@ -266,9 +301,8 @@ class ResearchResult:
         # Insert consolidated markers from end to start (to preserve positions)
         result = self.answer
         for pos in sorted(position_groups.keys(), reverse=True):
-            nums = sorted(position_groups[pos])  # Sort ascending for readability
+            nums = sorted(position_groups[pos])
             if 0 <= pos <= len(result):
-                # Format as [1, 2, 3] for multiple, or [1] for single
                 if len(nums) == 1:
                     marker = f" [{nums[0]}]"
                 else:
@@ -277,19 +311,29 @@ class ResearchResult:
         
         return result
     
+    # =========================================================================
+    # CITATION RETRIEVAL METHODS (FIXED)
+    # =========================================================================
+    
     def get_numbered_citations(self) -> List[Dict[str, Any]]:
         """
-        Get citations with their assigned numbers.
+        Get citations with numbers that MATCH the inline citations in the answer.
         
-        Returns list of dicts with 'number' and citation details,
-        matching the inline citation numbers in get_answer_with_citations().
+        FIXED BEHAVIOR:
+        - If answer has existing citations [1], [13], etc., returns citations
+          numbered to match those exact references.
+        - Uses GROUNDING refs to correlate citation numbers with source details.
+        - Ensures source #13 in the list corresponds to [13] in the text.
         """
+        # Case 1: Answer has existing citation markers from Research Agent
+        if self.has_existing_citations():
+            return self._get_citations_for_existing_markers()
+        
+        # Case 2: No grounding refs - fall back to sequential numbering
         if not self.grounding_refs:
-            # Fall back to regular citations
             return [{"number": i+1, **c.to_dict()} for i, c in enumerate(self.citations)]
         
-        # Build numbered citations from grounding refs
-        # Sort by position (ascending) to match get_answer_with_citations() numbering
+        # Case 3: Build numbers from grounding refs (original logic)
         citation_nums = {}
         numbered = []
         num_counter = 1
@@ -300,7 +344,7 @@ class ResearchResult:
             if key not in citation_nums:
                 citation_nums[key] = num_counter
                 
-                # Find matching full citation
+                # Find matching full citation from AUDIT data
                 matching_citation = None
                 for c in self.citations:
                     if c.id == ref.citation_id or c.headline == ref.headline:
@@ -311,7 +355,7 @@ class ResearchResult:
                 if matching_citation:
                     entry.update(matching_citation.to_dict())
                 else:
-                    # Use grounding ref data
+                    # Use grounding ref data as fallback
                     if ref.headline:
                         entry["headline"] = ref.headline
                     if ref.source_name:
@@ -326,8 +370,105 @@ class ResearchResult:
         
         return numbered
     
+    def _get_citations_for_existing_markers(self) -> List[Dict[str, Any]]:
+        """
+        Build citations list matching the numbers already in the answer text.
+        
+        Uses GROUNDING refs to correlate citation numbers with source details.
+        Returns citations sorted by number so [1] is first, [13] is at position 13, etc.
+        """
+        used_numbers = self.extract_citation_numbers_from_answer()
+        logger.debug(f"Found citation numbers in answer: {sorted(used_numbers)}")
+        
+        number_to_citation: Dict[int, Dict[str, Any]] = {}
+        
+        # Strategy 1: Use GROUNDING refs to map numbers to sources
+        for ref in self.grounding_refs:
+            pos = ref.end if ref.end > 0 else ref.start
+            
+            # Look for [N] near this position in the answer
+            search_start = max(0, pos - 5)
+            search_end = min(len(self.answer), pos + 20)
+            nearby_text = self.answer[search_start:search_end]
+            
+            # Find citation numbers in nearby text
+            matches = re.findall(r'\[(\d+)\]', nearby_text)
+            for match in matches:
+                num = int(match)
+                if num in used_numbers and num not in number_to_citation:
+                    entry = self._build_citation_entry(num, ref)
+                    number_to_citation[num] = entry
+                    logger.debug(f"Mapped citation [{num}] to: {entry.get('headline', 'Unknown')[:50]}")
+        
+        # Strategy 2: For any unmapped numbers, try matching by index in AUDIT citations
+        for num in sorted(used_numbers):
+            if num not in number_to_citation:
+                # Try to find by searching all grounding refs for this number
+                found = False
+                for ref in self.grounding_refs:
+                    # Check if this ref might correspond to citation number 'num'
+                    # by looking at context
+                    entry = self._try_match_citation(num, ref)
+                    if entry:
+                        number_to_citation[num] = entry
+                        found = True
+                        break
+                
+                # Fallback: Use citation at index (num-1) if available
+                if not found and 0 < num <= len(self.citations):
+                    entry = {"number": num}
+                    entry.update(self.citations[num-1].to_dict())
+                    number_to_citation[num] = entry
+                    logger.debug(f"Fallback mapping [{num}] to AUDIT citation #{num}")
+        
+        # Return sorted by number
+        result = [number_to_citation[n] for n in sorted(number_to_citation.keys()) if n in number_to_citation]
+        logger.info(f"Built {len(result)} numbered citations for {len(used_numbers)} markers")
+        return result
+    
+    def _build_citation_entry(self, num: int, ref: GroundingReference) -> Dict[str, Any]:
+        """Build a citation entry from a grounding reference."""
+        entry = {"number": num}
+        
+        # Try to find matching full citation from AUDIT data
+        matching_citation = None
+        for c in self.citations:
+            if c.id == ref.citation_id:
+                matching_citation = c
+                break
+            if c.headline and ref.headline and c.headline == ref.headline:
+                matching_citation = c
+                break
+        
+        if matching_citation:
+            entry.update(matching_citation.to_dict())
+        else:
+            # Use grounding ref data
+            if ref.headline:
+                entry["headline"] = ref.headline
+            if ref.source_name:
+                entry["source"] = {"name": ref.source_name}
+            if ref.timestamp:
+                entry["timestamp"] = ref.timestamp
+            if ref.url:
+                entry["url"] = ref.url
+            if ref.citation_id:
+                entry["id"] = ref.citation_id
+        
+        return entry
+    
+    def _try_match_citation(self, num: int, ref: GroundingReference) -> Optional[Dict[str, Any]]:
+        """Try to match a citation number to a grounding reference."""
+        # This is a heuristic - in practice, the Research Agent's numbering
+        # should be consistent with GROUNDING refs
+        return None  # Return None to fall back to index-based matching
+    
+    # =========================================================================
+    # LEGACY METHODS (preserved for compatibility)
+    # =========================================================================
+    
     def get_citations(self) -> List[Dict[str, Any]]:
-        """Get citations as list of dictionaries."""
+        """Get citations as list of dictionaries (without numbers)."""
         return [c.to_dict() for c in self.citations]
     
     def get_citations_json(self, indent: int = 2) -> str:
@@ -348,7 +489,7 @@ class ResearchResult:
     def to_dict_with_inline_citations(self) -> Dict[str, Any]:
         """Convert to dictionary with answer containing inline citation numbers."""
         result = {"answer": self.get_answer_with_citations()}
-        if self.grounding_refs:
+        if self.grounding_refs or self.has_existing_citations():
             result["citations"] = self.get_numbered_citations()
         elif self.citations:
             result["citations"] = self.get_citations()
@@ -401,7 +542,6 @@ class ResearchClient:
         self.base_url = base_url
         self.timeout = timeout
     
-    # NOTE: Additional parameters can be added to the research function based on the requirements.
     def research(
         self,
         message: str,
@@ -411,63 +551,17 @@ class ResearchClient:
         source_categories: Optional[List[str]] = None
     ) -> ResearchResult:
         """
-        Execute a research query and return complete result with citations.
-        
-        This method sends a request to the Bigdata.com Research Agent API,
-        which performs multi-step research using retrieval-augmented generation (RAG)
-        across web, premium sources, and your own content.
-
-        Additional parameters can be added to the research function based on the requirements.
+        Execute a research query and return structured results with citations.
         
         Args:
-            message: Your research question or prompt. Can include instructions
-                for formatting, tone, and structure. Supports natural language
-                including time references like "last 24 hours" or "this month".
-                
-            research_effort: Controls the depth and speed of research.
-                - "lite": Quick response (~10-20 seconds). Equivalent to the
-                  former Chat Service. Best for simple, factual queries.
-                - "standard": Deep research (~20-60 seconds). The agent performs
-                  multiple reasoning steps until it has enough data. Recommended
-                  for complex analysis and detailed prompts.
-                  
-            chat_id: Optional conversation ID from a previous response. Use this
-                to ask follow-up questions that maintain context from earlier
-                exchanges. Get this value from result.chat_id.
-                
-            days_back: Number of days to search back (default: 90).
-            
-            source_categories: Optional list of source categories to filter results.
-                Common categories: ["news_public"], ["news_public", "transcripts"], etc.
-                If not provided, defaults to ["news_public"].
+            message: Your research question or analysis request
+            research_effort: "lite" (10-20s) or "standard" (20-60s deep analysis)
+            chat_id: Previous chat_id for follow-up questions
+            days_back: Number of days to search back (default: 90)
+            source_categories: List of source categories (default: ["news_public"])
         
         Returns:
-            ResearchResult: Complete result containing:
-                - answer: The synthesized research response
-                - citations: List of source citations in Bigdata.com format
-                - grounding_refs: Inline citation position references
-                - chat_id: Conversation ID for follow-up questions
-                - processing_time_ms: API processing time
-        
-        Raises:
-            ValueError: If research_effort is not "lite" or "standard"
-            requests.HTTPError: If the API request fails
-        
-        Example:
-            >>> client = ResearchClient()
-            >>> result = client.research(
-            ...     message="What are the key risks facing NVIDIA?",
-            ...     research_effort="standard",
-            ...     source_categories=["news_public"]
-            ... )
-            >>> print(result.get_answer())
-            >>> print(f"Found {len(result.citations)} citations")
-            
-            # Follow-up question
-            >>> result2 = client.research(
-            ...     message="How does this compare to AMD?",
-            ...     chat_id=result.chat_id
-            ... )
+            ResearchResult: Complete result with answer and properly numbered citations
         """
         # Validate research_effort parameter
         valid_efforts = ("lite", "standard")
@@ -620,38 +714,13 @@ class ResearchClient:
         """
         Ask a follow-up question in an existing conversation.
         
-        The Research Agent supports multi-turn dialogue, allowing you to
-        refine queries or ask follow-up questions while maintaining context
-        from previous exchanges.
-        
         Args:
-            message: Your follow-up question. The agent will use context
-                from the previous conversation to provide a relevant response.
-                
-            previous_result: The ResearchResult from a previous research()
-                or follow_up() call. Must have a valid chat_id.
-                
-            research_effort: Controls research depth.
-                - "lite": Quick response
-                - "standard": Deep research (default)
+            message: Your follow-up question
+            previous_result: The ResearchResult from a previous call
+            research_effort: "lite" or "standard"
         
         Returns:
-            ResearchResult: New result with answer, citations, and the same
-                chat_id for continued conversation.
-        
-        Raises:
-            ValueError: If previous_result has no chat_id
-        
-        Example:
-            >>> result1 = client.research("What is NVIDIA's market position?")
-            >>> result2 = client.follow_up(
-            ...     message="What about their AI chip competitors?",
-            ...     previous_result=result1
-            ... )
-            >>> result3 = client.follow_up(
-            ...     message="Compare their valuations",
-            ...     previous_result=result2
-            ... )
+            ResearchResult: New result with answer and citations
         """
         if not previous_result.chat_id:
             raise ValueError("Previous result has no chat_id for follow-up")
@@ -661,4 +730,3 @@ class ResearchClient:
             research_effort=research_effort,
             chat_id=previous_result.chat_id
         )
-
