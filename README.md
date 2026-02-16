@@ -236,6 +236,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - **Production Ready**: Comprehensive error handling, logging, and plan persistence for reuse
 - **Scalable**: Efficiently handles universes with 10,000+ companies
 
+### 🔍 [Batch Search API](./Batch_Search_API/)
+**One Batch Job for Large-Scale Search Across Full Universes**
+
+- Scale to full universes (e.g. Global All-Cap, 10,000+ companies) without client-side rate limits or thousands of round-trips
+- Single batch job: submit one JSONL file with all queries; the service runs them asynchronously and returns one result file
+- No client-side rate limiting: no QPS management, connection pools, or thousands of round-trips
+- Entity-level post-processing: deduplicate chunks, assign to query entities only, aggregate score and volume per entity
+- Sector–country heatmap: optional bottom-up macro view by sector and country (e.g. G12)
+
 ## Quick Start
 
 ### Prerequisites
@@ -411,6 +420,12 @@ bigdata-cookbook/
 │   └── README.md
 ├── Smart_Batching/                                  # Optimized query planning
 │   ├── ...
+│   └── README.md
+├── Batch_Search_API/                                # Batch Search API — one job for thousands of queries
+│   ├── Batch_Search_API.ipynb
+│   ├── src/
+│   ├── data/
+│   ├── requirements.txt
 │   └── README.md
 └── README.md                                        # This file
 ```
