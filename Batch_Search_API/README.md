@@ -1,8 +1,15 @@
 # Batch Search API
 
-**Why it matters.** Scaling search to a full universe (e.g. Global All-Cap, ~10k names) usually means thousands of HTTP calls, rate limits, retries, and timeouts. The Batch Search API removes that: you submit **one file** with all your queries; the service runs them asynchronously and returns **one** result file. No client-side loops, no QPS management, no thousands of round-trips. You get a ranked view of which companies are most affected by a topic (e.g. a policy or theme), plus sector–country heatmaps as bottom-up macro signals—all grounded in document-level evidence—without building or tuning your own large-scale search pipeline.
+**Why it matters.** Scaling search to a full universe (e.g. Global All-Cap with around 10k names) usually means thousands of HTTP calls, rate limits, retries, and timeouts. The Batch Search API removes that. You submit **one file** with all your queries, the service runs them asynchronously and returns **one** result file. No client-side loops, no QPS management, no thousands of round-trips. You get a ranked view of which companies are most affected by a topic (e.g. a policy or theme), plus sector-country heatmaps as bottom-up macro signals, all grounded in document-level evidence, without building or tuning your own large-scale search pipeline.
 
-**What the notebook does.** It walks through the full workflow: (1) **Setup** — dependencies and paths; (2) **Load universe** — Global All-Cap (or your own) CSV with `RP_ENTITY_ID`, `COMPANY_NAME`, `COUNTRY`, `SECTOR`; (3) **Configure** — search topic and time window; (4) **Build queries** — pack entities into queries (e.g. 10 per query → 1,000 queries for 10k companies), with optional entity control (e.g. Trump `22C3AF`); (5) **Submit one batch job** — create job, upload JSONL, poll, download one result file; (6) **Post-process** — deduplicate chunks, assign to query entities only, aggregate **score** = sum(sentiment × relevance) and **volume** per entity, join to sector/country; (7) **Visualize** — top 5 positive/negative by score, top chunks for the most negative company, and a sector–country heatmap (e.g. G12) with optional drill-down.
+**What the notebook does.** It walks through the full workflow:
+1. **Setup** dependencies and paths
+2. **Load universe** from Global All-Cap (or your own) CSV with `RP_ENTITY_ID`, `COMPANY_NAME`, `COUNTRY`, `SECTOR`
+3. **Configure** search topic and time window
+4. **Build queries** by packing entities into queries (e.g. 10 per query, giving 1,000 queries for 10k companies), with optional entity control (e.g. Trump `22C3AF`)
+5. **Submit one batch job** to create job, upload JSONL, poll, and download one result file
+6. **Post-process** to deduplicate chunks, assign to query entities only, aggregate **score** = sum(sentiment × relevance) and **volume** per entity, join to sector/country
+7. **Results and visuals** top 5 positive/negative by score, top chunks for the most negative company, and a sector-country heatmap (e.g. G12) with optional drill-down
 
 ## Features
 
