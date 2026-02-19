@@ -563,6 +563,7 @@ def build_rolling_impact_signal(
     window_7d: int = 7,
     window_30d: int = 30,
     rolling_agg: Literal["mean", "sum"] = "mean",
+    expand_calendar_days: bool = False,
 ) -> pd.DataFrame:
     """
     Build a rolling signal per entity: mean or sum of positive/negative news
@@ -577,6 +578,8 @@ def build_rolling_impact_signal(
         window_7d: Rolling window in days for weekly signal (default 7).
         window_30d: Rolling window in days for monthly signal (default 30).
         rolling_agg: "mean" = rolling mean of daily_score; "sum" = rolling sum (default "mean").
+        expand_calendar_days: If True, expands each entity to a daily calendar from first
+            to last available date and fills missing days with zeros before rolling.
 
     Returns:
         DataFrame with columns:
@@ -634,6 +637,39 @@ def build_rolling_impact_signal(
     )
     daily = daily.sort_values([entity_col, date_col])
 
+    if expand_calendar_days:
+        expanded_frames: list[pd.DataFrame] = []
+        count_cols = ["n_positive", "n_negative", "n_neutral", "n_unclear", "volume"]
+        score_cols = ["daily_score"]
+
+        for entity_value, entity_df in daily.groupby(entity_col, sort=False):
+            entity_df = entity_df.sort_values(date_col).copy()
+            entity_df[date_col] = pd.to_datetime(entity_df[date_col], errors="coerce")
+            entity_df = entity_df.dropna(subset=[date_col])
+            if entity_df.empty:
+                continue
+
+            full_dates = pd.date_range(
+                start=entity_df[date_col].min(),
+                end=entity_df[date_col].max(),
+                freq="D",
+            )
+            expanded = pd.DataFrame({date_col: full_dates})
+            expanded[entity_col] = entity_value
+            expanded = expanded.merge(entity_df, on=[entity_col, date_col], how="left")
+
+            for col in count_cols + score_cols:
+                if col in expanded.columns:
+                    expanded[col] = expanded[col].fillna(0)
+
+            # Keep output consistent with existing date style (date, not datetime)
+            expanded[date_col] = expanded[date_col].dt.date
+            expanded_frames.append(expanded)
+
+        if expanded_frames:
+            daily = pd.concat(expanded_frames, ignore_index=True)
+            daily = daily.sort_values([entity_col, date_col]).reset_index(drop=True)
+
     if rolling_agg == "mean":
         daily["signal_7d"] = (
             daily.groupby(entity_col)["daily_score"]
@@ -661,6 +697,30 @@ def build_rolling_impact_signal(
         daily.groupby(entity_col)["volume"]
         .transform(lambda s: s.rolling(window_30d, min_periods=1).sum())
     )
+
+    if expand_calendar_days:
+        zero_cols = [
+            "daily_score",
+            "n_positive",
+            "n_negative",
+            "n_neutral",
+            "n_unclear",
+            "volume",
+            "signal_7d",
+            "signal_30d",
+            "volume_7d",
+            "volume_30d",
+        ]
+        existing_zero_cols = [col for col in zero_cols if col in daily.columns]
+        if existing_zero_cols:
+            is_all_zero_row = (
+                daily[existing_zero_cols]
+                .fillna(0)
+                .abs()
+                .sum(axis=1)
+                .eq(0)
+            )
+            daily = daily.loc[~is_all_zero_row].reset_index(drop=True)
 
     return daily
 
