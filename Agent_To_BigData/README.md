@@ -123,17 +123,11 @@ Follow these steps to run the notebooks locally. No sample code is required in t
 From the project root, create a virtual environment and install dependencies using [uv](https://docs.astral.sh/uv/):
 
 ```bash
-# Create venv and install dependencies (uses pyproject.toml / requirements.txt)
+# Create venv and install dependencies (uses pyproject.toml and uv.lock)
 uv sync
 ```
 
-If you prefer to use only `requirements.txt` with an existing venv:
-
-```bash
-uv pip install -r requirements.txt
-```
-
-For the **MCP notebook** (`agent_to_bigdata_mcp.ipynb`), `langchain-mcp-adapters` is already listed in `requirements.txt`; it will be installed by the above. Ensure your Python version matches the project (e.g. `>=3.13` per `pyproject.toml`; uv will use `.python-version` if present).
+For the **MCP notebook** (`agent_to_bigdata_mcp.ipynb`), `langchain-mcp-adapters` is in `pyproject.toml` and will be installed by the above. Ensure your Python version matches the project (e.g. `>=3.13` per `pyproject.toml`; uv will use `.python-version` if present).
 
 ### 2. Environment variables
 
