@@ -1,6 +1,6 @@
 # Large-Scale Thematic Research Workflow (API Tutorial)
 
-This tutorial shows how to build **tradeable, auditable signals** from unstructured financial text across a broad equity universe.
+This tutorial shows how to build **auditable signals** from unstructured content across a broad equity universe.
 
 It supports two signal families:
 
