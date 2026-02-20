@@ -15,7 +15,8 @@ def convert_to_dataframe(raw_results: List[Dict]) -> pd.DataFrame:
         
     Returns:
         DataFrame with one row per chunk, containing:
-        - Document columns: date, doc_id, headline, source_id, source_name, source_rank
+        - Document columns: date (date-only), doc_timestamp (full UTC datetime),
+          doc_id, headline, source_id, source_name, source_rank
         - Chunk columns: chunk_index, chunk_text, chunk_relevance, chunk_sentiment
         - Entity columns: entity_ids, detections (list of dicts with id, start, end, type)
         - Final columns: url, reporting_entities
@@ -52,6 +53,7 @@ def convert_to_dataframe(raw_results: List[Dict]) -> pd.DataFrame:
             rows.append({
                 # Document
                 "date": timestamp,
+                "doc_timestamp": timestamp,
                 "doc_id": doc_id,
                 "headline": headline,
                 "source_id": source_id,
@@ -73,8 +75,11 @@ def convert_to_dataframe(raw_results: List[Dict]) -> pd.DataFrame:
     # Create DataFrame
     df = pd.DataFrame(rows)
     
-    # Convert date to Date (date only, no time)
-    if "date" in df.columns and not df.empty:
-        df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True).dt.date
+    # Keep both timestamp and date:
+    # - doc_timestamp: full UTC datetime for intraday cutoffs
+    # - date: date-only for backward compatibility with existing workflows
+    if not df.empty and "doc_timestamp" in df.columns:
+        df["doc_timestamp"] = pd.to_datetime(df["doc_timestamp"], errors="coerce", utc=True)
+        df["date"] = df["doc_timestamp"].dt.date
     
     return df
