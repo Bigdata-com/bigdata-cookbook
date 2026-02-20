@@ -245,6 +245,14 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Entity-level post-processing: deduplicate chunks, assign to query entities only, aggregate score and volume per entity
 - Sector–country heatmap: optional bottom-up macro view by sector and country (e.g. G12)
 
+### 📚 [Bigdata.com API Tutorials](./API_Tutorials/)
+**Core tutorial bundle for key Bigdata.com APIs**
+
+- Five guided notebooks: Search, Volume, Knowledge Graph, Co-mentions, and an end-to-end workflow example
+- Standardized auth via `BIGDATA_API_KEY` loaded from `.env`
+- Progressive learning path from API fundamentals to workflow-level signal construction
+- Designed as a practical onboarding path for teams integrating Bigdata.com APIs
+
 ## Quick Start
 
 ### Prerequisites
@@ -426,6 +434,13 @@ bigdata-cookbook/
 │   ├── src/
 │   ├── data/
 │   ├── requirements.txt
+│   └── README.md
+├── API_Tutorials/                                   # Bigdata.com API Tutorials bundle
+│   ├── Search_API/
+│   ├── Volume_API/
+│   ├── Knowledge_Graph_API/
+│   ├── CoMentions_API/
+│   ├── Workflow_example/
 │   └── README.md
 └── README.md                                        # This file
 ```
