@@ -25,7 +25,6 @@ BIGDATA_API_KEY=your_api_key_here
 Optional variables:
 
 - `BIGDATA_API_BASE_URL` (defaults to `https://api.bigdata.com`)
-- `PARTICIPANT_ID`
 - `OPENAI_API_KEY` (only for optional LLM validation in `Workflow_example`)
 
 ## Suggested learning path
