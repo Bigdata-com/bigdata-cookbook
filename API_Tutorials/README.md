@@ -1,6 +1,6 @@
 # Bigdata.com API Tutorials
 
-A focused tutorial bundle for learning core Bigdata.com APIs with five notebooks.
+A focused tutorial bundle for learning core Bigdata.com APIs with six notebooks.
 
 ## Included tutorials
 
@@ -10,6 +10,7 @@ A focused tutorial bundle for learning core Bigdata.com APIs with five notebooks
 | `Volume_API` | `Volume_API_Tutorial.ipynb` | Document/chunk volume time series |
 | `Knowledge_Graph_API` | `Knowledge_Graph_API_Tutorial.ipynb` | Company/entity/source resolution |
 | `CoMentions_API` | `CoMentions_API_Tutorial.ipynb` | Co-mentioned entities and relationship discovery |
+| `Document_Download_API` | `document_download.ipynb` | Download full document content (JSON; handles small and large files) |
 | `Workflow_example` | `Workflow_example.ipynb` | End-to-end thematic workflow and rolling signals |
 
 ## Authentication
@@ -33,7 +34,8 @@ Optional variables:
 2. `Volume_API`
 3. `Knowledge_Graph_API`
 4. `CoMentions_API`
-5. `Workflow_example`
+5. `Document_Download_API` — fetch full document content when you have a document ID
+6. `Workflow_example`
 
 Optional advanced follow-up: see [`../Smart_Batching`](../Smart_Batching/).
 
