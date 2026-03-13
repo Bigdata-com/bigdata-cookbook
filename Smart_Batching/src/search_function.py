@@ -369,7 +369,8 @@ def plan_search(
     api_key: Optional[str] = None,
     api_base_url: Optional[str] = None,
     volume_query_mode: str = "three_pass",
-    max_iterations_per_batch: int = 10
+    max_iterations_per_batch: int = 10,
+    apply_volume_splits: bool = True
 ) -> Dict:
     """
     Plan a search using smart batching approach.
@@ -391,7 +392,8 @@ def plan_search(
             - "three_pass": Original 3-pass approach (query all, then verify twice)
             - "iterative": Per-batch iterative approach (query batch, remove found, repeat until empty)
         max_iterations_per_batch: Max iterations per batch when using "iterative" mode (default 10)
-        
+        apply_volume_splits: If True (default), use volume time series to split periods per company.
+                If False, use time-based granularity and estimated sub-period volumes only.
     Returns:
         Dict with planning results:
         - total_expected_chunks: Total chunks expected
@@ -488,6 +490,7 @@ def plan_search(
             volume_query_mode=volume_query_mode,
             max_iterations_per_batch=max_iterations_per_batch,
             universe_csv_path=universe_csv_path,
+            apply_volume_splits=apply_volume_splits,
         )
         
         smart = report.get("configurations", {}).get("smart", {})
