@@ -50,11 +50,11 @@ The demo shows how Snowflake customers can combine their own internal data with 
 
 ---
 
-## Part 0: Snowflake Account and Basic Setup
+## Part 1: Snowflake Account and Basic Setup
 
 Everything you need before running any scripts.
 
-### 0.1 — Snowflake Account Requirements
+### 1.1 — Snowflake Account Requirements
 
 > **IMPORTANT: A paid Snowflake Enterprise (or higher) account is required.**
 > Trial accounts do NOT support External Access Integrations, which are needed
@@ -76,14 +76,14 @@ Everything you need before running any scripts.
 
 **If you already have a Snowflake account:** Confirm it is Enterprise edition or higher under Admin → Account → Edition.
 
-### 0.2 — First Login and Snowsight Orientation
+### 1.2 — First Login and Snowsight Orientation
 
 1. After activation, you land in **Snowsight** (the Snowflake web UI)
 2. Note your **account identifier** from the URL: `https://<account_identifier>.snowflakecomputing.com`
 3. Confirm you are using the **ACCOUNTADMIN** role — check the role selector in the bottom-left corner
 4. Navigate to **SQL Worksheets** (left sidebar → Projects → Worksheets) — all scripts run here
 
-### 0.3 — Create a Warehouse
+### 1.3 — Create a Warehouse
 
 Open a new SQL Worksheet and run:
 
@@ -94,7 +94,7 @@ CREATE WAREHOUSE IF NOT EXISTS BIGDATA_WH
     AUTO_RESUME    = TRUE;
 ```
 
-### 0.4 — Create a Database and Schema
+### 1.4 — Create a Database and Schema
 
 ```sql
 CREATE DATABASE IF NOT EXISTS BIGDATA_DB;
@@ -103,109 +103,12 @@ CREATE SCHEMA IF NOT EXISTS BIGDATA_DB.MCP_TOOLS;
 
 These names are the defaults used in all scripts. Edit the `SET` block at the top of any script to change them.
 
-### 0.5 — Get a BigData.com API Key
+### 1.5 — Get a BigData.com API Key
 
 1. Go to [https://platform.bigdata.com/api-keys](https://platform.bigdata.com/api-keys)
 2. Sign up or log in
 3. Click **Generate API Key**
 4. Copy the key — you will paste it into `01_setup_infrastructure.sql`
-
-### 0.6 — Install Snowflake CLI (Part 1 Only)
-
-> **Part 2 does NOT require the CLI.** Skip this step if you are only doing Part 2 (the recommended client path).
-
-For Part 1 (deploying the original Native App):
-
-```bash
-# macOS
-brew install snowflake-cli
-
-# Verify
-snow --version
-
-# Add a named connection
-snow connection add
-#   Connection name: MyAccount
-#   Account: <your_account_identifier>
-#   User: <your_username>
-#   Password: (enter interactively)
-#   Warehouse: BIGDATA_WH
-```
-
----
-
-## Part 1: Run the Original Native App (Your Personal Account)
-
-> **Requires**: Snowflake CLI. This section is for personal testing of the original Snowflake Native App from `bigdata_agent_app/`. Skip to Part 2 if CLI is not available.
-
-### Step 1 — Configure the project
-
-Edit `snowflake.yml` if your warehouse name differs from `DEMO_WH`:
-
-```yaml
-meta:
-  role: ACCOUNTADMIN
-  warehouse: BIGDATA_WH    # ← your warehouse
-```
-
-### Step 2 — Deploy the Native App
-
-```bash
-cd bigdata_agent_app
-snow app run -c MyAccount
-```
-
-Or use the Makefile:
-
-```bash
-make run
-```
-
-This creates an application package `BIGDATA_APP_PKG` and an application `BIGDATA_APP` with a Streamlit UI and stored procedures.
-
-### Step 3 — Configure App References
-
-After deployment, open the app in Snowsight:
-
-1. Go to **Data Products → Apps → BIGDATA_APP**
-2. Configure two references:
-
-**Reference 1 — BigData API Key (Secret)**
-
-```sql
-CREATE OR REPLACE SECRET my_bigdata_secret
-    TYPE          = GENERIC_STRING
-    SECRET_STRING = '<YOUR_BIGDATA_API_KEY>';
-```
-
-Select this secret in the app's reference configuration.
-
-**Reference 2 — External Access Integration**
-
-```sql
-CREATE OR REPLACE NETWORK RULE bigdata_rule
-    MODE       = EGRESS
-    TYPE       = HOST_PORT
-    VALUE_LIST = ('api.bigdata.com:443', 'agents.bigdata.com:443', 'mcp.bigdata.com:443');
-
-CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION bigdata_eai
-    ALLOWED_NETWORK_RULES          = (bigdata_rule)
-    ALLOWED_AUTHENTICATION_SECRETS = (my_bigdata_secret)
-    ENABLED                        = TRUE;
-```
-
-Select this EAI in the app's reference configuration.
-
-### Step 4 — Test via Streamlit UI
-
-1. Open the app — you will see four tabs:
-   - **API Tools** — Test Document Search and Research Agent
-   - **MCP Tools** — Test Find Companies, Company Tearsheet, and Search
-   - **External Agent Setup** — Generate Cortex Agent SQL (API tools)
-   - **External Agent Setup MCP** — Generate Cortex Agent SQL (MCP tools)
-2. Go to **MCP Tools**
-3. Try "Find Companies" with query `Apple` — you should get results with entity IDs
-4. Try "Company Tearsheet" with entity ID `4A6F00`, type `Public` — you should get Apple's financial data
 
 ---
 
