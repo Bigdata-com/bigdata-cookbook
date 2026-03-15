@@ -8,7 +8,8 @@ The demo shows how Snowflake customers can combine their own internal data with 
 
 | Capability | Powered by | Example question |
 |---|---|---|
-| Query internal Snowflake data | `TPCH_ANALYST` (Cortex Analyst) | *"What is total revenue by nation?"* |
+| Query portfolio data (structured) | `INTERNAL_PORTFOLIO_ANALYST` (Cortex Analyst) | *"What are the top holdings by market value?"* |
+| Search internal research docs (unstructured) | `INTERNAL_RESEARCH_SERVICE` (Cortex Search) | *"What is our investment thesis on NVIDIA?"* |
 | Generate charts from query results | `DATA_TO_CHART` | *"Show that as a bar chart"* |
 | Search financial news & filings | `BIGDATA_SEARCH` (BigData MCP) | *"Latest Apple earnings news"* |
 | Resolve company name/ticker | `BIGDATA_FIND_COMPANIES` (BigData MCP) | *"Find the entity ID for Tesla"* |
@@ -16,37 +17,7 @@ The demo shows how Snowflake customers can combine their own internal data with 
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Snowflake Account                           │
-│                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │  Foundation (scripts 01–03)                                 │   │
-│  │                                                             │   │
-│  │  Network Rule ──► External Access Integration ◄── Secret   │   │
-│  │                                                             │   │
-│  │  BigData MCP Procedures                                     │   │
-│  │    • BIGDATA_SEARCH            (news, filings, transcripts) │   │
-│  │    • BIGDATA_FIND_COMPANIES    (resolve name/ticker to ID)  │   │
-│  │    • BIGDATA_COMPANY_TEARSHEET (financial data & coverage)  │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                          │                                          │
-│  ┌───────────────────────┼─────────────────────────────────────┐   │
-│  │  SNOWFLAKE_BIGDATA_AGENT  (scripts 04a + 04c)               │   │
-│  │                                                             │   │
-│  │  TPCH_ANALYST         (Cortex Analyst over TPCH sample data)│   │
-│  │  DATA_TO_CHART         (auto-generate charts)               │   │
-│  │  BIGDATA_SEARCH        (→ mcp.bigdata.com)                  │   │
-│  │  BIGDATA_FIND_COMPANIES (→ mcp.bigdata.com)                 │   │
-│  │  BIGDATA_COMPANY_TEARSHEET (→ mcp.bigdata.com)              │   │
-│  └───────────────────────┬─────────────────────────────────────┘   │
-│                          │                                          │
-│              Snowflake Intelligence (chat UI)                       │
-└──────────────────────────┼──────────────────────────────────────────┘
-                           │
-                 https://mcp.bigdata.com
-                 (BigData.com MCP API)
-```
+![Snowflake + BigData MCP Architecture](static/snowflake-technical.png)
 
 ---
 
@@ -60,30 +31,9 @@ Everything you need before running any scripts.
 > Trial accounts do NOT support External Access Integrations, which are needed
 > to call the BigData MCP API. If you only have a trial account, you must add
 > billing information (Admin → Billing in Snowsight) to convert it to a paid
-> account before proceeding. Your remaining trial credits will still apply.
+> account before proceeding. 
 
-**If you need a new account:**
-
-1. Go to [https://signup.snowflake.com/](https://signup.snowflake.com/)
-2. Fill in your name and email
-3. Choose these options:
-   - **Edition**: **Enterprise** (required for Cortex Agents, External Access Integrations, and Snowflake Intelligence)
-   - **Cloud Provider**: AWS or Azure (your preference)
-   - **Region**: Closest to you (e.g., `US West (Oregon)` or `EU (Frankfurt)`)
-4. Click **Get Started** and check your email for the activation link
-5. Set your password and log in
-6. **Add billing information**: Go to Admin → Billing → add a payment method to enable External Access Integrations
-
-**If you already have a Snowflake account:** Confirm it is Enterprise edition or higher under Admin → Account → Edition.
-
-### 1.2 — First Login and Snowsight Orientation
-
-1. After activation, you land in **Snowsight** (the Snowflake web UI)
-2. Note your **account identifier** from the URL: `https://<account_identifier>.snowflakecomputing.com`
-3. Confirm you are using the **ACCOUNTADMIN** role — check the role selector in the bottom-left corner
-4. Navigate to **SQL Worksheets** (left sidebar → Projects → Worksheets) — all scripts run here
-
-### 1.3 — Create a Warehouse
+### 1.2 — Create a Warehouse
 
 Open a new SQL Worksheet and run:
 
@@ -94,7 +44,7 @@ CREATE WAREHOUSE IF NOT EXISTS BIGDATA_WH
     AUTO_RESUME    = TRUE;
 ```
 
-### 1.4 — Create a Database and Schema
+### 1.3 — Create a Database and Schema
 
 ```sql
 CREATE DATABASE IF NOT EXISTS BIGDATA_DB;
@@ -103,7 +53,7 @@ CREATE SCHEMA IF NOT EXISTS BIGDATA_DB.MCP_TOOLS;
 
 These names are the defaults used in all scripts. Edit the `SET` block at the top of any script to change them.
 
-### 1.5 — Get a BigData.com API Key
+### 1.4 — Get a BigData.com API Key
 
 1. Go to [https://platform.bigdata.com/api-keys](https://platform.bigdata.com/api-keys)
 2. Sign up or log in
@@ -112,7 +62,7 @@ These names are the defaults used in all scripts. Edit the `SET` block at the to
 
 ---
 
-## Part 2: Standalone Demo Setup (No CLI Required)
+## Part 2: Demo Setup (No CLI Required)
 
 > **No Snowflake CLI required.** Everything runs in Snowsight SQL Worksheets.
 > No Native App, no Docker, no SPCS — just SQL scripts in order.
@@ -124,26 +74,15 @@ These names are the defaults used in all scripts. Edit the `SET` block at the to
 | `01_setup_infrastructure.sql` | Network rule, secret (API key), external access integration |
 | `02_create_mcp_procedures.sql` | BigData MCP stored procedures (`BIGDATA_SEARCH`, `BIGDATA_FIND_COMPANIES`, `BIGDATA_COMPANY_TEARSHEET`) |
 | `03_test_procedures.sql` | Verify all BigData MCP procedures work |
-| `04a_cortex_agent.sql` | **Approach A (GA)**: Cortex Agent with BigData MCP tools only |
-| `04b_mcp_server.sql` | **Approach B (Preview)**: MCP Server object wrapping BigData tools |
-| `04c_add_snowflake_data.sql` | **Extends 04a** — adds Snowflake data + charting for the full demo |
-| `05_snowflake_intelligence.sql` | Instructions for connecting the agent to Snowflake Intelligence |
-| `06_cleanup.sql` | Remove all objects when done |
+| `04_internal_data.sql` | Financial tables, semantic view, research documents, Cortex Search Service |
+| `05_bigdata_mcp.sql` | Cortex Agent with BigData MCP tools only (for testing) |
+| `06_snowflake_bigdata_agent.sql` | Combined agent — internal data + BigData MCP + charting (6 tools) |
+| `07_snowflake_intelligence.sql` | Instructions for connecting the agent to Snowflake Intelligence |
+| `08_cleanup.sql` | Remove all objects when done |
 
-**Recommended path**: Run `01` → `02` → `03` → `04a` → `04c` → `05`
+**Run in order**: `01` → `02` → `03` → `04` → `05` → `06` → `07`
 
-`04c` is the key step that transforms the agent into the full combined demo: Snowflake data + BigData MCP + charting.
-
-### Approach A vs. Approach B
-
-| | Approach A: Cortex Agent | Approach B: MCP Server |
-|---|---|---|
-| **SQL command** | `CREATE AGENT` | `CREATE MCP SERVER` |
-| **Availability** | Generally Available | Requires MCP Server feature access (Private Preview) |
-| **How it works** | Agent uses procedures as custom tools | MCP Server wraps procedures as GENERIC tools |
-| **Intelligence integration** | Add agent under "Agents" in Intelligence | Add MCP Server under "Tools" in Intelligence |
-| **External MCP clients** | No (Snowflake-only) | Yes (via MCP protocol endpoint URL) |
-| **Recommendation** | **Start here** | Use if you have MCP Server access |
+Script 06 is the key step that transforms the agent into the full combined demo: portfolio data + research docs + BigData MCP + charting.
 
 ---
 
@@ -195,52 +134,49 @@ Open `03_test_procedures.sql` and run each `CALL` statement one at a time.
 | `Procedure not found` | Confirm you ran script 02 in the same database/schema |
 | `Timeout` | Retry — latency comes from the external BigData API, not Snowflake |
 
-### Step-by-Step: Script 04a — Cortex Agent (BigData MCP Only)
+### Step-by-Step: Script 04 — Internal Data
 
-Open `04a_cortex_agent.sql` and run it.
+Open `04_internal_data.sql` and run it.
 
-This creates `SNOWFLAKE_BIGDATA_AGENT` with three BigData MCP tools:
+This creates all the internal Snowflake data:
 
-| Tool | Procedure |
-|------|-----------|
+1. **Four financial tables** (`accounts`, `portfolios`, `holdings`, `transactions`) with sample institutional portfolio data — 3 accounts, 3 portfolios, 15 holdings across tickers like AAPL/MSFT/NVDA/AMD, and 20 representative transactions
+2. **Semantic view** (`portfolio_semantic_view`) over the financial tables for Cortex Analyst to answer structured questions via text-to-SQL (used by `INTERNAL_PORTFOLIO_ANALYST`)
+3. **Research documents table** (`research_documents`) with 6 internal research docs — investment theses for NVDA/AAPL/MSFT/AMD, a portfolio strategy memo, and a risk assessment
+4. **Cortex Search Service** (`research_search_service`) over the research documents for semantic search (used by `INTERNAL_RESEARCH_SERVICE`)
+
+### Step-by-Step: Script 05 — BigData MCP Agent (Testing)
+
+Open `05_bigdata_mcp.sql` and run it.
+
+This creates `SNOWFLAKE_BIGDATA_AGENT` with three BigData MCP tools only:
+
+| Tool | Purpose |
+|------|---------|
 | `BIGDATA_SEARCH` | Searches financial news, filings, transcripts |
 | `BIGDATA_FIND_COMPANIES` | Resolves company name/ticker to entity ID |
 | `BIGDATA_COMPANY_TEARSHEET` | Returns full company financial profile |
 
+Use this step to verify the BigData tools work inside the agent before adding internal data tools.
+
 > **Note**: The `CREATE AGENT` spec uses **JSON format** inside the `$$` block (not YAML).
 > `instructions` must be a top-level key — not nested inside `models` or `orchestration`.
 
-### Step-by-Step: Script 04c — Add Snowflake Data + Charting (Full Demo)
+### Step-by-Step: Script 06 — Combined Agent (Full Demo)
 
-Open `04c_add_snowflake_data.sql` and run it **after** 04a.
+Open `06_snowflake_bigdata_agent.sql` and run it.
 
-This is the step that completes the demo. It:
-
-1. Creates a **semantic view** (`tpch_orders_semantic_view`) over `SNOWFLAKE_SAMPLE_DATA.TPCH_SF1` — orders, lineitems, customers, suppliers, nations — with business-friendly column names
-2. Recreates `SNOWFLAKE_BIGDATA_AGENT` with two additional tools:
-   - `TPCH_ANALYST` — answers structured questions about orders/revenue/customers by generating and running SQL
-   - `DATA_TO_CHART` — generates charts from any tabular results
-
-After running 04c, the agent orchestrates all five tools in one conversation:
+This replaces the BigData-only agent with the full combined agent. After running, the agent orchestrates all six tools in one conversation:
 
 | Question | Tool used |
 |---|---|
-| *"What is total revenue by region?"* | `TPCH_ANALYST` (internal Snowflake) |
+| *"What are the top holdings by market value?"* | `INTERNAL_PORTFOLIO_ANALYST` (structured) |
+| *"What is our investment thesis on NVIDIA?"* | `INTERNAL_RESEARCH_SERVICE` (unstructured) |
 | *"Show that as a bar chart"* | `DATA_TO_CHART` |
 | *"What are analysts saying about Apple?"* | `BIGDATA_SEARCH` |
 | *"Give me Apple's tearsheet"* | `BIGDATA_FIND_COMPANIES` → `BIGDATA_COMPANY_TEARSHEET` |
 
-### Step-by-Step: Script 04b — MCP Server (Approach B, optional)
-
-Open `04b_mcp_server.sql` and run it as an alternative to 04a.
-
-Creates `BIGDATA_MCP_SERVER` — an MCP Server object that exposes the three BigData procedures as `GENERIC` tools discoverable by Snowflake Intelligence and any MCP-compatible client.
-
-> If you get `Insufficient privileges to operate on MCP SERVER`, your account does not have this feature enabled. Use Approach A instead.
-
-### Step-by-Step: Script 05 — Connect to Snowflake Intelligence
-
-#### Using the Cortex Agent (Approach A — recommended)
+### Step-by-Step: Script 07 — Connect to Snowflake Intelligence
 
 1. Open Snowsight → **AI & ML → Snowflake Intelligence**
 2. Click **"+ New"** to create a new Intelligence instance
@@ -250,32 +186,22 @@ Creates `BIGDATA_MCP_SERVER` — an MCP Server object that exposes the three Big
    - Agent: `SNOWFLAKE_BIGDATA_AGENT`
 4. Click **Save** and start chatting
 
-#### Using the MCP Server (Approach B)
-
-1. Open Snowsight → **AI & ML → Snowflake Intelligence**
-2. Click **"+ New"** to create a new Intelligence instance
-3. Under **Tools**, add the MCP Server:
-   - Database: `BIGDATA_DB`
-   - Schema: `MCP_TOOLS`
-   - MCP Server: `BIGDATA_MCP_SERVER`
-4. The three tools (`bigdata_search`, `bigdata_find_companies`, `bigdata_company_tearsheet`) will be auto-discovered
-5. Click **Save** and start chatting
-
 ### Cleanup
 
-When done testing, run `06_cleanup.sql` to remove all created objects. The database, schema, and warehouse are preserved by default — uncomment the last lines to remove those too.
+When done testing, run `08_cleanup.sql` to remove all created objects. The database, schema, and warehouse are preserved by default — uncomment the last lines to remove those too.
 
 ---
 
 ## Demo Queries
 
-These queries work in Snowflake Intelligence once you have run scripts 01–03, 04a, and 04c.
+These queries work in Snowflake Intelligence once you have run scripts 01–07.
 
-**Agent**: `SNOWFLAKE_BIGDATA_AGENT` &nbsp;|&nbsp; **5 tools available**:
+**Agent**: `SNOWFLAKE_BIGDATA_AGENT` &nbsp;|&nbsp; **6 tools available**:
 
 | Tool | Data source |
 |------|-------------|
-| `TPCH_ANALYST` | `SNOWFLAKE_SAMPLE_DATA.TPCH_SF1` (internal Snowflake) |
+| `INTERNAL_PORTFOLIO_ANALYST` | Portfolio tables — accounts, portfolios, holdings, transactions (Cortex Analyst) |
+| `INTERNAL_RESEARCH_SERVICE` | Internal research documents — theses, risk assessments, strategy memos (Cortex Search) |
 | `DATA_TO_CHART` | Output of any query |
 | `BIGDATA_SEARCH` | BigData.com MCP — news, filings, transcripts |
 | `BIGDATA_FIND_COMPANIES` | BigData.com MCP — entity resolution |
@@ -283,24 +209,35 @@ These queries work in Snowflake Intelligence once you have run scripts 01–03, 
 
 ---
 
-### Snowflake Data (TPCH_ANALYST)
+### Portfolio Data (INTERNAL_PORTFOLIO_ANALYST)
 
-- *"What is the total revenue by customer market segment?"*
-- *"Show total order price by nation, top 10"*
-- *"What is the breakdown of orders by order status?"*
-- *"Which shipping mode has the highest total quantity shipped?"*
-- *"Show monthly total revenue for 1995"*
-- *"What is the total revenue for URGENT priority orders?"*
+- *"What are the top holdings by market value across all portfolios?"*
+- *"Show the total AUM by account type"*
+- *"What is the unrealized P&L for each ticker in portfolio PF002?"*
+- *"List all BUY transactions in the last 30 days, sorted by amount"*
+- *"Which portfolio has the most aggressive risk profile?"*
+- *"What is the total market value of NVDA holdings across all portfolios?"*
 
 ---
 
-### Snowflake Data + Charts (TPCH_ANALYST + DATA_TO_CHART)
+### Portfolio Data + Charts (INTERNAL_PORTFOLIO_ANALYST + DATA_TO_CHART)
 
-- *"Show total revenue by customer market segment as a bar chart"*
-- *"Plot monthly total order price for 1996 as a line chart"*
-- *"Show the share of total revenue by nation as a pie chart"*
-- *"Compare total revenue across all shipping modes as a bar chart"*
-- *"Show order count by order priority as a horizontal bar chart"*
+- *"Show unrealized P&L by ticker as a bar chart"*
+- *"Plot the total market value per portfolio as a pie chart"*
+- *"Show the weight allocation for portfolio PF001 as a horizontal bar chart"*
+- *"Compare AUM across all accounts as a bar chart"*
+- *"Show transaction volume by ticker as a bar chart"*
+
+---
+
+### Internal Research (INTERNAL_RESEARCH_SERVICE)
+
+- *"What is our investment thesis on NVIDIA?"*
+- *"What are the key risks in our technology sector assessment?"*
+- *"What allocation changes does the Q1 2025 strategy memo recommend?"*
+- *"What does our research say about AMD's competitive positioning?"*
+- *"Summarize the Apple strategic analysis"*
+- *"What hedging recommendations have been made?"*
 
 ---
 
@@ -314,48 +251,48 @@ These queries work in Snowflake Intelligence once you have run scripts 01–03, 
 
 ---
 
-### Cross-Tool: Snowflake Data + BigData News
+### Cross-Tool: Portfolio + Research + BigData News
 
-- *"What is our top customer market segment by total revenue? Then search for the latest news about that industry."*
-  > Agent queries TPCH for segment revenue → identifies top segment → searches BigData for industry news
+- *"What is our largest NVDA holding? Now compare our internal thesis with the latest NVIDIA news from BigData."*
+  > Agent queries holdings → finds NVDA position → searches internal thesis → searches BigData for external news
 
-- *"Show me total revenue by nation, then search for recent economic news about the top performing nation."*
-  > Agent queries TPCH → identifies top nation → searches BigData for that country's economic news
+- *"Which tickers have the highest unrealized P&L? Search for recent news about the top performer."*
+  > Agent queries holdings for P&L → identifies top ticker → searches BigData for news
 
-- *"Which shipping mode is most used? Search for news about that logistics sector."*
-  > Agent queries TPCH for shipping mode counts → searches BigData for logistics news
-
----
-
-### Cross-Tool: Snowflake Data + BigData Company Tearsheet
-
-- *"What is our total revenue from the AUTOMOBILE customer segment? Also give me a financial tearsheet for Toyota."*
-  > Agent queries TPCH for automobile segment revenue → finds Toyota entity ID → fetches tearsheet
-
-- *"Show the top 3 nations by total order price, then give me a financial tearsheet for a major company from the top nation."*
-  > Agent queries TPCH → user or agent picks a company → fetches tearsheet
-
-- *"What is the total revenue for BUILDING segment customers? Compare that with the latest financials for Caterpillar."*
-  > Agent queries TPCH → finds Caterpillar → fetches company tearsheet
+- *"What does our risk assessment say about China exposure? Search for the latest news about China tech policy."*
+  > Agent searches internal risk docs → searches BigData for external news on the topic
 
 ---
 
-### Cross-Tool: Snowflake Data + Charts + BigData MCP (Full Demo)
+### Cross-Tool: Portfolio + BigData Company Tearsheet
 
-- *"Show total revenue by customer market segment as a bar chart, then search for the latest news about the top segment."*
-  > Queries TPCH → renders bar chart → searches BigData news for top segment
+- *"What is our total holding in Apple across all portfolios? Also give me Apple's financial tearsheet."*
+  > Agent queries holdings for AAPL → finds Apple entity ID → fetches tearsheet
 
-- *"Plot monthly revenue for 1995 as a line chart. Are there any news events from that period that might explain spikes?"*
-  > Queries TPCH monthly revenue → renders line chart → searches BigData for 1995 financial events
+- *"Show the top 3 tickers by market value, then give me a tearsheet for the largest one."*
+  > Agent queries holdings → identifies top ticker → finds company → fetches tearsheet
 
-- *"Show revenue by nation as a pie chart, then give me a tearsheet for a major company from the leading nation."*
-  > Queries TPCH → renders pie chart → finds company → fetches tearsheet
+- *"What is the P&L for AMD in PF002? Compare that with AMD's latest financials from BigData."*
+  > Agent queries holdings → finds AMD entity ID → fetches company tearsheet
 
-- *"What is the total revenue split by shipping mode? Show as a bar chart. Then search for recent disruptions in ocean shipping."*
-  > Queries TPCH shipping modes → renders chart → searches BigData for logistics news
+---
 
-- *"Compare URGENT vs LOW priority order revenue as a chart, then search for supply chain news."*
-  > Queries TPCH by priority → renders comparison chart → searches BigData
+### Cross-Tool: Portfolio + Charts + Research + BigData (Full Demo)
+
+- *"Show unrealized P&L by ticker as a bar chart, then search for news about the ticker with the highest gain."*
+  > Queries holdings → renders bar chart → searches BigData news for top gainer
+
+- *"What does our strategy memo recommend for NVDA? Show our current NVDA holdings and plot them. Then get the latest NVIDIA news."*
+  > Searches internal research → queries holdings → renders chart → searches BigData
+
+- *"Show portfolio AUM as a pie chart, then get a tearsheet and latest news for the top holding in the largest portfolio."*
+  > Queries portfolios → renders pie chart → queries holdings → finds company → fetches tearsheet
+
+- *"What are the key risks from our internal assessment? Search for recent news about AI bubble concerns."*
+  > Searches internal risk docs → searches BigData for related external news
+
+- *"Compare total holdings across tickers as a bar chart. What does our research say about the top two? Search BigData for the latest on both."*
+  > Queries holdings → renders chart → searches internal research → searches BigData
 
 ---
 
@@ -364,15 +301,23 @@ These queries work in Snowflake Intelligence once you have run scripts 01–03, 
 These work as sequential follow-up messages in the same Intelligence thread:
 
 **Chain 1**
-1. *"What is the total revenue by customer market segment?"*
-2. *"Show that as a pie chart"*
-3. *"Which real-world companies are major players in the top segment?"*
-4. *"Give me a financial tearsheet for one of those companies"*
+1. *"What are the top holdings by market value?"*
+2. *"Show that as a bar chart"*
+3. *"What does our internal research say about the top holding?"*
+4. *"Now search BigData for the latest news about that company"*
+5. *"Give me a financial tearsheet for it"*
 
 **Chain 2**
-1. *"Which nation has the highest total order revenue?"*
-2. *"Now search for recent economic or trade news about that country"*
-3. *"Find a major company headquartered there and show me their tearsheet"*
+1. *"Which portfolio has the highest AUM?"*
+2. *"Show me all holdings in that portfolio"*
+3. *"What allocation changes does our strategy memo recommend for those tickers?"*
+4. *"Search for the latest earnings news for the top ticker"*
+
+**Chain 3**
+1. *"What are the key risks identified in our research?"*
+2. *"Search BigData for the latest news about China export controls on semiconductors"*
+3. *"Show our NVDA holdings and unrealized P&L"*
+4. *"Get NVIDIA's financial tearsheet"*
 
 ---
 
@@ -384,8 +329,8 @@ These work as sequential follow-up messages in the same Intelligence thread:
 | `403 Forbidden` from BigData API | Invalid or expired API key | Regenerate at [platform.bigdata.com/api-keys](https://platform.bigdata.com/api-keys) and update the secret |
 | `Insufficient privileges` | Wrong role | Switch to `ACCOUNTADMIN` |
 | `External access not allowed` | EAI not enabled | Run `SHOW EXTERNAL ACCESS INTEGRATIONS` — ensure `bigdata_mcp_eai` exists and `ENABLED = TRUE` |
-| `Operation failed since agent spec is invalid: unrecognized field instructions` | JSON format error | Use JSON (not YAML) with `instructions` as a top-level key. See `04a_cortex_agent.sql`. |
-| `MCP SERVER not supported` | Feature not available | Use Approach A (Cortex Agent) instead |
+| `Operation failed since agent spec is invalid: unrecognized field instructions` | JSON format error | Use JSON (not YAML) with `instructions` as a top-level key. See `05_bigdata_mcp.sql`. |
+| `Cortex Search Service not found` | Script 04 not run | Run `04_internal_data.sql` to create the search service and tables |
 | `Agent not visible in Intelligence` | Missing grants | Run `GRANT USAGE ON AGENT ... TO ROLE PUBLIC;` |
 | Procedures return `null` | SSE stream not parsed | Verify API key is correct; check event logs |
 | Slow responses (>30s) | Normal for external API calls | Latency comes from BigData API, not Snowflake |
@@ -395,10 +340,11 @@ These work as sequential follow-up messages in the same Intelligence thread:
 ```sql
 SHOW PROCEDURES IN SCHEMA BIGDATA_DB.MCP_TOOLS;
 SHOW AGENTS IN SCHEMA BIGDATA_DB.MCP_TOOLS;
-SHOW MCP SERVERS IN SCHEMA BIGDATA_DB.MCP_TOOLS;
+SHOW CORTEX SEARCH SERVICES IN SCHEMA BIGDATA_DB.MCP_TOOLS;
 SHOW EXTERNAL ACCESS INTEGRATIONS;
 SHOW SECRETS IN SCHEMA BIGDATA_DB.MCP_TOOLS;
 SHOW NETWORK RULES IN SCHEMA BIGDATA_DB.MCP_TOOLS;
+SHOW TABLES IN SCHEMA BIGDATA_DB.MCP_TOOLS;
 ```
 
 ### Check Query History
@@ -410,6 +356,41 @@ WHERE QUERY_TEXT ILIKE '%bigdata%'
 ORDER BY START_TIME DESC
 LIMIT 20;
 ```
+
+---
+
+## Appendix: MCP Server (Alternative Path)
+
+> **This is optional.** The main demo uses a Cortex Agent (scripts 01–07 above).
+> The MCP Server approach requires Private Preview access and is not needed for the demo.
+
+If your account has MCP Server support, you can use `alternative_sf_mcp_server_path.sql` to create a `BIGDATA_MCP_SERVER` that exposes the BigData procedures as MCP-protocol tools.
+
+**When to use this:**
+- You want external MCP clients (not just Snowflake Intelligence) to connect
+- Your account has the MCP Server feature enabled
+
+**How to use:**
+1. Run `alternative_sf_mcp_server_path.sql` after script 03
+2. In Snowflake Intelligence, add the MCP Server under **Tools** instead of adding the Agent under **Agents**:
+   - Database: `BIGDATA_DB`
+   - Schema: `MCP_TOOLS`
+   - MCP Server: `BIGDATA_MCP_SERVER`
+3. The three tools (`bigdata_search`, `bigdata_find_companies`, `bigdata_company_tearsheet`) will be auto-discovered
+
+External MCP clients can connect using:
+```
+https://<account_url>/api/v2/databases/BIGDATA_DB/schemas/MCP_TOOLS/mcp-servers/BIGDATA_MCP_SERVER
+```
+Authentication: Snowflake OAuth 2.0 (see Snowflake docs for setup).
+
+> If you get `Insufficient privileges to operate on MCP SERVER`, your account does not have this feature enabled. Use the Cortex Agent path (scripts 01–07) instead.
+
+---
+
+## Sample Result
+
+![Snowflake + BigData Interaction Sample](static/result.png)
 
 ---
 
@@ -426,8 +407,11 @@ LIMIT 20;
 ### Snowflake
 - [Snowflake Intelligence Overview](https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-intelligence)
 - [Cortex Agents](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents)
+- [Cortex Search Overview](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-search/cortex-search-overview)
+- [CREATE CORTEX SEARCH SERVICE](https://docs.snowflake.com/en/sql-reference/sql/create-cortex-search)
+- [Semantic Views](https://docs.snowflake.com/en/user-guide/views-semantic/overview)
 - [CREATE MCP SERVER](https://docs.snowflake.com/en/sql-reference/sql/create-mcp-server)
 - [Snowflake-Managed MCP Server](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-mcp)
 - [External Access Integrations](https://docs.snowflake.com/en/developer-guide/external-network-access/creating-using-external-network-access)
 - [Integrating Third-Party APIs into Cortex Agents](https://medium.com/snowflake/integrating-third-party-apis-into-snowflake-cortex-agents-2802fe50ae9d)
-- [Snowflake Trial Signup](https://signup.snowflake.com/)
+

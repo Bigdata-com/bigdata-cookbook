@@ -12,7 +12,10 @@
 SET db_name     = 'BIGDATA_DB';
 SET schema_name = 'MCP_TOOLS';
 SET wh_name     = 'BIGDATA_WH';
-SET api_key     = '<YOUR_BIGDATA_API_KEY>';   -- paste your key here
+SET api_key     = '';   -- ** paste your key here **
+
+-- check if the api_key is valid
+SELECT CASE WHEN $api_key IS NULL OR $api_key = '' THEN '** ERROR **: BIGDATA_API_KEY is not set' ELSE 'BIGDATA_API_KEY is set' END AS api_key_status;
 
 -- *** END CONFIGURATION ***
 
@@ -20,7 +23,8 @@ USE ROLE ACCOUNTADMIN;
 
 -- 1. Create database and schema (idempotent)
 CREATE DATABASE IF NOT EXISTS IDENTIFIER($db_name);
-CREATE SCHEMA IF NOT EXISTS IDENTIFIER($db_name || '.' || $schema_name);
+SET full_path = ($db_name || '.' || $schema_name);
+CREATE SCHEMA IF NOT EXISTS IDENTIFIER($full_path);
 
 -- 2. Create warehouse (idempotent)
 CREATE WAREHOUSE IF NOT EXISTS IDENTIFIER($wh_name)

@@ -1,20 +1,21 @@
 -- =============================================================================
 -- Snowflake + BigData MCP Demo
--- Script 4c: Add Snowflake Sample Data to the Agent (Full Combined Demo)
+-- Script 06: Combined Snowflake + BigData Agent
 -- =============================================================================
--- This script extends the agent created in 04a to also query Snowflake's
--- built-in sample data (SNOWFLAKE_SAMPLE_DATA.TPCH_SF1) using Cortex Analyst
--- (natural-language to SQL). This is the recommended demo configuration.
+-- Replaces the BigData-only agent from script 05 with the full combined agent.
+-- The SNOWFLAKE_BIGDATA_AGENT now has six tools:
 --
--- The combined SNOWFLAKE_BIGDATA_AGENT can:
---   • Query Snowflake orders/revenue data via Cortex Analyst (TPCH_ANALYST)
---   • Search external financial news & filings via BIGDATA_SEARCH
---   • Resolve company names/tickers via BIGDATA_FIND_COMPANIES
---   • Get company financial profiles via BIGDATA_COMPANY_TEARSHEET
---   • Generate charts from any query results (DATA_TO_CHART)
+--   Internal (Snowflake):
+--     INTERNAL_PORTFOLIO_ANALYST  — Cortex Analyst text-to-SQL over portfolio data
+--     INTERNAL_RESEARCH_SERVICE   — Cortex Search over internal research documents
+--     DATA_TO_CHART               — chart generation from tabular results
 --
--- Run this AFTER 04a_cortex_agent.sql.
--- This replaces the agent from 04a with the full combined version.
+--   External (BigData.com MCP):
+--     BIGDATA_SEARCH              — news, filings, transcripts search
+--     BIGDATA_FIND_COMPANIES      — resolve company name/ticker to entity ID
+--     BIGDATA_COMPANY_TEARSHEET   — full company financial profile
+--
+-- Run this AFTER 05_bigdata_mcp.sql (and 04_internal_data.sql for tables).
 -- =============================================================================
 
 -- *** CONFIGURATION — must match values from script 01 ***
@@ -29,67 +30,7 @@ USE SCHEMA   IDENTIFIER($schema_name);
 USE WAREHOUSE IDENTIFIER($wh_name);
 
 -- =============================================================================
--- Step 1: Create a Semantic View over SNOWFLAKE_SAMPLE_DATA TPC-H tables
--- =============================================================================
--- The semantic view defines business-friendly names and relationships so
--- Cortex Analyst can answer natural-language questions about orders, revenue,
--- customers, and suppliers without knowing raw column names.
--- =============================================================================
-CREATE OR REPLACE SEMANTIC VIEW tpch_orders_semantic_view
-    TABLES (
-        orders AS SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS PRIMARY KEY (o_orderkey),
-        lineitem AS SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.LINEITEM PRIMARY KEY (l_orderkey, l_linenumber),
-        customer AS SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER PRIMARY KEY (c_custkey),
-        supplier AS SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.SUPPLIER PRIMARY KEY (s_suppkey),
-        nation AS SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.NATION PRIMARY KEY (n_nationkey)
-    )
-    RELATIONSHIPS (
-        lineitem (l_orderkey) REFERENCES orders,
-        orders (o_custkey) REFERENCES customer,
-        supplier (s_nationkey) REFERENCES nation,
-        customer (c_nationkey) REFERENCES nation
-    )
-    FACTS (
-        orders.o_totalprice AS o_totalprice,
-        lineitem.l_quantity AS l_quantity,
-        lineitem.l_extendedprice AS l_extendedprice,
-        lineitem.l_discount AS l_discount,
-        lineitem.l_tax AS l_tax
-    )
-    DIMENSIONS (
-        orders.order_date AS o_orderdate,
-        orders.order_status AS o_orderstatus,
-        orders.order_priority AS o_orderpriority,
-        lineitem.ship_date AS l_shipdate,
-        lineitem.return_flag AS l_returnflag,
-        lineitem.line_status AS l_linestatus,
-        lineitem.ship_mode AS l_shipmode,
-        customer.customer_name AS c_name,
-        customer.customer_segment AS c_mktsegment,
-        supplier.supplier_name AS s_name,
-        nation.nation_name AS n_name
-    )
-    METRICS (
-        orders.total_order_price AS SUM(o_totalprice),
-        lineitem.total_quantity AS SUM(l_quantity),
-        lineitem.total_revenue AS SUM(l_extendedprice)
-    );
-
--- Grant access to the semantic view
-GRANT SELECT ON SEMANTIC VIEW BIGDATA_DB.MCP_TOOLS.tpch_orders_semantic_view TO ROLE PUBLIC;
-
--- Verify
-DESCRIBE SEMANTIC VIEW tpch_orders_semantic_view;
-
--- =============================================================================
--- Step 2: Recreate agent as SNOWFLAKE_BIGDATA_AGENT with all five tools
--- =============================================================================
--- Tools:
---   TPCH_ANALYST              — Cortex Analyst text-to-SQL over Snowflake sample data
---   DATA_TO_CHART             — chart generation from tabular results
---   BIGDATA_SEARCH            — BigData MCP: news, filings, transcripts search
---   BIGDATA_FIND_COMPANIES    — BigData MCP: resolve company name/ticker to entity ID
---   BIGDATA_COMPANY_TEARSHEET — BigData MCP: full company financial profile
+-- Recreate agent with all six tools
 -- =============================================================================
 CREATE OR REPLACE AGENT BIGDATA_DB.MCP_TOOLS.SNOWFLAKE_BIGDATA_AGENT
     FROM SPECIFICATION $$
@@ -98,22 +39,29 @@ CREATE OR REPLACE AGENT BIGDATA_DB.MCP_TOOLS.SNOWFLAKE_BIGDATA_AGENT
         "orchestration": "auto"
     },
     "instructions": {
-        "system": "You are a financial research analyst powered by Snowflake and BigData.com. You can query internal Snowflake business data and access BigData.com's real-time financial intelligence including news, SEC filings, earnings transcripts, and company financial profiles. Combine both sources to deliver comprehensive financial insights.",
-        "orchestration": "For questions about orders, revenue, customers, suppliers, shipping, or any structured business data use TPCH_ANALYST. For external financial news, SEC filings, earnings transcripts, or company research use BIGDATA_SEARCH. For company lookup by name or ticker use BIGDATA_FIND_COMPANIES. For detailed company financials and analyst coverage use BIGDATA_COMPANY_TEARSHEET (always call BIGDATA_FIND_COMPANIES first to get the rp_entity_id). Generate charts with DATA_TO_CHART for data that benefits from visualization. Always cite sources."
+        "system": "You are a financial research analyst powered by Snowflake and BigData.com. You have access to internal portfolio data (accounts, portfolios, holdings, transactions), internal research documents (investment theses, risk assessments, strategy memos), and BigData.com real-time financial intelligence (news, SEC filings, earnings transcripts, company profiles). Combine these sources to deliver comprehensive financial insights. When using BigData.com tools (BIGDATA_SEARCH, BIGDATA_FIND_COMPANIES, BIGDATA_COMPANY_TEARSHEET), always provide citations including the source name, headline, URL, and date when available.",
+        "orchestration": "For questions about portfolio holdings, accounts, transactions, AUM, P&L, or any structured financial data use INTERNAL_PORTFOLIO_ANALYST. For questions about internal research notes, investment theses, risk assessments, or strategy memos use INTERNAL_RESEARCH_SERVICE. For external financial news, SEC filings, or earnings transcripts use BIGDATA_SEARCH. For company lookup by name or ticker use BIGDATA_FIND_COMPANIES. For detailed company financials and analyst coverage use BIGDATA_COMPANY_TEARSHEET (always call BIGDATA_FIND_COMPANIES first to get the rp_entity_id). Generate charts with DATA_TO_CHART for data that benefits from visualization. Always cite sources."
     },
     "tools": [
         {
             "tool_spec": {
                 "type": "cortex_analyst_text_to_sql",
-                "name": "TPCH_ANALYST",
-                "description": "Answers structured data questions about orders, revenue, customers, suppliers, shipping modes, and geographic regions using the TPC-H sample dataset. Use for questions like: total revenue by region, top customers by spend, orders by status, shipping analysis."
+                "name": "INTERNAL_PORTFOLIO_ANALYST",
+                "description": "Answers structured data questions about portfolio holdings, accounts, transactions, unrealized P&L, market values, and asset allocation. Use for questions like: top holdings by market value, total AUM by account, recent buy/sell transactions, P&L by ticker."
+            }
+        },
+        {
+            "tool_spec": {
+                "type": "cortex_search",
+                "name": "INTERNAL_RESEARCH_SERVICE",
+                "description": "Searches internal research documents including investment theses, strategic analyses, portfolio strategy memos, and risk assessments. Use for questions like: What is our thesis on NVIDIA? What are the key risks? What allocation changes are recommended?"
             }
         },
         {
             "tool_spec": {
                 "type": "data_to_chart",
                 "name": "DATA_TO_CHART",
-                "description": "Generates visualizations and charts from tabular data. Use after TPCH_ANALYST returns results when the user asks for a chart, graph, or visual representation."
+                "description": "Generates visualizations and charts from tabular data. Use after INTERNAL_PORTFOLIO_ANALYST returns results when the user asks for a chart, graph, or visual representation."
             }
         },
         {
@@ -181,12 +129,44 @@ CREATE OR REPLACE AGENT BIGDATA_DB.MCP_TOOLS.SNOWFLAKE_BIGDATA_AGENT
         }
     ],
     "tool_resources": {
-        "TPCH_ANALYST": {
-            "semantic_view": "BIGDATA_DB.MCP_TOOLS.tpch_orders_semantic_view",
+        "INTERNAL_PORTFOLIO_ANALYST": {
+            "semantic_view": "BIGDATA_DB.MCP_TOOLS.PORTFOLIO_SEMANTIC_VIEW",
             "execution_environment": {
                 "type": "warehouse",
                 "warehouse": "BIGDATA_WH",
                 "query_timeout": 120
+            }
+        },
+        "INTERNAL_RESEARCH_SERVICE": {
+            "name": "BIGDATA_DB.MCP_TOOLS.RESEARCH_SEARCH_SERVICE",
+            "max_results": 5,
+            "title_column": "TITLE",
+            "id_column": "DOC_ID",
+            "columns_and_descriptions": {
+                "CONTENT": {
+                    "description": "The main text content of the research document including analysis, recommendations, and financial data",
+                    "type": "string",
+                    "searchable": true,
+                    "filterable": false
+                },
+                "TICKER": {
+                    "description": "Stock ticker symbol for the company covered. Values include: NVDA, AAPL, MSFT, AMD, PORTFOLIO.",
+                    "type": "string",
+                    "searchable": false,
+                    "filterable": true
+                },
+                "DOC_TYPE": {
+                    "description": "Type of research document. Values include: investment_thesis, strategic_analysis, segment_analysis, strategy_memo, risk_assessment.",
+                    "type": "string",
+                    "searchable": false,
+                    "filterable": true
+                },
+                "COMPANY": {
+                    "description": "Company name. Values include: NVIDIA, Apple, Microsoft, AMD, Internal Strategy, Risk Management.",
+                    "type": "string",
+                    "searchable": false,
+                    "filterable": true
+                }
             }
         },
         "BIGDATA_SEARCH": {
@@ -228,4 +208,4 @@ GRANT USAGE ON AGENT BIGDATA_DB.MCP_TOOLS.SNOWFLAKE_BIGDATA_AGENT TO ROLE PUBLIC
 -- Verify
 SHOW AGENTS IN SCHEMA BIGDATA_DB.MCP_TOOLS;
 
-SELECT '04c complete — SNOWFLAKE_BIGDATA_AGENT now has Snowflake data + BigData MCP + charting' AS status;
+SELECT '06_snowflake_bigdata_agent complete — run 07_snowflake_intelligence.sql next' AS status;

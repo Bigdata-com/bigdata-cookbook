@@ -1,17 +1,15 @@
 -- =============================================================================
 -- Snowflake + BigData MCP Demo
--- Script 4a: Cortex Agent — BigData MCP Tools Only
+-- Script 05: BigData MCP Agent (BigData Tools Only)
 -- =============================================================================
--- APPROACH A — Generally Available
---
 -- Creates a Cortex Agent (SNOWFLAKE_BIGDATA_AGENT) that uses the three
 -- BigData MCP stored procedures from script 02 as custom tools.
 -- This agent demonstrates how BigData.com financial intelligence is surfaced
 -- directly inside Snowflake Intelligence via natural-language queries.
 --
--- Run this after 03_test_procedures.sql confirms all tools are working.
--- After this, optionally run 04c_add_snowflake_data.sql to extend the agent
--- with internal Snowflake data queries and charting.
+-- Run this after 04_internal_data.sql.
+-- After verifying BigData tools work, run 06_snowflake_bigdata_agent.sql to
+-- replace this agent with the full combined version (internal + BigData).
 --
 -- NOTE: Agent spec uses JSON format inside the $$ block.
 -- =============================================================================
@@ -140,10 +138,9 @@ CREATE OR REPLACE AGENT BIGDATA_DB.MCP_TOOLS.SNOWFLAKE_BIGDATA_AGENT
 }
 $$;
 
--- Grant usage so the agent is accessible
 GRANT USAGE ON AGENT BIGDATA_DB.MCP_TOOLS.SNOWFLAKE_BIGDATA_AGENT TO ROLE PUBLIC;
 
 -- Verify
 SHOW AGENTS IN SCHEMA BIGDATA_DB.MCP_TOOLS;
 
-SELECT '04a_cortex_agent complete — optionally run 04c_add_snowflake_data.sql, then proceed to 05_snowflake_intelligence.sql' AS status;
+SELECT '05_bigdata_mcp complete — run 06_snowflake_bigdata_agent.sql next' AS status;
