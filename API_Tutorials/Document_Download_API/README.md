@@ -1,34 +1,42 @@
-# Document Download API (Tutorial)
+# Fetch Document API (Tutorial)
 
-Download full documents from the Bigdata.com API. Use the **Document Download API** when you need the complete processed content of a document (metadata, structured body, entities, sentences) instead of search snippets.
+Fetch full documents from the Bigdata.com API. Use the **Fetch Document** endpoint (`GET /v1/documents/{document_id}`) when you need the complete processed content of a document — metadata, structured body, entities, sentences, analytics, and profiling — instead of search snippets.
+
+**API Reference:** [docs.bigdata.com/api-reference/search/fetch-document](https://docs.bigdata.com/api-reference/search/fetch-document)
 
 ## What this tutorial covers
 
-- Calling `GET /documents/<id>` to fetch a full document
-- Handling both response types: **direct JSON** (documents &lt; 5MB) and **pre-signed URL** (documents ≥ 5MB)
-- Saving documents to disk (JSON and plain text)
-- Extracting title and body text from the response
+- Calling `GET /v1/documents/{document_id}` to fetch a document
+- Understanding the `web_content` flag in the response
+- Saving annotated document JSON to disk
+- Extracting title, body text, analytics, events, and entity data from the response
 
 ## Response behavior
 
-| Document size | API returns | What the notebook does |
-|---------------|-------------|------------------------|
-| &lt; 5MB      | JSON in the response body | Uses it directly |
-| ≥ 5MB         | JSON with a `url` field (pre-signed S3 link) | Follows the URL and downloads the JSON |
+The endpoint always returns `{ url, web_content }`. The `url` is always a pre-signed URL (valid ~24 hours) that returns the full annotated document JSON when accessed.
 
-The notebook handles both cases so you don’t have to branch in your own code.
+| `web_content` | Meaning | Difference in downloaded JSON |
+|---|---|---|
+| `true` | Publicly accessible content (e.g. news articles) | `document.metadata.url` contains a link to the original web page |
+| `false` | Premium / non-web content | `document.metadata` has no `url` field |
+
+The notebook follows the pre-signed URL for every document. The downloaded JSON contains:
+- `document` – metadata (source, timestamps, file info)
+- `content` – title and body blocks (TEXT, TABLE, LIST_ORDERED, LIST_UNORDERED, HEADING, FOOTER)
+- `profiling` – processor timestamps
+- `analytics` – document-level metrics, events array, entities array
 
 ## Setup
 
 **Prerequisites:** Python 3.8+, `requests`, and a Bigdata.com API key.
 
 ```bash
-cd Document_Download_API
+cd API_Tutorials/Document_Download_API
 uv venv
 uv add requests
 ```
 
-If you don’t use `uv`:
+If you don't use `uv`:
 
 ```bash
 pip install requests
@@ -60,5 +68,6 @@ jupyter notebook document_download.ipynb
 
 ## Notes
 
-- Authentication is via the `x-api-key` header using `BIGDATA_API_KEY`.
+- Authentication is via the `X-API-KEY` header using `BIGDATA_API_KEY`.
 - The notebook uses sample document IDs; replace them with your own document IDs from search or other APIs.
+- Pre-signed URLs expire after ~24 hours; request a new one if needed.
