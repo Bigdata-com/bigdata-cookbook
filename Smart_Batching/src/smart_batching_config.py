@@ -11,6 +11,7 @@ import os
 # Use environment variable or default to production API
 API_BASE_URL = os.getenv("BIGDATA_API_BASE_URL", "https://api.bigdata.com")
 COMENTION_ENDPOINT = "/v1/search/co-mentions/entities"
+VOLUME_ENDPOINT = "/v1/search/volume"
 MAX_ENTITIES_PER_QUERY = 1000  # Max entities the API can return in a single response
 MAX_ENTITIES_IN_ANY_OF = 500   # Max entities we can send in any_of filter (API complexity limit)
 MAX_CHUNKS_PER_BASKET = 1000   # Maximum chunks per basket to stay within query limits

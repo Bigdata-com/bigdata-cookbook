@@ -23,6 +23,7 @@ This module provides a two-step system for efficient semantic search:
    - [Step 1: Planning](#step-1-planning)
    - [Step 2: Execution](#step-2-execution)
    - [Proportional Sampling](#proportional-sampling)
+   - [Volume-Based Period Splitting](#volume-based-period-splitting)
 6. [Naive vs Smart Batching: Performance Comparison](#naive-vs-smart-batching-performance-comparison)
    - [The Problem with Naive Search](#the-problem-with-naive-search)
    - [Smart Batching Solution](#smart-batching-solution)
@@ -73,16 +74,12 @@ This module provides a two-step system for efficient semantic search:
 ## Features
 
 - **Smart Batching Planning**: Organize searches using intelligent basket creation based on chunk volumes
+- **Volume-Based Period Splitting**: When a company exceeds the chunk limit per query, split the date range into sub-periods so that chunk volume is balanced across periods using the volume time series (not just equal-length time splits)
 - **Proportional Sampling**: Retrieve a percentage of total chunks while preserving distribution across baskets
 - **Parallel Execution**: Efficient parallel search execution with rate limiting
 - **Input Validation**: Comprehensive validation of dates, percentages, and file inputs
 - **Plan Persistence**: Save and load search plans for reuse with different percentages
 - **Comprehensive Testing**: Unit tests, validation tests, and integration tests
-  
-## Future improvement
-
-Generalize the splitting logic to use adaptive, volume-aware bucket sizing—dynamically selecting boundaries based on the daily volume time series—to preserve the underlying distribution more accurately (especially across periods with spikes, seasonality, or sparse activity).
-
 
 ## Installation
 
@@ -248,12 +245,13 @@ The `plan_search()` function:
 
 1. **Loads the universe** of companies from CSV (e.g., 4,732 companies)
 2. **Queries the comention endpoint** to get chunk volumes per company
-3. **Creates optimized baskets** of companies grouped by volume:
+3. **Splits date ranges by volume** when a company exceeds the chunk limit per query: fetches the volume time series and chooses sub-period boundaries so chunk volume is balanced across periods (see [Volume-Based Period Splitting](#volume-based-period-splitting)); optional via `apply_volume_splits` and `min_period_days`
+4. **Creates optimized baskets** of companies grouped by volume:
    - High-volume companies → individual baskets
    - Medium-volume companies → grouped baskets
    - Low-volume companies → large grouped baskets
-4. **Builds complete query structures** with search text embedded
-5. **Returns a plan** with total expected chunks and basket configurations
+5. **Builds complete query structures** with search text embedded
+6. **Returns a plan** with total expected chunks and basket configurations
 
 **Basket Creation Process:**
 ```
@@ -380,6 +378,24 @@ Total: 1610 expected → 161 retrieved
 Distribution preserved: ✅
 ```
 
+### Volume-Based Period Splitting
+
+When a company’s chunk count for the full date range exceeds the per-query limit (e.g. 1,000 chunks), the planner must split the range into multiple sub-periods. The **volume splitting** implementation uses the **volume time series** from the API (daily chunk counts) to choose sub-period boundaries so that chunk volume is balanced across periods, instead of using fixed calendar splits.
+
+**How it works:**
+
+1. **When it applies**: For any company group that needs more than one period, the planner fetches the volume time series (concurrently per group) from the volume endpoint.
+2. **Breakpoint detection**: `determine_splits_from_volume()` sorts the series by date, computes total chunks, and targets `total_chunks / periods_needed` chunks per period. The internal `_detect_breakpoints()` walks the cumulative chunk counts and picks boundary dates so that:
+   - No period exceeds the target chunk count (keeping each query under the limit).
+   - Each period is at least `min_period_days` days long (default 30), to avoid tiny or degenerate ranges.
+3. **Sub-period volumes**: For each sub-period, chunk volumes per company are derived from the same series via `sub_period_volumes_from_series()`, so basket creation uses actual volumes instead of estimates.
+4. **Fallback**: If the volume series is missing or total chunks are zero, the planner falls back to time-based granularity (e.g. biyearly) and uses estimated sub-period volumes.
+
+**Parameters (in `plan_search()`):**
+
+- **`apply_volume_splits`** (default: `True`): Use volume time series to split periods per company. If `False`, the planner uses time-based granularity and estimated sub-period volumes only.
+- **`min_period_days`** (default: `30`): Minimum length of any sub-period when splitting by volume. Ensures boundaries respect a minimum period length.
+
 ## Naive vs Smart Batching: Performance Comparison
 
 ### The Problem with Naive Search
@@ -424,8 +440,9 @@ The following table demonstrates the dramatic query reduction achievable with Sm
 3. **Cost Efficiency**: Significantly lower API usage costs
 4. **Rate Limit Friendly**: Fewer queries = easier to stay within limits
 5. **Scalable**: Works efficiently even with 10,000+ companies
-6. **Proportional Sampling**: Maintains distribution when sampling subsets
-7. **Topic-Specific Optimization**: Most effective for specialized, niche topics with concentrated coverage
+6. **Volume-Based Period Splitting**: Sub-period boundaries follow actual chunk distribution (via volume time series), preserving distribution across spikes and sparse periods
+7. **Proportional Sampling**: Maintains distribution when sampling subsets
+8. **Topic-Specific Optimization**: Most effective for specialized, niche topics with concentrated coverage
 
 ### When to Use Each Approach
 
@@ -463,6 +480,8 @@ Plan a search using smart batching.
 - `api_base_url` (str, optional): API base URL
 - `volume_query_mode` (str, optional): Method for querying volumes. `"three_pass"` (default) or `"iterative"`. Use `"iterative"` for per-batch iterative discovery.
 - `max_iterations_per_batch` (int, optional): Max iterations per batch when using `"iterative"` mode (default: 10)
+- `apply_volume_splits` (bool, optional): If `True` (default), use volume time series to split date ranges into sub-periods so chunk volume is balanced across periods. If `False`, use time-based granularity and estimated sub-period volumes only. See [Volume-Based Period Splitting](#volume-based-period-splitting).
+- `min_period_days` (int, optional): Minimum number of days per sub-period when splitting by volume (default: 30). Ensures no sub-period is shorter than this.
 
 **Returns:**
 - `Dict` with:
