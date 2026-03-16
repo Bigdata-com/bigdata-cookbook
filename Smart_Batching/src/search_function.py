@@ -370,7 +370,8 @@ def plan_search(
     api_base_url: Optional[str] = None,
     volume_query_mode: str = "three_pass",
     max_iterations_per_batch: int = 10,
-    apply_volume_splits: bool = True
+    apply_volume_splits: bool = True,
+    min_period_days: int = 30,
 ) -> Dict:
     """
     Plan a search using smart batching approach.
@@ -394,6 +395,8 @@ def plan_search(
         max_iterations_per_batch: Max iterations per batch when using "iterative" mode (default 10)
         apply_volume_splits: If True (default), use volume time series to split periods per company.
                 If False, use time-based granularity and estimated sub-period volumes only.
+        min_period_days: Minimum number of days per period. When splitting by volume, we need to ensure 
+                that the period is at least min_period_days days long. Default is 30 days.
     Returns:
         Dict with planning results:
         - total_expected_chunks: Total chunks expected
@@ -491,6 +494,7 @@ def plan_search(
             max_iterations_per_batch=max_iterations_per_batch,
             universe_csv_path=universe_csv_path,
             apply_volume_splits=apply_volume_splits,
+            min_period_days=min_period_days,
         )
         
         smart = report.get("configurations", {}).get("smart", {})
