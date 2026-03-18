@@ -40,8 +40,9 @@ def create_comentions_network_graph(
     if not connected_entities:
         return None
     
-    # Limit nodes and sort by total_chunks_count
-    entities = sorted(connected_entities, key=lambda x: x.get('total_chunks_count', 0), reverse=True)[:max_nodes]
+    # Exclude the center entity from connected nodes, then limit and sort by total_chunks_count
+    filtered_entities = [e for e in connected_entities if e.get('id') != center_id]
+    entities = sorted(filtered_entities, key=lambda x: x.get('total_chunks_count', 0), reverse=True)[:max_nodes]
     
     # Resolve entity names
     entity_ids = [e['id'] for e in entities]
