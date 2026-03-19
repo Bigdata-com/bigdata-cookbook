@@ -15,7 +15,7 @@ import time
 import threading
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -968,3 +968,151 @@ def load_plan(file_path: str) -> Dict:
         plan = json.load(f)
     logger.info(f"Plan loaded from {file_path}")
     return plan
+
+
+def _split_date_range_into_windows(
+    start_date: str, end_date: str, window_days: int
+) -> List[Tuple[str, str]]:
+    """
+    Split [start_date, end_date] into non-overlapping windows of window_days days each.
+    The last window may be shorter if the range is not divisible by window_days.
+
+    Returns:
+        List of (window_start_date, window_end_date) in YYYY-MM-DD format.
+    """
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+    if (end_dt - start_dt).days < 0:
+        return []
+    windows: List[Tuple[str, str]] = []
+    current = start_dt
+    while current <= end_dt:
+        w_end_dt = min(current + timedelta(days=window_days - 1), end_dt)
+        windows.append((current.strftime("%Y-%m-%d"), w_end_dt.strftime("%Y-%m-%d")))
+        current = w_end_dt + timedelta(days=1)
+    return windows
+
+
+def execute_full_grid_search(
+    text: str,
+    universe_csv_path: str,
+    start_date: str,
+    end_date: str,
+    batch_size: int,
+    session = None,
+    requests_per_minute: int = DEFAULT_REQUESTS_PER_MINUTE,
+    max_chunks_per_request: int = MAX_CHUNKS_PER_BASKET,
+    api_key: Optional[str] = None,
+    api_base_url: Optional[str] = None,
+    source_ids: Optional[List[str]] = None,
+    reranker_enabled: bool = False,
+    reranker_threshold: float = 0.8,
+    id_column: str = "id",
+    window_days: Optional[int] = None,
+) -> List[Dict]:
+    """
+    Execute search without Smart Batching (normal search): load entity IDs from CSV,
+    split into batches of size batch_size, and run one API query per batch with the
+    same query structure as plan_search (text, date range, entity filter).
+
+    Use this for comparison with Smart Batching or when you do not need volume-based
+    optimization.
+
+    When window_days is set, the start_date..end_date range is split into time windows
+    of that many days each (last window may be shorter). The search is run once per
+    window (with the same batches), and all results are appended and returned.
+
+    Args:
+        text: Search query text (same as used in plan_search).
+        universe_csv_path: Path to CSV with entity IDs (column id_column, default "id").
+        start_date: Start date YYYY-MM-DD.
+        end_date: End date YYYY-MM-DD.
+        batch_size: Number of companies per API request (batch size).
+        session: BigDataSession instance (Bigdata.com). If provided, api_key/api_base_url ignored.
+        requests_per_minute: API rate limit.
+        max_chunks_per_request: Max chunks to request per query (default 1000).
+        api_key: API key (defaults to BIGDATA_API_KEY). Not used if session provided.
+        api_base_url: API base URL. Not used if session provided.
+        source_ids: Optional list of source IDs to restrict search.
+        reranker_enabled: Enable reranker in ranking_params.
+        reranker_threshold: Reranker threshold when enabled.
+        id_column: CSV column name for entity ID (default "id").
+        window_days: If set, split [start_date, end_date] into windows of this many days
+            each and run the full grid search for each window, appending all results.
+            When None (default), a single search over the full date range is performed.
+
+    Returns:
+        List of document dicts (each with chunks). Call deduplicate_documents() in the workflow to merge duplicates across batches and windows.
+    """
+    validate_date_range(start_date, end_date)
+    if not text or not text.strip():
+        raise ValueError("text cannot be empty")
+    if batch_size < 1:
+        raise ValueError("batch_size must be >= 1")
+    if window_days is not None and window_days < 1:
+        raise ValueError("window_days must be >= 1 when provided")
+    if not session:
+        api_key = api_key or os.getenv("BIGDATA_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "API key or session must be provided. "
+                "Set BIGDATA_API_KEY or pass a BigDataSession instance."
+            )
+        api_base_url = api_base_url or os.getenv("BIGDATA_API_BASE_URL", DEFAULT_API_BASE_URL)
+
+    companies = load_universe_from_csv(universe_csv_path, id_column=id_column)
+    batch_size = min(batch_size, MAX_ENTITIES_IN_ANY_OF)
+    batches = [
+        companies[i : i + batch_size]
+        for i in range(0, len(companies), batch_size)
+    ]
+    logger.info(f"Normal search: {len(companies)} companies in {len(batches)} batches (batch_size={batch_size})")
+
+    if window_days is None:
+        time_windows: List[Tuple[str, str]] = [(start_date, end_date)]
+    else:
+        time_windows = _split_date_range_into_windows(start_date, end_date, window_days)
+        logger.info(f"Normal search: using {len(time_windows)} time windows ({window_days} days each)")
+
+    rate_limiter = SlidingWindowRateLimiter(max_requests=requests_per_minute)
+    concurrency_limiter = ConcurrencySemaphore(max_concurrent=1)
+
+    all_documents: List[Dict] = []
+    for window_idx, (w_start, w_end) in enumerate(time_windows):
+        start_iso = date_to_iso(w_start, is_start=True)
+        end_iso = date_to_iso(w_end, is_start=False)
+        if len(time_windows) > 1:
+            logger.info(f"Normal search: time window {window_idx + 1}/{len(time_windows)} ({w_start} to {w_end})")
+        for idx, entity_batch in enumerate(batches):
+            filters = {
+                "timestamp": {"start": start_iso, "end": end_iso},
+                "entity": {"any_of": entity_batch, "search_in": "BODY"},
+            }
+            if source_ids:
+                filters["source"] = {"mode": "INCLUDE", "values": list(source_ids)}
+            query = {
+                "auto_enrich_filters": False,
+                "text": text,
+                "filters": filters,
+                "ranking_params": {
+                    "source_boost": 0,
+                    "freshness_boost": 0,
+                    "reranker": {"enabled": reranker_enabled, "threshold": reranker_threshold},
+                },
+                "max_chunks": max_chunks_per_request,
+            }
+            response = make_search_request(
+                query=query,
+                api_key=api_key,
+                api_base_url=api_base_url,
+                rate_limiter=rate_limiter,
+                concurrency_limiter=concurrency_limiter,
+            )
+            if response and "results" in response:
+                all_documents.extend(response["results"])
+            if (idx + 1) % 10 == 0 or idx == len(batches) - 1:
+                log_suffix = f" (window {window_idx + 1}/{len(time_windows)})" if len(time_windows) > 1 else ""
+                logger.info(f"Normal search: completed batch {idx + 1}/{len(batches)}{log_suffix}")
+
+    logger.info(f"Normal search: {len(all_documents)} documents (deduplicate in workflow)")
+    return all_documents

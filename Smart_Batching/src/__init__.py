@@ -14,6 +14,7 @@ from .search_function import (
     save_plan,
     load_plan,
     load_universe_from_csv,
+    execute_full_grid_search,
 )
 from .output_converter import convert_to_dataframe
 
@@ -25,4 +26,5 @@ __all__ = [
     'load_plan',
     'load_universe_from_csv',
     'convert_to_dataframe',
+    'execute_full_grid_search',
 ]
