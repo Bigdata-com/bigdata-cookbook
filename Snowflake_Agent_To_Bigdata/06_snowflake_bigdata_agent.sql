@@ -8,7 +8,6 @@
 --   Internal (Snowflake):
 --     INTERNAL_PORTFOLIO_ANALYST  — Cortex Analyst text-to-SQL over portfolio data
 --     INTERNAL_RESEARCH_SERVICE   — Cortex Search over internal research documents
---     DATA_TO_CHART               — chart generation from tabular results
 --
 --   External (BigData.com MCP):
 --     BIGDATA_SEARCH              — news, filings, transcripts search
@@ -39,8 +38,8 @@ CREATE OR REPLACE AGENT BIGDATA_DB.MCP_TOOLS.SNOWFLAKE_BIGDATA_AGENT
         "orchestration": "auto"
     },
     "instructions": {
-        "system": "You are a financial research analyst powered by Snowflake and BigData.com. You have access to internal portfolio data (accounts, portfolios, holdings, transactions), internal research documents (investment theses, risk assessments, strategy memos), and BigData.com real-time financial intelligence (news, SEC filings, earnings transcripts, company profiles). Combine these sources to deliver comprehensive financial insights. When using BigData.com tools (BIGDATA_SEARCH, BIGDATA_FIND_COMPANIES, BIGDATA_COMPANY_TEARSHEET), always provide citations including the source name, headline, URL, and date when available.",
-        "orchestration": "For questions about portfolio holdings, accounts, transactions, AUM, P&L, or any structured financial data use INTERNAL_PORTFOLIO_ANALYST. For questions about internal research notes, investment theses, risk assessments, or strategy memos use INTERNAL_RESEARCH_SERVICE. For external financial news, SEC filings, or earnings transcripts use BIGDATA_SEARCH. For company lookup by name or ticker use BIGDATA_FIND_COMPANIES. For detailed company financials and analyst coverage use BIGDATA_COMPANY_TEARSHEET (always call BIGDATA_FIND_COMPANIES first to get the rp_entity_id). Generate charts with DATA_TO_CHART for data that benefits from visualization. Always cite sources."
+        "system": "You are a financial research analyst powered by Snowflake and BigData.com. You have access to internal portfolio data (accounts, portfolios, holdings, transactions), internal research documents (investment theses, risk assessments, strategy memos), and BigData.com real-time financial intelligence (news, SEC filings, earnings transcripts, company profiles). Combine these sources to deliver comprehensive financial insights. When using BigData.com tools (BIGDATA_SEARCH, BIGDATA_FIND_COMPANIES, BIGDATA_COMPANY_TEARSHEET), always provide inline citations including the source name, headline, URL, and date when available. At the end of every response that uses BigData.com sources, include a 'Sources' section listing all BigData.com citations used, formatted as a numbered list with: [#] Source Name - Headline (Date) - URL.",
+        "orchestration": "For questions about portfolio holdings, accounts, transactions, AUM, P&L, or any structured financial data use INTERNAL_PORTFOLIO_ANALYST. For questions about internal research notes, investment theses, risk assessments, or strategy memos use INTERNAL_RESEARCH_SERVICE. For external financial news, SEC filings, or earnings transcripts use BIGDATA_SEARCH. For company lookup by name or ticker use BIGDATA_FIND_COMPANIES. For detailed company financials and analyst coverage use BIGDATA_COMPANY_TEARSHEET (always call BIGDATA_FIND_COMPANIES first to get the rp_entity_id). Always cite sources."
     },
     "tools": [
         {
@@ -57,13 +56,7 @@ CREATE OR REPLACE AGENT BIGDATA_DB.MCP_TOOLS.SNOWFLAKE_BIGDATA_AGENT
                 "description": "Searches internal research documents including investment theses, strategic analyses, portfolio strategy memos, and risk assessments. Use for questions like: What is our thesis on NVIDIA? What are the key risks? What allocation changes are recommended?"
             }
         },
-        {
-            "tool_spec": {
-                "type": "data_to_chart",
-                "name": "DATA_TO_CHART",
-                "description": "Generates visualizations and charts from tabular data. Use after INTERNAL_PORTFOLIO_ANALYST returns results when the user asks for a chart, graph, or visual representation."
-            }
-        },
+
         {
             "tool_spec": {
                 "type": "generic",
