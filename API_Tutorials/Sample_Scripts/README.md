@@ -35,6 +35,5 @@ uv run python <script_name>.py
 | PepsiCo co-mention network | `pepsico_comention_network` | `pepsi_comention_network.py` | Co-mentions, Knowledge Graph |
 | Iran spike analysis | `iran_spike_analysis` | `iran_volume_spikes.py` | Volume, Co-mentions, Knowledge Graph |
 | Company pulse (24h) | `company_pulse_24h` | `company_pulse.py` | Volume, Search, Knowledge Graph |
-| Apple macro earnings extraction | `apple_macro_earnings` | `apple_macro_earnings.py` | Search, Knowledge Graph |
 
 
