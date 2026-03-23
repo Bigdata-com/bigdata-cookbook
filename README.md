@@ -181,6 +181,13 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Compatible with Cursor, Claude Desktop, and other MCP clients
 - Enables AI agents to interact with Bigdata platform for research and analysis
 
+### 📌 [MCP Dashboard Demo](./MCP_Dashboard_Demo/)
+**Illustration: MCP-grounded dashboard (frozen snapshot)**
+
+- React + Vite demo: typed **`GROUNDED_DATA`** in `src/dashboard.jsx` populated via **Bigdata.com MCP** (market tearsheet, search, country tearsheets)—**no in-browser API**
+- Shows source-attributed panels (Iran–Gulf example); **cookbook copy frozen 2026-03-18**; deploy and live refresh live in a **separate production repo**
+- Example GitHub Actions and Fly.io workflows are **reference-only** under [`MCP_Dashboard_Demo/docs/reference-workflows/`](./MCP_Dashboard_Demo/docs/reference-workflows/) (not active CI here)
+
 ### 🔬 [Research Agent Sync Response](./Research_Agent_Sync_Response/)
 **Python Client for Research Agent API with Citation Support**
 
@@ -402,6 +409,11 @@ bigdata-cookbook/
 ├── Build_Your_Own_MCP/                              # MCP server integration
 │   ├── build_your_mcp.py
 │   ├── assets/
+│   ├── Dockerfile
+│   └── README.md
+├── MCP_Dashboard_Demo/                            # MCP-grounded dashboard illustration (frozen snapshot)
+│   ├── src/
+│   ├── docs/reference-workflows/
 │   ├── Dockerfile
 │   └── README.md
 ├── Research_Agent_Sync_Response/                    # Research Agent API client
