@@ -181,6 +181,13 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Compatible with Cursor, Claude Desktop, and other MCP clients
 - Enables AI agents to interact with Bigdata platform for research and analysis
 
+### 📌 [MCP Dashboard Demo](./MCP_Dashboard_Demo/)
+**Illustration: MCP-grounded dashboard (frozen snapshot)**
+
+- React + Vite demo: typed **`GROUNDED_DATA`** in `src/dashboard.jsx` populated via **Bigdata.com MCP** (market tearsheet, search, country tearsheets)—**no in-browser API**
+- Shows source-attributed panels (Iran–Gulf example); **cookbook copy frozen 2026-03-18**; deploy and live refresh live in a **separate production repo**
+- Example GitHub Actions and Fly.io workflows are **reference-only** under [`MCP_Dashboard_Demo/docs/reference-workflows/`](./MCP_Dashboard_Demo/docs/reference-workflows/) (not active CI here)
+
 ### 🔬 [Research Agent Sync Response](./Research_Agent_Sync_Response/)
 **Python Client for Research Agent API with Citation Support**
 
@@ -245,13 +252,14 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Entity-level post-processing: deduplicate chunks, assign to query entities only, aggregate score and volume per entity
 - Sector–country heatmap: optional bottom-up macro view by sector and country (e.g. G12)
 
-### 📚 [Bigdata.com API Tutorials](./API_Tutorials/)
-**Core tutorial bundle for key Bigdata.com APIs**
+### 📚 [Bigdata.com API Examples](./API_Tutorials/)
+**Notebook and script examples for key Bigdata.com APIs**
 
-- Five guided notebooks: Search, Volume, Knowledge Graph, Co-mentions, and an end-to-end workflow example
+- Five notebook examples: Search, Volume, Knowledge Graph, Co-mentions, and an end-to-end workflow example
+- Client-ready script library in [`API_Tutorials/Sample_Scripts`](./API_Tutorials/Sample_Scripts/)
 - Standardized auth via `BIGDATA_API_KEY` loaded from `.env`
-- Progressive learning path from API fundamentals to workflow-level signal construction
-- Designed as a practical onboarding path for teams integrating Bigdata.com APIs
+- Progressive path from API fundamentals to workflow-level signal construction
+- Designed as a practical onboarding and execution path for teams integrating Bigdata.com APIs
 
 ## Quick Start
 
@@ -403,6 +411,11 @@ bigdata-cookbook/
 │   ├── assets/
 │   ├── Dockerfile
 │   └── README.md
+├── MCP_Dashboard_Demo/                            # MCP-grounded dashboard illustration (frozen snapshot)
+│   ├── src/
+│   ├── docs/reference-workflows/
+│   ├── Dockerfile
+│   └── README.md
 ├── Research_Agent_Sync_Response/                    # Research Agent API client
 │   ├── research_client_usage.ipynb
 │   ├── research_client.py
@@ -435,12 +448,13 @@ bigdata-cookbook/
 │   ├── data/
 │   ├── requirements.txt
 │   └── README.md
-├── API_Tutorials/                                   # Bigdata.com API Tutorials bundle
+├── API_Tutorials/                                   # Bigdata.com API examples bundle
 │   ├── Search_API/
 │   ├── Volume_API/
 │   ├── Knowledge_Graph_API/
 │   ├── CoMentions_API/
 │   ├── Workflow_example/
+│   ├── Sample_Scripts/
 │   └── README.md
 └── README.md                                        # This file
 ```

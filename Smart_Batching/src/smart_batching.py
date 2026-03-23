@@ -15,8 +15,9 @@ import csv
 import json
 import math
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TypedDict
 from collections import defaultdict
 
 import requests
@@ -24,6 +25,7 @@ import requests
 from .smart_batching_config import (
     API_BASE_URL,
     COMENTION_ENDPOINT,
+    VOLUME_ENDPOINT,
     MAX_ENTITIES_PER_QUERY,
     MAX_ENTITIES_IN_ANY_OF,
     MAX_CHUNKS_PER_BASKET,
@@ -33,6 +35,15 @@ from .smart_batching_config import (
     PERIOD_CONFIGS,
     UNIVERSE_CSV_PATH,
 )
+
+
+class VolumePoint(TypedDict, total=False):
+    """One point in a volume time series from the volume endpoint."""
+
+    date: str
+    documents: int
+    chunks: int
+    sentiment: float
 
 
 class SmartBatchingPlanner:
@@ -62,6 +73,7 @@ class SmartBatchingPlanner:
         # Use provided api_base_url, or fall back to config/environment
         self.api_base_url = api_base_url or os.getenv("BIGDATA_API_BASE_URL") or API_BASE_URL
         self.api_url = f"{self.api_base_url}{COMENTION_ENDPOINT}"
+        self.volume_url = f"{self.api_base_url}{VOLUME_ENDPOINT}"
         self.headers = {
             "X-API-KEY": self.api_key,
             "Content-Type": "application/json",
@@ -414,6 +426,104 @@ class SmartBatchingPlanner:
         print(f"    Completed {query_count} queries. Found {len(company_volumes)} companies with chunks > 0")
         return company_volumes, query_count
 
+    def _process_single_batch_comention(
+        self,
+        batch_idx: int,
+        companies: List[str],
+        topic: str,
+        start_iso: str,
+        end_iso: str,
+        max_iterations_per_batch: int,
+        total_batches: int,
+    ) -> Tuple[Dict[str, int], int, List[str]]:
+        """
+        Process a single batch for comention iterative query. Used by ThreadPoolExecutor.
+        Returns (batch_company_volumes, batch_query_count, batch_very_low_list).
+        """
+        batch_start = batch_idx * MAX_ENTITIES_IN_ANY_OF
+        batch_end = min(batch_start + MAX_ENTITIES_IN_ANY_OF, len(companies))
+        batch_original = companies[batch_start:batch_end]
+        batch_original_size = len(batch_original)
+
+        batch_company_volumes: Dict[str, int] = {}
+        batch_remaining_set = set(batch_original)
+        batch_found_total = 0
+        batch_query_count = 0
+        iteration = 0
+
+        while batch_remaining_set and iteration < max_iterations_per_batch:
+            iteration += 1
+            batch_remaining_list = list(batch_remaining_set)
+
+            payload = {
+                "query": {
+                    "text": topic,
+                    "filters": {
+                        "timestamp": {"start": start_iso, "end": end_iso},
+                        "entity": {
+                            "all_of": [],
+                            "any_of": batch_remaining_list,
+                            "none_of": [],
+                            "search_in": "ALL",
+                        },
+                    },
+                    "limit": MAX_ENTITIES_PER_QUERY,
+                }
+            }
+
+            try:
+                response = requests.post(self.api_url, json=payload, headers=self.headers)
+                response.raise_for_status()
+                data = response.json()
+                batch_query_count += 1
+
+                results = data.get("results", {})
+                companies_data = results.get("companies", [])
+
+                found_in_iteration: set[str] = set()
+                for company_data in companies_data:
+                    company_id = company_data.get("id")
+                    if "total_chunks_count" not in company_data:
+                        continue
+                    chunks_count = company_data["total_chunks_count"]
+                    if company_id and company_id in batch_remaining_set and chunks_count > 0:
+                        batch_company_volumes[company_id] = chunks_count
+                        found_in_iteration.add(company_id)
+
+                found_count = len(found_in_iteration)
+                batch_found_total += found_count
+                batch_remaining_set -= found_in_iteration
+
+                print(
+                    f"      Batch {batch_idx + 1}/{total_batches}, Iter {iteration}: "
+                    f"Found {found_count} new companies, {len(batch_remaining_set)} remaining"
+                )
+
+                if found_count == 0:
+                    break
+
+            except requests.exceptions.HTTPError as e:
+                error_msg = str(e)
+                try:
+                    error_details = response.json()
+                    error_msg = f"{error_msg}\nResponse: {json.dumps(error_details, indent=2)}"
+                except Exception:
+                    try:
+                        error_text = response.text
+                        error_msg = f"{error_msg}\nResponse: {error_text[:500]}"
+                    except Exception:
+                        pass
+                raise RuntimeError(f"Error querying comention endpoint: {error_msg}") from e
+            except requests.exceptions.RequestException as e:
+                raise RuntimeError(f"Error querying comention endpoint: {e}") from e
+
+        zero_count = batch_original_size - batch_found_total
+        print(
+            f"      Batch {batch_idx + 1} complete: {batch_found_total} found, "
+            f"{zero_count} very_low, {iteration} iterations"
+        )
+        return batch_company_volumes, batch_query_count, list(batch_remaining_set)
+
     def get_comention_volumes_iterative(
         self,
         companies: List[str],
@@ -421,21 +531,24 @@ class SmartBatchingPlanner:
         start_date: str,
         end_date: str,
         max_iterations_per_batch: int = 10,
+        max_workers: Optional[int] = None,
     ) -> Tuple[Dict[str, int], int, List[str]]:
         """
         Query comention endpoint using iterative per-batch approach.
-        
+        Batches are processed in parallel via ThreadPoolExecutor.
+
         For each batch of companies:
         1. Query the batch
         2. Remove found companies from the batch
         3. Re-query remaining companies in the same batch
         4. Stop when an iteration returns 0 new companies
         5. Move to the next batch
-        
+
         This is more efficient than the 3-pass approach because it:
         - Handles each batch independently
         - Stops as soon as no new companies are found
         - Never re-queries already found companies
+        - Runs batches in parallel (ThreadPoolExecutor) for speed
 
         Args:
             companies: List of company IDs
@@ -443,6 +556,7 @@ class SmartBatchingPlanner:
             start_date: Start date in ISO format (YYYY-MM-DD)
             end_date: End date in ISO format (YYYY-MM-DD)
             max_iterations_per_batch: Maximum iterations per batch to prevent infinite loops (default 10)
+            max_workers: Max concurrent batch workers. Defaults to min(8, total_batches).
 
         Returns:
             Tuple of (company_volumes_dict, query_count, very_low_companies) where:
@@ -450,115 +564,133 @@ class SmartBatchingPlanner:
             - query_count: Number of API queries made
             - very_low_companies: List of company IDs that have no chunks (0 or not found)
         """
-        company_volumes = {}
-        very_low_companies = []  # Companies with no chunks (to be added to very_low baskets)
+        company_volumes: Dict[str, int] = {}
+        very_low_companies: List[str] = []
         query_count = 0
         total_batches = (len(companies) + MAX_ENTITIES_IN_ANY_OF - 1) // MAX_ENTITIES_IN_ANY_OF
+        workers = max_workers if max_workers is not None else min(8, total_batches)
 
-        # Convert dates to ISO format with timezone
         start_iso = f"{start_date}T00:00:00Z"
         end_iso = f"{end_date}T23:59:59Z"
 
-        print(f"    [ITERATIVE MODE] Querying {len(companies)} companies in {total_batches} batches of {MAX_ENTITIES_IN_ANY_OF}")
-        print(f"    Each batch iterates until no new companies are found (max {max_iterations_per_batch} iterations)")
+        print(
+            f"    [ITERATIVE MODE] Querying {len(companies)} companies in {total_batches} batches "
+            f"of {MAX_ENTITIES_IN_ANY_OF} (max_workers={workers})"
+        )
+        print(
+            f"    Each batch iterates until no new companies are found (max {max_iterations_per_batch} iterations)"
+        )
 
-        # Process each batch independently
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(
+                    self._process_single_batch_comention,
+                    batch_idx,
+                    companies,
+                    topic,
+                    start_iso,
+                    end_iso,
+                    max_iterations_per_batch,
+                    total_batches,
+                ): batch_idx
+                for batch_idx in range(total_batches)
+            }
+            for future in as_completed(futures):
+                batch_volumes, batch_queries, batch_very_low = future.result()
+                company_volumes.update(batch_volumes)
+                query_count += batch_queries
+                very_low_companies.extend(batch_very_low)
+
+        print(
+            f"    Completed {query_count} queries. Found {len(company_volumes)} companies with "
+            f"chunks > 0, {len(very_low_companies)} very_low"
+        )
+        return company_volumes, query_count, very_low_companies
+
+    def get_volume_timeseries(
+        self,
+        companies: List[str],
+        topic: str,
+        start_date: str,
+        end_date: str,
+    ) -> List[VolumePoint]:
+        """
+        Query the volume endpoint for a set of companies and return a time series.
+
+        Batches companies by MAX_ENTITIES_IN_ANY_OF; aggregates results by date
+        so that chunks (and optionally documents, sentiment) are summed per date
+        across all batches.
+
+        Args:
+            companies: List of company IDs
+            topic: Topic string for the query
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+
+        Returns:
+            List of VolumePoint dicts with keys date, documents, chunks, sentiment,
+            sorted by date. Empty list on API error or empty response.
+        """
+        start_iso = f"{start_date}T00:00:00Z"
+        end_iso = f"{end_date}T23:59:59Z"
+        total_batches = (len(companies) + MAX_ENTITIES_IN_ANY_OF - 1) // MAX_ENTITIES_IN_ANY_OF
+
         for batch_idx in range(total_batches):
             batch_start = batch_idx * MAX_ENTITIES_IN_ANY_OF
             batch_end = min(batch_start + MAX_ENTITIES_IN_ANY_OF, len(companies))
-            batch_original = companies[batch_start:batch_end]
-            batch_original_size = len(batch_original)
-            
-            # Use set for O(1) lookups and removals
-            batch_remaining_set = set(batch_original)
-            batch_found_total = 0
-            
-            iteration = 0
-            while batch_remaining_set and iteration < max_iterations_per_batch:
-                iteration += 1
-                
-                # Convert set to list for API call
-                batch_remaining_list = list(batch_remaining_set)
-                
-                payload = {
-                    "query": {
-                        "text": topic,
-                        "filters": {
-                            "timestamp": {
-                                "start": start_iso,
-                                "end": end_iso,
-                            },
-                            "entity": {
-                                "all_of": [],
-                                "any_of": batch_remaining_list,
-                                "none_of": [],
-                                "search_in": "ALL",
-                            },
+            batch = companies[batch_start:batch_end]
+
+            payload = {
+                "query": {
+                    "text": topic,
+                    "filters": {
+                        "timestamp": {"start": start_iso, "end": end_iso},
+                        "entity": {
+                            "all_of": [],
+                            "any_of": batch,
+                            "none_of": [],
                         },
-                        "limit": MAX_ENTITIES_PER_QUERY,
-                    }
+                    },
                 }
+            }
 
+            try:
+                response = requests.post(
+                    self.volume_url, json=payload, headers=self.headers
+                )
+                response.raise_for_status()
+                data = response.json()
+            except requests.exceptions.HTTPError as e:
+                error_msg = str(e)
                 try:
-                    response = requests.post(self.api_url, json=payload, headers=self.headers)
-                    response.raise_for_status()
-                    data = response.json()
-                    query_count += 1
-                    
-                    # Extract company volumes from response
-                    results = data.get("results", {})
-                    companies_data = results.get("companies", [])
-                    
-                    # Find companies from our batch that appeared in results
-                    # Use set to handle potential duplicates in API response
-                    found_in_iteration = set()
-                    for company_data in companies_data:
-                        company_id = company_data.get("id")
-                        if "total_chunks_count" not in company_data:
-                            continue
-                        chunks_count = company_data["total_chunks_count"]
-                        # O(1) lookup with set
-                        if company_id and company_id in batch_remaining_set and chunks_count > 0:
-                            company_volumes[company_id] = chunks_count
-                            found_in_iteration.add(company_id)
-                    
-                    found_count = len(found_in_iteration)
-                    batch_found_total += found_count
-                    
-                    # Remove found companies from batch (O(1) set operations)
-                    batch_remaining_set -= found_in_iteration
-                    
-                    print(f"      Batch {batch_idx + 1}/{total_batches}, Iter {iteration}: "
-                          f"Found {found_count} new companies, {len(batch_remaining_set)} remaining")
-                    
-                    # Stop if no new companies found in this iteration
-                    if found_count == 0:
-                        break
-                        
-                except requests.exceptions.HTTPError as e:
-                    error_msg = str(e)
+                    error_details = response.json()
+                    error_msg = f"{error_msg}\nResponse: {json.dumps(error_details, indent=2)}"
+                except Exception:
                     try:
-                        error_details = response.json()
-                        error_msg = f"{error_msg}\nResponse: {json.dumps(error_details, indent=2)}"
-                    except:
-                        try:
-                            error_text = response.text
-                            error_msg = f"{error_msg}\nResponse: {error_text[:500]}"
-                        except:
-                            pass
-                    raise RuntimeError(f"Error querying comention endpoint: {error_msg}")
-                except requests.exceptions.RequestException as e:
-                    raise RuntimeError(f"Error querying comention endpoint: {e}")
-            
-            # Companies remaining after all iterations are "very_low" (no chunks found)
-            very_low_companies.extend(batch_remaining_set)
-            
-            # Summary for this batch
-            zero_count = batch_original_size - batch_found_total
-            print(f"      Batch {batch_idx + 1} complete: {batch_found_total} found, {zero_count} very_low, {iteration} iterations")
+                        error_msg = f"{error_msg}\nResponse: {response.text[:500]}"
+                    except Exception:
+                        pass
+                raise RuntimeError(f"Error querying volume endpoint: {error_msg}")
+            except requests.exceptions.RequestException as e:
+                raise RuntimeError(f"Error querying volume endpoint: {e}")
 
-        print(f"    Completed {query_count} queries. Found {len(company_volumes)} companies with chunks > 0, {len(very_low_companies)} very_low")
-        return company_volumes, query_count, very_low_companies
+            # Parse response: accept list at top level or under "results" / "volume"
+            raw_list = data.get('results', {}).get('volume', [])
+            aggregated_by_date = []
+            for point in raw_list:
+                # Initialize VolumePoint
+                volume_point: VolumePoint = {
+                    "date": point.get("date"),
+                    "documents": point.get("documents"),
+                    "chunks": point.get("chunks"),
+                    "sentiment": point.get("sentiment"),
+                }
+                aggregated_by_date.append(volume_point)
+
+
+        out = aggregated_by_date
+        out.sort(key=lambda p: p.get("date", ""))
+        return out
 
     def filter_zero_volume(self, company_volumes: Dict[str, int]) -> Dict[str, int]:
         """
@@ -901,6 +1033,177 @@ class SmartBatchingPlanner:
 
         return (f"split_{periods_needed}", periods)
 
+    def determine_splits_from_volume(
+        self,
+        volume_series: List[VolumePoint],
+        periods_needed: int,
+        start_date: str,
+        end_date: str,
+        min_period_days: int = 30
+    ) -> Tuple[str, List[Tuple[str, str]]]:
+        """
+        Split the date range into sub-periods so that chunk volume is balanced
+        across periods using the volume time series. Falls back to equal-length
+        splits if the series is empty or has zero total chunks.
+
+        Args:
+            volume_series: List of VolumePoint with at least "date" and "chunks"
+            periods_needed: Number of periods to produce
+            start_date: Full period start (YYYY-MM-DD)
+            end_date: Full period end (YYYY-MM-DD)
+            min_period_days: Minimum number of days per period
+        Returns:
+            Tuple of (period_type_label, list of (start, end) date tuples)
+        """
+        if periods_needed <= 1:
+            return ("full_range", [(start_date, end_date)])
+
+        sorted_series = sorted(
+            (p for p in volume_series if p.get("date")),
+            key=lambda p: p.get("date", ""),
+        )
+        total_chunks = sum(p.get("chunks", 0) or 0 for p in sorted_series)
+
+        if not sorted_series or total_chunks <= 0:
+            return self.determine_split_granularity(
+                periods_needed, "biyearly", start_date, end_date
+            )
+        # Cumulative chunks and find boundary dates (one date per boundary to avoid zero-length periods)
+        cumulative = 0
+        boundaries: List[str] = []
+        target_step = total_chunks / periods_needed      
+
+        boundaries = self._detect_breakpoints(sorted_series, start_date, target_step, min_period_days) 
+
+        periods: List[Tuple[str, str]] = []
+        period_starts = [start_date] + [self._next_day(d) for d in boundaries]
+        period_ends = list(boundaries) + [end_date]
+
+        for s, e in zip(period_starts, period_ends):
+            if s <= e:
+                periods.append((s, e))
+            else:
+                periods.append((s, s))
+
+        if not periods:
+            return self.determine_split_granularity(
+                periods_needed, "biyearly", start_date, end_date
+            )
+
+        return (f"split_{periods_needed}_volume", periods)
+
+    def _next_day(self, date_str: str) -> str:
+        """Return the day after date_str (YYYY-MM-DD) as YYYY-MM-DD."""
+        d = datetime.strptime(date_str, "%Y-%m-%d")
+        next_d = d + timedelta(days=1)
+        return next_d.strftime("%Y-%m-%d")
+    
+    def _delta_days(self, date_str1: str, date_str2: str) -> int:
+        """Return the number of days between date_str1 and date_str2 (YYYY-MM-DD)."""
+        d1 = datetime.strptime(date_str1, "%Y-%m-%d")
+        d2 = datetime.strptime(date_str2, "%Y-%m-%d")
+        return (d2 - d1).days
+
+    def _detect_breakpoints(self, data: List[VolumePoint], start_date: str, max_chunks: int, min_period_days: int) -> List[str]:
+        """
+        Detect breakpoints in the volume series using the cumulative chunks and delta cumulative delta days.
+        It will return the dates where the breakpoints occur, ensuring that the period is at least min_period_days days long.
+        And the period will not exceed the max_chunks limit.
+        Args:
+            data: List of VolumePoint with at least "date" and "chunks"
+            start_date: Start date of the full period (YYYY-MM-DD). Used to calculate the delta days.
+            max_chunks: Maximum chunks per basket
+            min_period_days: Minimum number of days per period
+        Returns:
+            List of dates (YYYY-MM-DD) where the breakpoints occur
+        """
+        # Compute cumulative chunks and delta cumulative delta days from the volume series
+        cumulative_chunks = 0
+        cumulative_delta_days = 0
+        for point in data:
+            cumulative_chunks += point.get("chunks", 0) or 0
+            cumulative_delta_days = self._delta_days(start_date,point.get("date", ""))
+            point["cumulative_chunks"] = cumulative_chunks
+            point["cumulative_delta_days"] = cumulative_delta_days
+                    
+        breakpoints = []
+        current_chunks = 0
+        
+        # We track the 'start date' of the current segment to calculate delta
+        segment_start_days = 0 
+
+        for i, entry in enumerate(data):
+            # Calculate how many days have passed since the start of THIS segment
+            # cumulative_delta_days is global, so we subtract the offset
+            days_in_segment = entry['cumulative_delta_days'] - segment_start_days
+            
+            # Check if adding this entry violates thresholds
+            # Note: We use the entry's individual 'chunks' contribution
+            if (current_chunks + entry['chunks'] > max_chunks) and \
+            (days_in_segment >= min_period_days):
+                
+                # Record the index of the breakpoint
+                breakpoints.append(i)
+                
+                # Reset trackers for the new segment
+                current_chunks = entry['chunks']
+                # The new segment's reference point is the previous entry's end
+                segment_start_days = data[i-1]['cumulative_delta_days'] if i > 0 else 0
+            else:
+                current_chunks += entry['chunks']
+        
+        boundaries = [data[i]['date'] for i in breakpoints]
+        return boundaries        
+
+    def sub_period_volumes_from_series(
+        self,
+        volume_series: List[VolumePoint],
+        periods: List[Tuple[str, str]],
+        company_group: Dict[str, int],
+    ) -> List[Dict[str, int]]:
+        """
+        For each sub-period, compute chunk volume per company from the volume series.
+
+        When the series is aggregated for the group, distributes each period's
+        total chunks across companies proportionally to their full-period totals.
+
+        Args:
+            volume_series: Time series with date and chunks
+            periods: List of (start_date, end_date) for each sub-period
+            company_group: Dict company_id -> total_chunks (full period)
+
+        Returns:
+            List of dicts, one per period; each dict maps company_id -> chunks for that period
+        """
+        result: List[Dict[str, int]] = []
+        group_total = sum(company_group.values()) or 1
+        by_date: Dict[str, int] = {}
+        for p in volume_series:
+            d = p.get("date")
+            if d:
+                by_date[d] = by_date.get(d, 0) + (p.get("chunks") or 0)
+
+        for period_start, period_end in periods:
+            period_chunks = 0
+            start_dt = datetime.strptime(period_start, "%Y-%m-%d")
+            end_dt = datetime.strptime(period_end, "%Y-%m-%d")
+            current = start_dt
+            while current <= end_dt:
+                key = current.strftime("%Y-%m-%d")
+                period_chunks += by_date.get(key, 0)
+                current += timedelta(days=1)
+            sub_period_volumes: Dict[str, int] = {}
+            for company_id, total in company_group.items():
+                if group_total <= 0:
+                    sub_period_volumes[company_id] = 0
+                else:
+                    proportion = total / group_total
+                    sub_period_volumes[company_id] = max(
+                        0, int(round(period_chunks * proportion))
+                    )
+            result.append(sub_period_volumes)
+        return result
+
     def plan_all_periods(
         self,
         topic: str,
@@ -909,6 +1212,8 @@ class SmartBatchingPlanner:
         volume_query_mode: str = "three_pass",
         max_iterations_per_batch: int = 10,
         universe_csv_path: Optional[str] = None,
+        apply_volume_splits: bool = True,
+        min_period_days: int = 30,
     ) -> Dict:
         """
         Generate SMART batching plan with optimal granularity per company.
@@ -926,6 +1231,10 @@ class SmartBatchingPlanner:
                 - "iterative": Per-batch iterative approach (query batch, remove found, repeat until empty)
             max_iterations_per_batch: Max iterations per batch when using "iterative" mode (default 10)
             universe_csv_path: Optional path to universe CSV; if not set, uses planner default.
+            apply_volume_splits: If True (default), use volume time series to split periods per company.
+                If False, use time-based granularity and estimated sub-period volumes only.
+            min_period_days: Minimum number of days per period. When splitting by volume, we need to ensure 
+                that the period is at least min_period_days days long. Default is 30 days.
 
         Returns:
             Planning report with single SMART configuration
@@ -979,6 +1288,36 @@ class SmartBatchingPlanner:
             print(f"  {periods_needed} period(s) needed: {count} companies")
         print(f"  Zero chunks: {total_companies - len(full_period_volumes)} companies\n")
 
+        # PHASE 2: Fetch volume time series per company group (concurrent) for groups needing splits
+        volume_by_group: Dict[Tuple[int, Tuple[str, ...]], List[VolumePoint]] = {}
+        groups_needing_volume = [
+            (p, g)
+            for p, g in sorted(companies_by_periods_needed.items())
+            if p > 1 and apply_volume_splits
+        ]
+        if groups_needing_volume:
+            print("Fetching volume time series for company groups (concurrent)...")
+            with ThreadPoolExecutor(max_workers=min(8, len(groups_needing_volume))) as executor:
+                future_to_key = {
+                    executor.submit(
+                        self.get_volume_timeseries,
+                        list(g.keys()),
+                        topic,
+                        start_date,
+                        end_date,
+                    ): (p, tuple(sorted(g.keys())))
+                    for p, g in groups_needing_volume
+                }
+                for future in as_completed(future_to_key):
+                    key = future_to_key[future]
+                    try:
+                        series = future.result()
+                        volume_by_group[key] = series
+                    except Exception as e:
+                        print(f"    Volume fetch failed for group: {e}")
+                        volume_by_group[key] = []
+            print(f"    Fetched volume for {len(volume_by_group)} groups.\n")
+
         # PHASE 2: Plan baskets using SMART configuration (single optimal plan)
         print("=" * 80)
         print("PHASE 2: Planning SMART configuration (optimal granularity per company)")
@@ -1004,11 +1343,29 @@ class SmartBatchingPlanner:
 
         # Process each group of companies by periods_needed
         for periods_needed, company_group in sorted(companies_by_periods_needed.items()):
-            # Determine optimal granularity for this group (no split = full_range, else yearly/quarterly/bimonthly/monthly/weekly)
-            actual_period_type, actual_periods = self.determine_split_granularity(
-                periods_needed, "biyearly", start_date, end_date
+            group_key = (periods_needed, tuple(sorted(company_group.keys())))
+            volume_series = volume_by_group.get(group_key) if periods_needed > 1 else None
+            use_volume_splits = (
+                apply_volume_splits
+                and periods_needed > 1
+                and volume_series is not None
+                and len(volume_series) > 0
+                and sum(p.get("chunks", 0) or 0 for p in volume_series) > 0
             )
-            
+
+            if use_volume_splits:
+                actual_period_type, actual_periods = self.determine_splits_from_volume(
+                    volume_series, periods_needed, start_date, end_date, min_period_days
+                )
+                sub_period_volumes_list = self.sub_period_volumes_from_series(
+                    volume_series, actual_periods, company_group
+                )
+            else:
+                actual_period_type, actual_periods = self.determine_split_granularity(
+                    periods_needed, "biyearly", start_date, end_date
+                )
+                sub_period_volumes_list = []
+
             n_per = len(actual_periods)
             period_word = "period" if n_per == 1 else "periods"
             print(f"  Companies needing {periods_needed} period(s): {len(company_group)} companies")
@@ -1019,26 +1376,25 @@ class SmartBatchingPlanner:
 
             # Process each period for this group
             for period_idx, (period_start, period_end) in enumerate(actual_periods):
-                # Build volumes for this sub-period
-                sub_period_volumes = {}
-                
-                for company_id, total_chunks in company_group.items():
-                    if periods_needed == 1:
-                        # Single period: use full-period volume
-                        sub_period_volumes[company_id] = total_chunks
-                    else:
-                        # Multiple periods: estimate sub-period volume
-                        estimated_chunks = self.estimate_subperiod_volumes(
-                            total_chunks,
-                            period_start,
-                            period_end,
-                            start_date,
-                            end_date,
-                        )
-                        if estimated_chunks > 0:
-                            sub_period_volumes[company_id] = estimated_chunks
-                            uses_estimates = True
-                
+                if use_volume_splits and period_idx < len(sub_period_volumes_list):
+                    sub_period_volumes = sub_period_volumes_list[period_idx]
+                else:
+                    sub_period_volumes = {}
+                    for company_id, total_chunks in company_group.items():
+                        if periods_needed == 1:
+                            sub_period_volumes[company_id] = total_chunks
+                        else:
+                            estimated_chunks = self.estimate_subperiod_volumes(
+                                total_chunks,
+                                period_start,
+                                period_end,
+                                start_date,
+                                end_date,
+                            )
+                            if estimated_chunks > 0:
+                                sub_period_volumes[company_id] = estimated_chunks
+                                uses_estimates = True
+
                 # Create baskets for this sub-period
                 baskets = self.create_baskets(sub_period_volumes)
                 total_semantic_queries += len(baskets)
@@ -1066,8 +1422,8 @@ class SmartBatchingPlanner:
                     basket["periods_needed"] = periods_needed
                     basket["period_start"] = period_start
                     basket["period_end"] = period_end
-                    basket["contains_estimates"] = periods_needed > 1
-                
+                    basket["contains_estimates"] = periods_needed > 1 and not use_volume_splits
+
                 period_detail = {
                     "period_index": period_idx,
                     "start_date": period_start,
@@ -1080,7 +1436,7 @@ class SmartBatchingPlanner:
                     "companies_with_chunks": companies_with_chunks,
                     "companies_with_zero_chunks": total_companies - companies_with_chunks,
                     "baskets": baskets,
-                    "uses_estimates": periods_needed > 1,
+                    "uses_estimates": periods_needed > 1 and not use_volume_splits,
                 }
                 all_period_details.append(period_detail)
 

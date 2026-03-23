@@ -1,0 +1,23 @@
+name: Deploy to Fly.io
+
+# Reference only: copy to .github/workflows/ in your deployment repo, then uncomment `on:` below.
+# on:
+#   push:
+#     branches:
+#       - main
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    concurrency: deploy-production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

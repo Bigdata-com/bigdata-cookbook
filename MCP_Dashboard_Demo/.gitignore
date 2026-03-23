@@ -1,0 +1,12 @@
+node_modules/
+dist/
+
+# Editor / nested repo artifacts (this folder is part of bigdata-cookbook only)
+.cursor/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+
+*.docx
