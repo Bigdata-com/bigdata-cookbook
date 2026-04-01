@@ -46,15 +46,17 @@ if not API_KEY:
 
 
 class BenchmarkCase(TypedDict):
+    id: str
     text: str
     start_date: str
     end_date: str
     chunk_percentage: float
 
 
-#UNIVERSE_CSV = "id_name_mapping_us_top_3000.csv"
+UNIVERSE_CSV = "id_name_mapping_us_top_3000.csv"
 #UNIVERSE_CSV = "small_test.csv"
-UNIVERSE_CSV = "id_name_mapping_us_top_3000_reduced.csv"
+#UNIVERSE_CSV = "id_name_mapping_us_top_3000_reduced.csv"
+#UNIVERSE_CSV = "00067A.csv"
 REQUESTS_PER_MINUTE = 450
 VOLUME_QUERY_MODE = "iterative"
 MAX_ITERATIONS_PER_BATCH = 10
@@ -67,30 +69,35 @@ WINDOW_DAYS = 90
 
 BENCHMARK_CASES: list[BenchmarkCase] = [
     {
+        "id": "earnings_h1_2024",
         "text": "Quarterly earnings performance and financial results",
         "start_date": "2024-01-01",
         "end_date": "2024-06-30",
         "chunk_percentage": 0.01,
     },
     {
+        "id": "product_launch_q1_2024",
         "text": "New product launch and market expansion",
         "start_date": "2024-01-01",
         "end_date": "2024-03-31",
         "chunk_percentage": 0.01,
     },
     {
+        "id": "leadership_h2_2023",
         "text": "Leadership changes and executive appointments",
         "start_date": "2023-07-01",
         "end_date": "2023-12-31",
         "chunk_percentage": 0.01,
     },
     {
+        "id": "cost_reduction_2024",
         "text": "Cost reduction and operational efficiency initiatives",
         "start_date": "2024-04-01",
         "end_date": "2024-09-30",
         "chunk_percentage": 0.05,
     },
     {
+        "id": "partnerships_2023",
         "text": "Strategic partnerships and joint ventures",
         "start_date": "2023-01-01",
         "end_date": "2023-12-31",
@@ -100,16 +107,18 @@ BENCHMARK_CASES: list[BenchmarkCase] = [
 
 BENCHMARK_CASES: list[BenchmarkCase] = [
     {
+        "id": "tariffs_china_2025_full_universe",
         "text": "The company is affected by US import tariffs against China",
-        "start_date": "2025-10-01",
+        "start_date": "2025-01-01",
         "end_date": "2025-12-31",
-        "chunk_percentage": 0.01,
+        "chunk_percentage": 100,
     }
 ]
 
 
 class BenchmarkResult(TypedDict):
     case_index: int
+    case_id: str
     text: str
     start_date: str
     end_date: str
@@ -127,6 +136,7 @@ class BenchmarkResult(TypedDict):
 
 class FullGridBenchmarkResult(TypedDict):
     case_index: int
+    case_id: str
     text: str
     start_date: str
     end_date: str
@@ -324,6 +334,7 @@ def run_benchmark_case_full_grid(
 
     result = FullGridBenchmarkResult(
         case_index=case_index,
+        case_id=case["id"],
         text=text,
         start_date=start_date,
         end_date=end_date,
@@ -378,6 +389,7 @@ def run_benchmark_case_full_grid_split_by_window(
 
     result = FullGridBenchmarkResult(
         case_index=case_index,
+        case_id=case["id"],
         text=text,
         start_date=start_date,
         end_date=end_date,
@@ -397,7 +409,7 @@ def run_benchmark_case(
     case: BenchmarkCase,
     case_index: int,
     *,
-    total_chunk_budget: int,
+    total_chunk_budget: int | None = None,
 ) -> tuple[BenchmarkResult, pd.DataFrame]:
     """Run a single benchmark case (Smart Batching: plan + execute)."""
     text = case["text"]
@@ -418,6 +430,7 @@ def run_benchmark_case(
         max_iterations_per_batch=MAX_ITERATIONS_PER_BATCH,
         apply_volume_splits=APPLY_VOLUME_SPLITS,
         min_period_days=MIN_PERIOD_DAYS,
+        min_entities_per_basket=BATCH_SIZE,
     )
     plan_time = time.perf_counter() - plan_start
 
@@ -425,18 +438,22 @@ def run_benchmark_case(
     num_baskets = len(baskets)
     total_expected = plan.get("total_expected_chunks", 0)
 
-    if total_expected > 0:
+    if total_expected > 0 and total_chunk_budget is not None:
         computed_chunk_pct = total_chunk_budget / total_expected
     else:
         computed_chunk_pct = case["chunk_percentage"]
 
     total_chunks_requested = _compute_smart_chunks_requested(baskets, computed_chunk_pct)
 
-    print(
-        f"  Chunk budget: {total_chunk_budget:,} | plan expected: {total_expected:,}"
-        f" | computed chunk%%: {computed_chunk_pct*100:.2f}%"
-        f" | actual requested: {total_chunks_requested:,}"
-    )
+    # Make sure computed_chunk_pct is not greater than 1.0
+    computed_chunk_pct = min(computed_chunk_pct, 1.0)
+
+    if total_chunk_budget is not None:
+        print(
+            f"  Chunk budget: {total_chunk_budget:,} | plan expected: {total_expected:,}"
+            f" | computed chunk%%: {computed_chunk_pct*100:.2f}%"
+            f" | actual requested: {total_chunks_requested:,}"
+        )
 
     exec_start = time.perf_counter()
     results_raw = execute_search(
@@ -445,6 +462,8 @@ def run_benchmark_case(
         requests_per_minute=REQUESTS_PER_MINUTE,
         api_key=API_KEY,
         api_base_url=API_BASE_URL,
+        #overwrite_chunks_per_basket=chunks_per_basket,
+        second_pass=False,
     )
     exec_time = time.perf_counter() - exec_start
 
@@ -452,6 +471,7 @@ def run_benchmark_case(
 
     result = BenchmarkResult(
         case_index=case_index,
+        case_id=case["id"],
         text=text,
         start_date=start_date,
         end_date=end_date,
@@ -609,6 +629,18 @@ def save_benchmark_results(
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+
+    if False:
+        # Retrieve all the companies from the universe csv full chunks for ground truth
+        case ={
+        "id": "tariffs_china_q4_2025",
+        "text": "The company is affected by US import tariffs against China",
+        "start_date": "2025-01-01",
+        "end_date": "2025-12-31",
+        "chunk_percentage": 1
+        }
+        result, chunks_df = run_benchmark_case(case, -1000)
+        chunks_df.to_parquet(Path.cwd() / "benchmark_ground_truth.parquet", index=False)
     print(f"API Base URL : {API_BASE_URL}")
     print(f"Universe CSV : {UNIVERSE_CSV}")
     print(f"Benchmark cases: {len(BENCHMARK_CASES)}")
@@ -616,40 +648,43 @@ def main() -> None:
     companies = load_universe_from_csv(UNIVERSE_CSV)
     num_batches = math.ceil(len(companies) / BATCH_SIZE)
     total_chunk_budget = num_batches * MAX_CHUNKS_PER_REQUEST
+    total_chunk_budget = None
 
     print(f"Batch size     : {BATCH_SIZE}")
     print(f"Num batches    : {num_batches}")
     print(f"Max chunks/req : {MAX_CHUNKS_PER_REQUEST}")
-    print(f"Chunk budget   : {total_chunk_budget:,}")
+    #print(f"Chunk budget   : {total_chunk_budget:,}")
 
     all_chunks: list[pd.DataFrame] = []
 
-    # --- Full grid search (no Smart Batching) ---
-    print(f"\n{'#'*80}")
-    print("# FULL GRID SEARCH BENCHMARK")
-    print(f"{'#'*80}")
-    results_full_grid: list[FullGridBenchmarkResult] = []
-    for idx, case in enumerate(BENCHMARK_CASES):
-        print(f"\n>>> Running full grid case {idx + 1}/{len(BENCHMARK_CASES)} ...")
-        result, chunks_df = run_benchmark_case_full_grid(case, idx)
-        results_full_grid.append(result)
-        chunks_df = chunks_df.assign(method="full_grid", case_index=idx)
-        all_chunks.append(chunks_df)
+    if False:
+        # --- Full grid search (no Smart Batching) ---
+        print(f"\n{'#'*80}")
+        print("# FULL GRID SEARCH BENCHMARK")
+        print(f"{'#'*80}")
+        results_full_grid: list[FullGridBenchmarkResult] = []
+        for idx, case in enumerate(BENCHMARK_CASES):
+            print(f"\n>>> Running full grid case {idx + 1}/{len(BENCHMARK_CASES)} ...")
+            result, chunks_df = run_benchmark_case_full_grid(case, idx)
+            results_full_grid.append(result)
+            chunks_df = chunks_df.assign(method="full_grid", case_index=idx)
+            all_chunks.append(chunks_df)
 
-    # --- Full grid search with time split (no Smart Batching) ---
-    print(f"\n{'#'*80}")
-    print("# FULL GRID SEARCH BENCHMARK WITH TIME SPLIT")
-    print(f"{'#'*80}")
-    result_split_by_window: list[FullGridBenchmarkResult] = []
-    for idx, case in enumerate(BENCHMARK_CASES):
-        print(f"\n>>> Running full grid split case {idx + 1}/{len(BENCHMARK_CASES)} ...")
-        result, chunks_df = run_benchmark_case_full_grid_split_by_window(
-            case, idx, total_chunk_budget=total_chunk_budget,
-        )
-        result_split_by_window.append(result)
-        chunks_df = chunks_df.assign(method="full_grid_split", case_index=idx)
-        all_chunks.append(chunks_df)
+        # --- Full grid search with time split (no Smart Batching) ---
+        print(f"\n{'#'*80}")
+        print("# FULL GRID SEARCH BENCHMARK WITH TIME SPLIT")
+        print(f"{'#'*80}")
+        result_split_by_window: list[FullGridBenchmarkResult] = []
+        for idx, case in enumerate(BENCHMARK_CASES):
+            print(f"\n>>> Running full grid split case {idx + 1}/{len(BENCHMARK_CASES)} ...")
+            result, chunks_df = run_benchmark_case_full_grid_split_by_window(
+                case, idx, total_chunk_budget=total_chunk_budget,
+            )
+            result_split_by_window.append(result)
+            chunks_df = chunks_df.assign(method="full_grid_split", case_index=idx)
+            all_chunks.append(chunks_df)
 
+    #total_chunk_budget = 10000
     # --- Smart Batching (plan + execute) ---
     print(f"\n{'#'*80}")
     print("# SMART BATCHING BENCHMARK")
@@ -670,8 +705,8 @@ def main() -> None:
     print_summary(results_smart)
 
     combined_df = pd.concat(all_chunks, ignore_index=True)
-
-    results_base = Path.cwd() / "benchmark_results"
+    case_ids = "_".join(case["id"] for case in BENCHMARK_CASES)
+    results_base = Path.cwd() / f"benchmark_{case_ids}"
     save_benchmark_results(
         results_base,
         chunks_df=combined_df,

@@ -23,6 +23,51 @@ METHOD_LABELS: dict[str, str] = {
 
 METHOD_ORDER: list[str] = ["full_grid", "full_grid_split", "smart_batching"]
 
+GROUND_TRUTH_STYLE: dict[str, object] = {
+    "color": "black",
+    "linewidth": 1.5,
+    "linestyle": "--",
+    "alpha": 0.7,
+    "label": "Ground Truth",
+}
+
+
+def load_ground_truth_df(path: Path | str) -> pd.DataFrame:
+    """Load the ground-truth parquet produced by *ground_truth.py*.
+
+    Returns a DataFrame with columns: entity_id, entity_name, date,
+    documents, chunks, sentiment.
+    """
+    parquet_path = Path(path)
+    if not parquet_path.suffix:
+        parquet_path = parquet_path.with_suffix(".parquet")
+    if not parquet_path.exists():
+        raise FileNotFoundError(f"Ground-truth data not found: {parquet_path}")
+    df = pd.read_parquet(parquet_path)
+    if "date" in df.columns:
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    return df
+
+
+def _ground_truth_daily_volume(gt_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate ground-truth to daily total chunk count."""
+    return (
+        gt_df.groupby("date")["chunks"]
+        .sum()
+        .reset_index(name="chunk_count")
+        .sort_values("date")
+    )
+
+
+def _ground_truth_daily_entities(gt_df: pd.DataFrame) -> pd.DataFrame:
+    """Aggregate ground-truth to daily distinct entity count."""
+    return (
+        gt_df.groupby("date")["entity_id"]
+        .nunique()
+        .reset_index(name="distinct_entities")
+        .sort_values("date")
+    )
+
 
 def load_chunks_df(base_path: Path | str = Path("benchmark_results")) -> pd.DataFrame:
     """Load the chunk-level parquet produced by *benchmark.py*.
@@ -73,13 +118,23 @@ def _methods_in_df(df: pd.DataFrame) -> list[str]:
 def plot_benchmark_timeseries(
     base_path: Path | str = Path("benchmark_results"),
     *,
+    ground_truth_path: Path | str | None = None,
     output_path: Path | str | None = None,
     figsize: tuple[float, float] = (12, 4),
 ) -> None:
-    """Plot chunk count per date for each case, overlaying methods."""
+    """Plot chunk count per date for each case, overlaying methods.
+
+    When *ground_truth_path* is given, a dashed baseline from the
+    ground-truth parquet is drawn on every subplot.
+    """
     df = load_chunks_df(base_path)
     summary = load_benchmark_summary(base_path)
     metadata = summary.get("metadata", {})
+
+    gt_daily: pd.DataFrame | None = None
+    if ground_truth_path is not None:
+        gt_df = load_ground_truth_df(ground_truth_path)
+        gt_daily = _ground_truth_daily_volume(gt_df)
 
     case_indices = sorted(df["case_index"].unique())
     methods = _methods_in_df(df)
@@ -108,10 +163,25 @@ def plot_benchmark_timeseries(
                 marker=".",
                 markersize=3,
             )
+        if gt_daily is not None and not gt_daily.empty:
+            date_min, date_max = case_df["date"].min(), case_df["date"].max()
+            gt_slice = gt_daily[gt_daily["date"].between(date_min, date_max)]
+            if not gt_slice.empty:
+                ax2 = ax.twinx()
+                ax2.plot(gt_slice["date"], gt_slice["chunk_count"], **GROUND_TRUTH_STYLE)
+                ax2.set_ylabel("Ground Truth chunks", color="black", alpha=0.7)
+                ax2.tick_params(axis="y", labelcolor="black", labelsize=8)
+                ax.legend(
+                    [*ax.get_lines(), *ax2.get_lines()],
+                    [l.get_label() for l in [*ax.get_lines(), *ax2.get_lines()]],
+                )
+            else:
+                ax.legend()
+        else:
+            ax.legend()
         ax.set_title(f"Case {case_idx + 1}: {_case_text_label(summary, case_idx)}")
         ax.set_xlabel("Date")
         ax.set_ylabel("Chunk count")
-        ax.legend()
         ax.grid(True, alpha=0.3)
 
     for j in range(n_cases, len(axes)):
@@ -197,13 +267,23 @@ def plot_relevance_timeseries(
 def plot_entities_timeseries(
     base_path: Path | str = Path("benchmark_results"),
     *,
+    ground_truth_path: Path | str | None = None,
     output_path: Path | str | None = None,
     figsize: tuple[float, float] = (12, 4),
 ) -> None:
-    """Plot distinct entity detections per date for each case, overlaying methods."""
+    """Plot distinct entity detections per date for each case, overlaying methods.
+
+    When *ground_truth_path* is given, a dashed baseline from the
+    ground-truth parquet is drawn on every subplot.
+    """
     df = load_chunks_df(base_path)
     summary = load_benchmark_summary(base_path)
     metadata = summary.get("metadata", {})
+
+    gt_daily: pd.DataFrame | None = None
+    if ground_truth_path is not None:
+        gt_df = load_ground_truth_df(ground_truth_path)
+        gt_daily = _ground_truth_daily_entities(gt_df)
 
     case_indices = sorted(df["case_index"].unique())
     methods = _methods_in_df(df)
@@ -239,10 +319,25 @@ def plot_entities_timeseries(
                 marker=".",
                 markersize=3,
             )
+        if gt_daily is not None and not gt_daily.empty:
+            date_min, date_max = case_df["date"].min(), case_df["date"].max()
+            gt_slice = gt_daily[gt_daily["date"].between(date_min, date_max)]
+            if not gt_slice.empty:
+                ax2 = ax.twinx()
+                ax2.plot(gt_slice["date"], gt_slice["distinct_entities"], **GROUND_TRUTH_STYLE)
+                ax2.set_ylabel("Ground Truth entities", color="black", alpha=0.7)
+                ax2.tick_params(axis="y", labelcolor="black", labelsize=8)
+                ax.legend(
+                    [*ax.get_lines(), *ax2.get_lines()],
+                    [l.get_label() for l in [*ax.get_lines(), *ax2.get_lines()]],
+                )
+            else:
+                ax.legend()
+        else:
+            ax.legend()
         ax.set_title(f"Case {case_idx + 1}: {_case_text_label(summary, case_idx)}")
         ax.set_xlabel("Date")
         ax.set_ylabel("Distinct entities")
-        ax.legend()
         ax.grid(True, alpha=0.3)
 
     for j in range(n_cases, len(axes)):
@@ -340,7 +435,12 @@ def plot_relevance_histogram(
 
 if __name__ == "__main__":
     base = "benchmark_results"
-    plot_benchmark_timeseries(base_path=base, output_path="benchmark_results.png")
+    gt = "ground_truth_the_company_is_affected_by_us_import_tar"
+    plot_benchmark_timeseries(
+        base_path=base, ground_truth_path=gt, output_path="benchmark_results.png",
+    )
     plot_relevance_timeseries(base_path=base, output_path="benchmark_relevance.png")
     plot_relevance_histogram(base_path=base, output_path="benchmark_relevance_histogram.png")
-    plot_entities_timeseries(base_path=base, output_path="benchmark_entities.png")
+    plot_entities_timeseries(
+        base_path=base, ground_truth_path=gt, output_path="benchmark_entities.png",
+    )
