@@ -372,6 +372,7 @@ def plan_search(
     max_iterations_per_batch: int = 10,
     apply_volume_splits: bool = True,
     min_period_days: int = 30,
+    min_entities_per_basket: int = 1,
 ) -> Dict:
     """
     Plan a search using smart batching approach.
@@ -397,6 +398,9 @@ def plan_search(
                 If False, use time-based granularity and estimated sub-period volumes only.
         min_period_days: Minimum number of days per period. When splitting by volume, we need to ensure 
                 that the period is at least min_period_days days long. Default is 30 days.
+        min_entities_per_basket: Minimum number of entities per period group. Groups below this
+                threshold are merged with the nearest group by periods_needed. Default is 1
+                (no consolidation).
     Returns:
         Dict with planning results:
         - total_expected_chunks: Total chunks expected
@@ -495,6 +499,7 @@ def plan_search(
             universe_csv_path=universe_csv_path,
             apply_volume_splits=apply_volume_splits,
             min_period_days=min_period_days,
+            min_entities_per_basket=min_entities_per_basket,
         )
         
         smart = report.get("configurations", {}).get("smart", {})
@@ -745,7 +750,9 @@ def execute_search(
     requests_per_minute: int = DEFAULT_REQUESTS_PER_MINUTE,
     api_key: Optional[str] = None,
     api_base_url: Optional[str] = None,
-    max_workers: int = DEFAULT_MAX_WORKERS
+    max_workers: int = DEFAULT_MAX_WORKERS,
+    overwrite_chunks_per_basket: int | None = None,
+    second_pass: bool = False,
 ) -> List[Dict]:
     """
     Execute search with proportional sampling.
@@ -757,6 +764,10 @@ def execute_search(
         api_key: API key (defaults to BIGDATA_API_KEY env var)
         api_base_url: API base URL
         max_workers: Number of parallel workers
+        overwrite_chunks_per_basket: If set, override the proportional chunks per basket
+        second_pass: If True, after the first search pass, entities already found in
+            retrieved chunks are removed from each basket and the search is executed
+            again with only the remaining entities. Results from both passes are combined.
 
     Returns:
         List of document dictionaries (each containing a chunks array).
@@ -796,6 +807,9 @@ def execute_search(
             # These baskets might still return some results from the semantic search
             proportional_chunks = basket.get("query", {}).get("max_chunks", 100)
         
+        if overwrite_chunks_per_basket is not None:
+            proportional_chunks = overwrite_chunks_per_basket
+        
         basket_query = basket["query"].copy()
         basket_query["max_chunks"] = proportional_chunks
         baskets_to_search.append({
@@ -812,6 +826,7 @@ def execute_search(
     all_documents = []
     failed_baskets = []
     start_time = time.time()
+    basket_out = []
     
     def search_basket(basket_info):
         """Search a single basket and return documents with enriched chunks."""
@@ -896,16 +911,17 @@ def execute_search(
                             else:
                                 entity_ids = [reporting_entities] if reporting_entities else []
                         
-                        # ALWAYS use entities from basket/query as fallback (and primary source if nothing else found)
-                        # Since we're filtering by these entities, ALL chunks returned are guaranteed to be related to them
-                        # This is the most reliable source when entity detections aren't in the API response
-                        if not entity_ids:
-                            if primary_entity_ids:
-                                entity_ids = primary_entity_ids.copy()
-                            else:
-                                # This shouldn't happen - we're filtering by entities, so we should have them
-                                logger.warning(f"No entities available for chunk from basket {basket_info.get('basket_id')}. "
-                                             f"Basket companies: {basket_entity_ids}, Query entities: {query_entity_ids}")
+                        if False:
+                            # ALWAYS use entities from basket/query as fallback (and primary source if nothing else found)
+                            # Since we're filtering by these entities, ALL chunks returned are guaranteed to be related to them
+                            # This is the most reliable source when entity detections aren't in the API response
+                            if not entity_ids:
+                                if primary_entity_ids:
+                                    entity_ids = primary_entity_ids.copy()
+                                else:
+                                    # This shouldn't happen - we're filtering by entities, so we should have them
+                                    logger.warning(f"No entities available for chunk from basket {basket_info.get('basket_id')}. "
+                                                f"Basket companies: {basket_entity_ids}, Query entities: {query_entity_ids}")
                         
                         # Store entity information (always set, even if empty)
                         chunk["entity_ids"] = entity_ids
@@ -934,6 +950,8 @@ def execute_search(
                 documents, basket_id = future.result()
                 if documents:
                     all_documents.extend(documents)
+                    basket_info['chunks_retrieved'] = len([chunk for doc in documents for chunk in doc.get('chunks',[])])
+                    basket_out.append(basket_info)
                 else:
                     failed_baskets.append(basket_id)
             except Exception as e:
@@ -943,11 +961,67 @@ def execute_search(
             if completed % 10 == 0:
                 logger.info(f"Progress: {completed}/{len(baskets_to_search)} baskets completed")
     
+    first_pass_chunks = sum(len(doc.get("chunks", [])) for doc in all_documents)
+    logger.info(f"First pass complete: {len(all_documents)} documents with {first_pass_chunks} chunks")
+
+    if second_pass:
+        all_companies = [company for basket in baskets_to_search for company in basket.get('query',[]).get('filters',[]).get('entity',[]).get('any_of',[])]
+        
+        retrieved_entities = [detection.get('id') for i in all_documents for chunk in i.get('chunks',[]) for detection in chunk.get('detections',[])] + \
+        [entity for i in all_documents for chunk in i.get('chunks',[]) for entity in chunk.get('entity_ids',[])] + \
+        [entity for i in all_documents for entity in i.get('reporting_entities',[])] + \
+        [chunk.get('primary_entity_id') for i in all_documents for chunk in i.get('chunks',[])]
+        
+        retrieved_entities_cleaned = set([e for e in retrieved_entities if e in all_companies])
+        
+        # Create a second pass baskets removing the entities that were already retrieved
+        # we just update the companies list
+        second_pass_baskets = []
+        for basket_info in baskets_to_search.copy():
+            companies_to_search = [c for c in basket_info.get('query',{}).get('filters',{}).get('entity',{}).get('any_of',[]) if c not in retrieved_entities_cleaned]
+            if companies_to_search:
+                basket_info['query']['filters']['entity']['any_of'] = companies_to_search
+                second_pass_baskets.append(basket_info)
+
+        if second_pass_baskets:
+            logger.info(f"Second pass: searching {len(second_pass_baskets)} baskets with remaining entities")
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = {
+                    executor.submit(search_basket, bi): bi
+                    for bi in second_pass_baskets
+                }
+
+                completed_2 = 0
+                for future in as_completed(futures):
+                    completed_2 += 1
+                    bi = futures[future]
+                    try:
+                        documents, basket_id = future.result()
+                        if documents:
+                            all_documents.extend(documents)
+                        else:
+                            failed_baskets.append(basket_id)
+                    except Exception as e:
+                        logger.error(f"Error processing basket {bi['basket_id']}: {e}")
+                        failed_baskets.append(bi["basket_id"])
+
+                    if completed_2 % 10 == 0:
+                        logger.info(
+                            f"Second pass progress: {completed_2}/{len(second_pass_baskets)} baskets completed"
+                        )
+
+            second_pass_chunk_count = (
+                sum(len(doc.get("chunks", [])) for doc in all_documents) - first_pass_chunks
+            )
+            logger.info(f"Second pass: retrieved {second_pass_chunk_count} additional chunks")
+        else:
+            logger.info("Second pass: all entities were found in first pass, no additional search needed")
+
     elapsed = time.time() - start_time
-    
-    # Count total chunks across all documents
+
     total_chunks = sum(len(doc.get("chunks", [])) for doc in all_documents)
-    
+
     logger.info(f"Search complete: {len(all_documents)} documents with {total_chunks} chunks retrieved in {elapsed:.2f}s")
     if failed_baskets:
         logger.warning(f"Failed baskets: {len(failed_baskets)}")
@@ -1095,7 +1169,7 @@ def execute_full_grid_search(
                 "text": text,
                 "filters": filters,
                 "ranking_params": {
-                    "source_boost": 0,
+                    "source_boost": 1,
                     "freshness_boost": 0,
                     "reranker": {"enabled": reranker_enabled, "threshold": reranker_threshold},
                 },

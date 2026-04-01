@@ -18,6 +18,8 @@ from .search_function import (
 )
 from .output_converter import convert_to_dataframe
 
+from .portfolio_backtesting import portfolio_backtesting_pipeline
+
 __all__ = [
     'plan_search',
     'execute_search',
@@ -27,4 +29,5 @@ __all__ = [
     'load_universe_from_csv',
     'convert_to_dataframe',
     'execute_full_grid_search',
+    'portfolio_backtesting_pipeline',
 ]

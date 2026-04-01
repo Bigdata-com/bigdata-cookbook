@@ -173,6 +173,7 @@ class SmartBatchingPlanner:
             
             payload = {
                 "query": {
+                    "auto_enrich_filters": False,
                     "text": topic,
                     "filters": {
                         "timestamp": {
@@ -457,6 +458,7 @@ class SmartBatchingPlanner:
 
             payload = {
                 "query": {
+                    "auto_enrich_filters": False,
                     "text": topic,
                     "filters": {
                         "timestamp": {"start": start_iso, "end": end_iso},
@@ -642,6 +644,7 @@ class SmartBatchingPlanner:
 
             payload = {
                 "query": {
+                    "auto_enrich_filters": False,
                     "text": topic,
                     "filters": {
                         "timestamp": {"start": start_iso, "end": end_iso},
@@ -650,6 +653,11 @@ class SmartBatchingPlanner:
                             "any_of": batch,
                             "none_of": [],
                         },
+                    },
+                    "ranking_params": {
+                        "source_boost": 1,
+                        "freshness_boost": 0,
+                        "reranker": {"enabled": False}
                     },
                 }
             }
@@ -735,14 +743,21 @@ class SmartBatchingPlanner:
         company_volumes: Dict[str, int],
         max_chunks: int = MAX_CHUNKS_PER_BASKET,
         very_low_companies: Optional[List[str]] = None,
+        min_entities_per_basket: int = 1,
     ) -> List[Dict]:
         """
         Create baskets of companies with total chunks < max_chunks.
+
+        After the initial greedy packing, a post-processing step merges any
+        basket that has fewer than min_entities_per_basket entities into an
+        adjacent basket (respecting the MAX_ENTITIES_IN_ANY_OF hard limit).
 
         Args:
             company_volumes: Dict mapping company_id -> chunks (already filtered to exclude 0-chunk companies)
             max_chunks: Maximum total chunks per basket
             very_low_companies: Optional list of company IDs with 0 chunks (will be added to very_low baskets)
+            min_entities_per_basket: Minimum entities per basket. Baskets below this
+                threshold are merged with a neighbor. Default is 1 (no merging).
 
         Returns:
             List of basket dictionaries, each containing:
@@ -756,7 +771,7 @@ class SmartBatchingPlanner:
         # Filter out zero-chunk companies
         filtered_volumes = self.filter_zero_volume(company_volumes)
         
-        baskets = []
+        baskets: List[Dict] = []
         basket_counter = 0
 
         if filtered_volumes:
@@ -765,7 +780,7 @@ class SmartBatchingPlanner:
 
             # Process each volume group
             for volume_range, companies_list in volume_groups.items():
-                current_basket = {
+                current_basket: Dict = {
                     "companies": [],
                     "company_chunks": {},
                     "total_chunks": 0,
@@ -826,7 +841,83 @@ class SmartBatchingPlanner:
                 })
                 very_low_basket_counter += 1
 
+        if min_entities_per_basket > 1:
+            baskets = self._merge_small_baskets(baskets, min_entities_per_basket)
+
         return baskets
+
+    def _merge_small_baskets(
+        self,
+        baskets: List[Dict],
+        min_entities: int,
+    ) -> List[Dict]:
+        """
+        Merge baskets that have fewer than min_entities companies into an
+        adjacent basket, respecting the MAX_ENTITIES_IN_ANY_OF hard limit.
+
+        Iteratively picks the smallest under-threshold basket and merges it
+        with the adjacent basket (previous preferred, then next) whose combined
+        entity count stays within the API entity limit.
+
+        Args:
+            baskets: List of basket dicts produced by the greedy packing step
+            min_entities: Minimum entities per basket
+
+        Returns:
+            Consolidated list of baskets
+        """
+        if len(baskets) <= 1:
+            return baskets
+
+        while True:
+            small_indices = [
+                i for i, b in enumerate(baskets) if b["company_count"] < min_entities
+            ]
+            if not small_indices:
+                break
+            if len(baskets) <= 1:
+                break
+
+            target_idx = min(small_indices, key=lambda i: baskets[i]["company_count"])
+
+            # Find the best adjacent basket to merge with (entity-limit safe)
+            merge_idx = self._find_merge_neighbor(baskets, target_idx)
+            if merge_idx is None:
+                break
+
+            self._absorb_basket(baskets, source_idx=target_idx, dest_idx=merge_idx)
+
+        return baskets
+
+    @staticmethod
+    def _find_merge_neighbor(baskets: List[Dict], target_idx: int) -> Optional[int]:
+        """Return the index of the best adjacent basket to merge *target_idx* into.
+
+        Prefers the previous basket, then the next, skipping any whose combined
+        entity count would exceed MAX_ENTITIES_IN_ANY_OF.
+        """
+        target_count = baskets[target_idx]["company_count"]
+        candidates = []
+        if target_idx > 0:
+            candidates.append(target_idx - 1)
+        if target_idx < len(baskets) - 1:
+            candidates.append(target_idx + 1)
+
+        for idx in candidates:
+            if baskets[idx]["company_count"] + target_count <= MAX_ENTITIES_IN_ANY_OF:
+                return idx
+        return None
+
+    @staticmethod
+    def _absorb_basket(baskets: List[Dict], source_idx: int, dest_idx: int) -> None:
+        """Merge *source_idx* basket into *dest_idx* basket and remove the source."""
+        source = baskets[source_idx]
+        dest = baskets[dest_idx]
+        dest["companies"].extend(source["companies"])
+        dest["company_chunks"].update(source["company_chunks"])
+        dest["total_chunks"] += source["total_chunks"]
+        dest["company_count"] = len(dest["companies"])
+        baskets.pop(source_idx)
 
     def split_period(
         self,
@@ -989,6 +1080,61 @@ class SmartBatchingPlanner:
             Number of periods needed (ceil(total_chunks / 1000))
         """
         return max(1, math.ceil(total_chunks / MAX_CHUNKS_PER_BASKET))
+
+    def consolidate_period_groups(
+        self,
+        companies_by_periods_needed: Dict[int, Dict[str, int]],
+        min_entities_per_basket: int,
+    ) -> Dict[int, Dict[str, int]]:
+        """
+        Merge period groups that have fewer than min_entities_per_basket entities
+        into the nearest group by periods_needed distance.
+
+        Uses a greedy nearest-neighbor strategy: repeatedly pick the smallest
+        under-threshold group and merge it with its closest neighbor (by
+        |periods_needed| distance). The merged group is keyed by the maximum
+        periods_needed of its constituents so that every company in the group
+        gets enough time-window splits.
+
+        Args:
+            companies_by_periods_needed: Dict mapping periods_needed -> {company_id: chunks}
+            min_entities_per_basket: Minimum number of entities required per group
+
+        Returns:
+            Consolidated dict with the same shape; groups below the threshold
+            have been absorbed into their nearest neighbor.
+        """
+        if min_entities_per_basket <= 1:
+            return companies_by_periods_needed
+
+        result: Dict[int, Dict[str, int]] = {
+            p: dict(group) for p, group in companies_by_periods_needed.items()
+        }
+
+        while True:
+            small_groups = [p for p in result if len(result[p]) < min_entities_per_basket]
+            if not small_groups:
+                break
+            if len(result) <= 1:
+                break
+
+            target = min(small_groups, key=lambda p: len(result[p]))
+
+            candidates = [p for p in result if p != target]
+            if not candidates:
+                break
+
+            nearest = min(candidates, key=lambda p: abs(p - target))
+
+            new_key = max(target, nearest)
+            old_key = min(target, nearest)
+
+            merged = {}
+            merged.update(result.pop(old_key))
+            merged.update(result.pop(new_key))
+            result[new_key] = merged
+
+        return result
 
     def determine_split_granularity(
         self,
@@ -1214,6 +1360,7 @@ class SmartBatchingPlanner:
         universe_csv_path: Optional[str] = None,
         apply_volume_splits: bool = True,
         min_period_days: int = 30,
+        min_entities_per_basket: int = 1,
     ) -> Dict:
         """
         Generate SMART batching plan with optimal granularity per company.
@@ -1235,6 +1382,9 @@ class SmartBatchingPlanner:
                 If False, use time-based granularity and estimated sub-period volumes only.
             min_period_days: Minimum number of days per period. When splitting by volume, we need to ensure 
                 that the period is at least min_period_days days long. Default is 30 days.
+            min_entities_per_basket: Minimum number of entities per period group. Groups with fewer
+                entities are merged with the nearest group by periods_needed distance. Default is 1
+                (no consolidation).
 
         Returns:
             Planning report with single SMART configuration
@@ -1282,11 +1432,22 @@ class SmartBatchingPlanner:
             periods_needed = company_periods_needed[company_id]
             companies_by_periods_needed[periods_needed][company_id] = chunks
 
-        print(f"Company categorization by periods needed:")
+        print(f"Company categorization by periods needed (before consolidation):")
         for periods_needed in sorted(companies_by_periods_needed.keys()):
             count = len(companies_by_periods_needed[periods_needed])
             print(f"  {periods_needed} period(s) needed: {count} companies")
         print(f"  Zero chunks: {total_companies - len(full_period_volumes)} companies\n")
+
+        # Consolidate small groups before fetching volume time series
+        if min_entities_per_basket > 1:
+            companies_by_periods_needed = self.consolidate_period_groups(
+                dict(companies_by_periods_needed), min_entities_per_basket
+            )
+            print(f"Company categorization by periods needed (after consolidation, min_entities={min_entities_per_basket}):")
+            for periods_needed in sorted(companies_by_periods_needed.keys()):
+                count = len(companies_by_periods_needed[periods_needed])
+                print(f"  {periods_needed} period(s) needed: {count} companies")
+            print()
 
         # PHASE 2: Fetch volume time series per company group (concurrent) for groups needing splits
         volume_by_group: Dict[Tuple[int, Tuple[str, ...]], List[VolumePoint]] = {}
@@ -1396,7 +1557,10 @@ class SmartBatchingPlanner:
                                 uses_estimates = True
 
                 # Create baskets for this sub-period
-                baskets = self.create_baskets(sub_period_volumes)
+                baskets = self.create_baskets(
+                    sub_period_volumes,
+                    min_entities_per_basket=min_entities_per_basket,
+                )
                 total_semantic_queries += len(baskets)
                 granularity_groups[actual_period_type]["baskets"] += len(baskets)
                 
