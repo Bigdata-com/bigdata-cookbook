@@ -67,6 +67,9 @@ BATCH_SIZE = 10
 MAX_CHUNKS_PER_REQUEST = 1000
 WINDOW_DAYS = 90
 
+# All benchmark artifacts (parquet + json) are written under this directory.
+BENCHMARK_DIR = Path("benchmark")
+
 BENCHMARK_CASES: list[BenchmarkCase] = [
     {
         "id": "earnings_h1_2024",
@@ -107,12 +110,29 @@ BENCHMARK_CASES: list[BenchmarkCase] = [
 
 BENCHMARK_CASES: list[BenchmarkCase] = [
     {
-        "id": "tariffs_china_2025_full_universe",
+        "id": "tariffs_china_2025",
         "text": "The company is affected by US import tariffs against China",
         "start_date": "2025-01-01",
         "end_date": "2025-12-31",
         "chunk_percentage": 100,
-    }
+    },
+    {
+        "id": "leadership_2023",
+        "text": "Leadership changes and executive appointments",
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+        "chunk_percentage": 100,
+    },    
+]
+
+BENCHMARK_CASES: list[BenchmarkCase] = [
+    {
+        "id": "leadership_2023_test",
+        "text": "Leadership changes and executive appointments",
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+        "chunk_percentage": 100,
+    },    
 ]
 
 
@@ -354,7 +374,7 @@ def run_benchmark_case_full_grid_split_by_window(
     case: BenchmarkCase,
     case_index: int,
     *,
-    total_chunk_budget: int,
+    total_chunk_budget: int | None = None,
 ) -> tuple[FullGridBenchmarkResult, pd.DataFrame]:
     """Run a full grid search split by time windows, with max_chunks adjusted to match the budget."""
     text = case["text"]
@@ -364,12 +384,17 @@ def run_benchmark_case_full_grid_split_by_window(
     companies = load_universe_from_csv(UNIVERSE_CSV)
     num_batches = math.ceil(len(companies) / BATCH_SIZE)
     num_windows = _compute_num_windows(start_date, end_date, WINDOW_DAYS)
-    adjusted_max_chunks = max(1, total_chunk_budget // (num_batches * num_windows))
 
-    print(
-        f"  Chunk budget: {total_chunk_budget:,} / ({num_batches} batches x {num_windows} windows)"
-        f" = {adjusted_max_chunks} max_chunks/request"
-    )
+    if total_chunk_budget is not None:
+        adjusted_max_chunks = max(1, total_chunk_budget // (num_batches * num_windows))     
+        print(
+            f"  Chunk budget: {total_chunk_budget:,} / ({num_batches} batches x {num_windows} windows)"
+            f" = {adjusted_max_chunks} max_chunks/request"
+        )        
+    else:
+        adjusted_max_chunks = MAX_CHUNKS_PER_REQUEST
+
+
 
     exec_start = time.perf_counter()
     results_raw = execute_full_grid_search(
@@ -432,6 +457,9 @@ def run_benchmark_case(
         min_period_days=MIN_PERIOD_DAYS,
         min_entities_per_basket=BATCH_SIZE,
     )
+    import json
+    #with open(f"benchmark/plan_{case['id']}_{start_date}_{end_date}.json", "w") as f:
+        #json.dump(plan, f, indent=2)
     plan_time = time.perf_counter() - plan_start
 
     baskets = plan.get("baskets", [])
@@ -520,8 +548,8 @@ def print_summary(results: list[BenchmarkResult]) -> None:
         print(
             f"{r['case_index']+1:>3}  {r['plan_time_s']:>8.2f}  {r['execute_time_s']:>8.2f}  "
             f"{total_time:>8.2f}  {r['num_baskets']:>8}  "
-            f"{r['total_expected_chunks']:>10,}  {r['total_chunk_budget']:>10,}  "
-            f"{r['total_chunks_requested']:>10,}  {r['total_chunks_retrieved']:>10,}  "
+            f"{r['total_expected_chunks']:>10,}"
+            f"{r['total_chunks_retrieved']:>10,}  "
             f"{r['chunk_percentage']*100:>7.2f}%  {short_text}"
         )
 
@@ -559,7 +587,7 @@ def print_summary_full_grid(
         print(
             f"{r['case_index']+1:>3}  {r['execute_time_s']:>8.2f}  "
             f"{r['num_batches']:>8}  {r['num_windows']:>8}  "
-            f"{r['max_chunks_per_request']:>8}  {r['total_chunk_budget']:>10,}  "
+            f"{r['max_chunks_per_request']:>8}"
             f"{r['total_chunks_retrieved']:>10,}  {short_text}"
         )
 
@@ -624,6 +652,44 @@ def save_benchmark_results(
     print(f"Summary saved to {json_path}")
 
 
+def save_single_benchmark_case(
+    base_path: Path | str,
+    *,
+    case_index: int,
+    case_id: str,
+    chunks_df: pd.DataFrame,
+    full_grid_split_result: FullGridBenchmarkResult | None = None,
+    smart_batching_result: BenchmarkResult | None = None,
+) -> None:
+    """Save one benchmark case to its own parquet + JSON under *base_path*."""
+    base = Path(base_path)
+    base.parent.mkdir(parents=True, exist_ok=True)
+
+    parquet_path = base.with_suffix(".parquet")
+    chunks_df.to_parquet(parquet_path, index=False)
+    print(f"  [{case_id}] chunk data → {parquet_path}  ({len(chunks_df):,} rows)")
+
+    payload: dict[str, Any] = {
+        "metadata": {
+            "timestamp": datetime.now().isoformat(),
+            "universe_csv": UNIVERSE_CSV,
+            "case_index": case_index,
+            "case_id": case_id,
+            "num_cases": 1,
+            "total_chunks": len(chunks_df),
+        }
+    }
+    if full_grid_split_result is not None:
+        payload["full_grid_results_split_by_window"] = [full_grid_split_result]
+    if smart_batching_result is not None:
+        payload["smart_batching_results"] = [smart_batching_result]
+
+    json_path = base.with_suffix(".json")
+    with json_path.open("w") as f:
+        json.dump(payload, f, indent=2)
+    print(f"  [{case_id}] summary → {json_path}")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -640,7 +706,8 @@ def main() -> None:
         "chunk_percentage": 1
         }
         result, chunks_df = run_benchmark_case(case, -1000)
-        chunks_df.to_parquet(Path.cwd() / "benchmark_ground_truth.parquet", index=False)
+        BENCHMARK_DIR.mkdir(parents=True, exist_ok=True)
+        chunks_df.to_parquet(BENCHMARK_DIR / "benchmark_ground_truth.parquet", index=False)
     print(f"API Base URL : {API_BASE_URL}")
     print(f"Universe CSV : {UNIVERSE_CSV}")
     print(f"Benchmark cases: {len(BENCHMARK_CASES)}")
@@ -658,18 +725,6 @@ def main() -> None:
     all_chunks: list[pd.DataFrame] = []
 
     if False:
-        # --- Full grid search (no Smart Batching) ---
-        print(f"\n{'#'*80}")
-        print("# FULL GRID SEARCH BENCHMARK")
-        print(f"{'#'*80}")
-        results_full_grid: list[FullGridBenchmarkResult] = []
-        for idx, case in enumerate(BENCHMARK_CASES):
-            print(f"\n>>> Running full grid case {idx + 1}/{len(BENCHMARK_CASES)} ...")
-            result, chunks_df = run_benchmark_case_full_grid(case, idx)
-            results_full_grid.append(result)
-            chunks_df = chunks_df.assign(method="full_grid", case_index=idx)
-            all_chunks.append(chunks_df)
-
         # --- Full grid search with time split (no Smart Batching) ---
         print(f"\n{'#'*80}")
         print("# FULL GRID SEARCH BENCHMARK WITH TIME SPLIT")
@@ -697,23 +752,37 @@ def main() -> None:
         chunks_df = chunks_df.assign(method="smart_batching", case_index=idx)
         all_chunks.append(chunks_df)
 
-    print_summary_full_grid(results_full_grid, title="FULL GRID BENCHMARK SUMMARY")
-    print_summary_full_grid(
+    if False:
+        print_summary_full_grid(
         result_split_by_window,
         title="FULL GRID (TIME SPLIT) BENCHMARK SUMMARY",
-    )
+        )
+    
     print_summary(results_smart)
 
     combined_df = pd.concat(all_chunks, ignore_index=True)
-    case_ids = "_".join(case["id"] for case in BENCHMARK_CASES)
-    results_base = Path.cwd() / f"benchmark_{case_ids}"
-    save_benchmark_results(
-        results_base,
-        chunks_df=combined_df,
-        full_grid_results=results_full_grid,
-        smart_batching_results=results_smart,
-        full_grid_results_split_by_window=result_split_by_window,
-    )
+
+    print(f"\nSaving per-case artifacts under {BENCHMARK_DIR}/ …")
+    BENCHMARK_DIR.mkdir(parents=True, exist_ok=True)
+    for idx, case in enumerate(BENCHMARK_CASES):
+        case_id = case["id"]
+        case_chunks = combined_df[combined_df["case_index"] == idx].copy()
+        if False:
+            fg = (
+                result_split_by_window[idx]
+                if idx < len(result_split_by_window)
+                else None
+            )
+        fg = None
+        sm = results_smart[idx] if idx < len(results_smart) else None
+        save_single_benchmark_case(
+            BENCHMARK_DIR / f"benchmark_{case_id}",
+            case_index=idx,
+            case_id=case_id,
+            chunks_df=case_chunks,
+            full_grid_split_result=fg,
+            smart_batching_result=sm,
+        )
 
 
 if __name__ == "__main__":
