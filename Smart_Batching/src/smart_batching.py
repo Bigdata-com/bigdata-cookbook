@@ -618,8 +618,9 @@ class SmartBatchingPlanner:
         Query the volume endpoint for a set of companies and return a time series.
 
         Batches companies by MAX_ENTITIES_IN_ANY_OF; aggregates results by date
-        so that chunks (and optionally documents, sentiment) are summed per date
-        across all batches.
+        across all batches: documents and chunks are summed per date; sentiment
+        is the arithmetic mean of per-batch sentiment values for that date
+        (batches with no sentiment for a date are omitted from the mean).
 
         Args:
             companies: List of company IDs
@@ -635,6 +636,11 @@ class SmartBatchingPlanner:
         end_iso = f"{end_date}T23:59:59Z"
         total_batches = (len(companies) + MAX_ENTITIES_IN_ANY_OF - 1) // MAX_ENTITIES_IN_ANY_OF
 
+        acc_docs: Dict[str, int] = defaultdict(int)
+        acc_chunks: Dict[str, int] = defaultdict(int)
+        acc_sentiment_sum: Dict[str, float] = defaultdict(float)
+        acc_sentiment_count: Dict[str, int] = defaultdict(int)
+
         for batch_idx in range(total_batches):
             batch_start = batch_idx * MAX_ENTITIES_IN_ANY_OF
             batch_end = min(batch_start + MAX_ENTITIES_IN_ANY_OF, len(companies))
@@ -642,6 +648,7 @@ class SmartBatchingPlanner:
 
             payload = {
                 "query": {
+                    "auto_enrich_filters": False,
                     "text": topic,
                     "filters": {
                         "timestamp": {"start": start_iso, "end": end_iso},
@@ -650,6 +657,11 @@ class SmartBatchingPlanner:
                             "any_of": batch,
                             "none_of": [],
                         },
+                    },
+                    "ranking_params": {
+                        "source_boost": 1,
+                        "freshness_boost": 0,
+                        "reranker": {"enabled": False}
                     },
                 }
             }
@@ -675,21 +687,31 @@ class SmartBatchingPlanner:
                 raise RuntimeError(f"Error querying volume endpoint: {e}")
 
             # Parse response: accept list at top level or under "results" / "volume"
-            raw_list = data.get('results', {}).get('volume', [])
-            aggregated_by_date = []
+            raw_list = data.get("results", {}).get("volume", [])
             for point in raw_list:
-                # Initialize VolumePoint
-                volume_point: VolumePoint = {
-                    "date": point.get("date"),
-                    "documents": point.get("documents"),
-                    "chunks": point.get("chunks"),
-                    "sentiment": point.get("sentiment"),
-                }
-                aggregated_by_date.append(volume_point)
+                d = point.get("date")
+                if d is None:
+                    continue
+                acc_docs[d] += int(point.get("documents") or 0)
+                acc_chunks[d] += int(point.get("chunks") or 0)
+                s = point.get("sentiment")
+                if s is not None:
+                    acc_sentiment_sum[d] += float(s)
+                    acc_sentiment_count[d] += 1
 
-
-        out = aggregated_by_date
-        out.sort(key=lambda p: p.get("date", ""))
+        all_dates = sorted(
+            set(acc_docs.keys()) | set(acc_chunks.keys()) | set(acc_sentiment_count.keys())
+        )
+        out: List[VolumePoint] = []
+        for d in all_dates:
+            vp: VolumePoint = {
+                "date": d,
+                "documents": acc_docs[d],
+                "chunks": acc_chunks[d],
+            }
+            if acc_sentiment_count[d] > 0:
+                vp["sentiment"] = acc_sentiment_sum[d] / acc_sentiment_count[d]
+            out.append(vp)
         return out
 
     def filter_zero_volume(self, company_volumes: Dict[str, int]) -> Dict[str, int]:
