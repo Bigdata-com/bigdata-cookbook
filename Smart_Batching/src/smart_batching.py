@@ -173,6 +173,8 @@ class SmartBatchingPlanner:
             
             payload = {
                 "query": {
+                    "auto_enrich_filters": False,
+                    "entity_categories": ["companies"],
                     "text": topic,
                     "filters": {
                         "timestamp": {
@@ -457,6 +459,8 @@ class SmartBatchingPlanner:
 
             payload = {
                 "query": {
+                    "auto_enrich_filters": False,
+                    "entity_categories": ["companies"],                    
                     "text": topic,
                     "filters": {
                         "timestamp": {"start": start_iso, "end": end_iso},
@@ -1292,6 +1296,15 @@ class SmartBatchingPlanner:
             )
         print(f"\nPhase 1 complete: {total_comention_queries} comention queries")
         print(f"Found {len(full_period_volumes)} companies with chunks > 0\n")
+
+        # Order the companies by chunks in descending order and company_id in ascending order
+        # This is done to ensure deterministic results on the planning phase.
+        full_period_volumes = dict(
+            sorted(
+                full_period_volumes.items(),
+                key=lambda item: (-item[1], item[0])
+            )
+        )
 
         # Calculate periods needed for each company
         company_periods_needed = {}
