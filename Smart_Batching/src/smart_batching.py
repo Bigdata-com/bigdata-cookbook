@@ -174,6 +174,7 @@ class SmartBatchingPlanner:
             payload = {
                 "query": {
                     "auto_enrich_filters": False,
+                    "entity_categories": ["companies"],
                     "text": topic,
                     "filters": {
                         "timestamp": {
@@ -459,6 +460,7 @@ class SmartBatchingPlanner:
             payload = {
                 "query": {
                     "auto_enrich_filters": False,
+                    "entity_categories": ["companies"],
                     "text": topic,
                     "filters": {
                         "timestamp": {"start": start_iso, "end": end_iso},

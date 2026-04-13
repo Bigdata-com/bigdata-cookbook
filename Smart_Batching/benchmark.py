@@ -6,8 +6,13 @@ test configurations (texts, date ranges, chunk percentages).
 
 Results are stored as chunk-level DataFrames (parquet) for flexible
 downstream analysis — no pre-aggregated timeseries.
+
+Usage:
+    python benchmark.py --mode full_grid
+    python benchmark.py --mode smart --chunk-percentage 0.01
 """
 
+import argparse
 import json
 import math
 import os
@@ -72,68 +77,40 @@ BENCHMARK_DIR = Path("benchmark")
 
 BENCHMARK_CASES: list[BenchmarkCase] = [
     {
-        "id": "earnings_h1_2024",
-        "text": "Quarterly earnings performance and financial results",
-        "start_date": "2024-01-01",
-        "end_date": "2024-06-30",
-        "chunk_percentage": 0.01,
-    },
-    {
-        "id": "product_launch_q1_2024",
-        "text": "New product launch and market expansion",
-        "start_date": "2024-01-01",
-        "end_date": "2024-03-31",
-        "chunk_percentage": 0.01,
-    },
-    {
-        "id": "leadership_h2_2023",
-        "text": "Leadership changes and executive appointments",
-        "start_date": "2023-07-01",
-        "end_date": "2023-12-31",
-        "chunk_percentage": 0.01,
-    },
-    {
-        "id": "cost_reduction_2024",
-        "text": "Cost reduction and operational efficiency initiatives",
-        "start_date": "2024-04-01",
-        "end_date": "2024-09-30",
-        "chunk_percentage": 0.05,
-    },
-    {
-        "id": "partnerships_2023",
-        "text": "Strategic partnerships and joint ventures",
-        "start_date": "2023-01-01",
-        "end_date": "2023-12-31",
-        "chunk_percentage": 0.01,
-    },
-]
-
-BENCHMARK_CASES: list[BenchmarkCase] = [
-    {
         "id": "tariffs_china_2025",
         "text": "The company is affected by US import tariffs against China",
         "start_date": "2025-01-01",
-        "end_date": "2025-12-31",
+        "end_date": "2025-06-30",
         "chunk_percentage": 100,
     },
     {
         "id": "leadership_2023",
-        "text": "Leadership changes and executive appointments",
-        "start_date": "2023-01-01",
+        "text": "The company has faced leadership changes and executive appointments",
+        "start_date": "2023-09-01",
         "end_date": "2023-12-31",
         "chunk_percentage": 100,
     },    
-]
-
-BENCHMARK_CASES: list[BenchmarkCase] = [
     {
-        "id": "leadership_2023_test",
-        "text": "Leadership changes and executive appointments",
-        "start_date": "2023-01-01",
-        "end_date": "2023-12-31",
+        "id": "confidence_decline_2021",
+        "text": "Decline in customer confidence in the company",
+        "start_date": "2021-01-01",
+        "end_date": "2021-06-30",
         "chunk_percentage": 100,
-    },    
+    }, 
+    
 ]
+if False:
+    BENCHMARK_CASES: list[BenchmarkCase] = [  
+        {
+            "id": "confidence_decline_2021_test",
+            "text": "Decline in customer confidence in the company",
+            "start_date": "2026-01-01",
+            "end_date": "2026-03-31",
+            "chunk_percentage": 100,
+        }, 
+        
+    ]
+
 
 
 class BenchmarkResult(TypedDict):
@@ -457,9 +434,6 @@ def run_benchmark_case(
         min_period_days=MIN_PERIOD_DAYS,
         min_entities_per_basket=BATCH_SIZE,
     )
-    import json
-    #with open(f"benchmark/plan_{case['id']}_{start_date}_{end_date}.json", "w") as f:
-        #json.dump(plan, f, indent=2)
     plan_time = time.perf_counter() - plan_start
 
     baskets = plan.get("baskets", [])
@@ -490,7 +464,6 @@ def run_benchmark_case(
         requests_per_minute=REQUESTS_PER_MINUTE,
         api_key=API_KEY,
         api_base_url=API_BASE_URL,
-        #overwrite_chunks_per_basket=chunks_per_basket,
         second_pass=False,
     )
     exec_time = time.perf_counter() - exec_start
@@ -690,99 +663,123 @@ def save_single_benchmark_case(
     print(f"  [{case_id}] summary → {json_path}")
 
 
+def append_chunks_to_case_parquet(
+    parquet_path: Path,
+    new_chunks: pd.DataFrame,
+    method: str,
+) -> pd.DataFrame:
+    """Append new chunk rows to an existing case parquet, replacing any rows with the same method.
+
+    If the parquet file does not exist yet, creates it from *new_chunks*.
+    Returns the combined DataFrame that was written.
+    """
+    parquet_path.parent.mkdir(parents=True, exist_ok=True)
+    new_chunks = new_chunks.assign(method=method)
+
+    if parquet_path.exists():
+        existing = pd.read_parquet(parquet_path)
+        existing = existing[existing["method"] != method]
+        combined = pd.concat([existing, new_chunks], ignore_index=True)
+    else:
+        combined = new_chunks
+
+    combined.to_parquet(parquet_path, index=False)
+    print(f"  Saved {len(new_chunks):,} rows (method={method}) → {parquet_path}  (total {len(combined):,} rows)")
+    return combined
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Benchmark Smart Batching vs Full Grid search.",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["full_grid", "smart"],
+        required=True,
+        help="Search strategy: 'full_grid' or 'smart' (Smart Batching).",
+    )
+    parser.add_argument(
+        "--chunk-percentage",
+        type=float,
+        default=None,
+        help="Chunk percentage for Smart Batching (required when --mode=smart).",
+    )
+    return parser
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
 
-    if False:
-        # Retrieve all the companies from the universe csv full chunks for ground truth
-        case ={
-        "id": "tariffs_china_q4_2025",
-        "text": "The company is affected by US import tariffs against China",
-        "start_date": "2025-01-01",
-        "end_date": "2025-12-31",
-        "chunk_percentage": 1
-        }
-        result, chunks_df = run_benchmark_case(case, -1000)
-        BENCHMARK_DIR.mkdir(parents=True, exist_ok=True)
-        chunks_df.to_parquet(BENCHMARK_DIR / "benchmark_ground_truth.parquet", index=False)
-    print(f"API Base URL : {API_BASE_URL}")
-    print(f"Universe CSV : {UNIVERSE_CSV}")
+    if args.mode == "smart" and args.chunk_percentage is None:
+        parser.error("--chunk-percentage is required when --mode=smart")
+
+    if args.mode == "full_grid":
+        method_label = "full_grid"
+    else:
+        method_label = f"smart_batching_{args.chunk_percentage}"
+
+    print(f"Mode           : {args.mode}")
+    if args.mode == "smart":
+        print(f"Chunk %%        : {args.chunk_percentage}")
+    print(f"Method label   : {method_label}")
+    print(f"API Base URL   : {API_BASE_URL}")
+    print(f"Universe CSV   : {UNIVERSE_CSV}")
     print(f"Benchmark cases: {len(BENCHMARK_CASES)}")
 
     companies = load_universe_from_csv(UNIVERSE_CSV)
     num_batches = math.ceil(len(companies) / BATCH_SIZE)
-    total_chunk_budget = num_batches * MAX_CHUNKS_PER_REQUEST
-    total_chunk_budget = None
 
     print(f"Batch size     : {BATCH_SIZE}")
     print(f"Num batches    : {num_batches}")
     print(f"Max chunks/req : {MAX_CHUNKS_PER_REQUEST}")
-    #print(f"Chunk budget   : {total_chunk_budget:,}")
 
-    all_chunks: list[pd.DataFrame] = []
-
-    if False:
-        # --- Full grid search with time split (no Smart Batching) ---
-        print(f"\n{'#'*80}")
-        print("# FULL GRID SEARCH BENCHMARK WITH TIME SPLIT")
-        print(f"{'#'*80}")
-        result_split_by_window: list[FullGridBenchmarkResult] = []
-        for idx, case in enumerate(BENCHMARK_CASES):
-            print(f"\n>>> Running full grid split case {idx + 1}/{len(BENCHMARK_CASES)} ...")
-            result, chunks_df = run_benchmark_case_full_grid_split_by_window(
-                case, idx, total_chunk_budget=total_chunk_budget,
-            )
-            result_split_by_window.append(result)
-            chunks_df = chunks_df.assign(method="full_grid_split", case_index=idx)
-            all_chunks.append(chunks_df)
-
-    #total_chunk_budget = 10000
-    # --- Smart Batching (plan + execute) ---
-    print(f"\n{'#'*80}")
-    print("# SMART BATCHING BENCHMARK")
-    print(f"{'#'*80}")
-    results_smart: list[BenchmarkResult] = []
-    for idx, case in enumerate(BENCHMARK_CASES):
-        print(f"\n>>> Running Smart Batching case {idx + 1}/{len(BENCHMARK_CASES)} ...")
-        result, chunks_df = run_benchmark_case(case, idx, total_chunk_budget=total_chunk_budget)
-        results_smart.append(result)
-        chunks_df = chunks_df.assign(method="smart_batching", case_index=idx)
-        all_chunks.append(chunks_df)
-
-    if False:
-        print_summary_full_grid(
-        result_split_by_window,
-        title="FULL GRID (TIME SPLIT) BENCHMARK SUMMARY",
-        )
-    
-    print_summary(results_smart)
-
-    combined_df = pd.concat(all_chunks, ignore_index=True)
-
-    print(f"\nSaving per-case artifacts under {BENCHMARK_DIR}/ …")
     BENCHMARK_DIR.mkdir(parents=True, exist_ok=True)
-    for idx, case in enumerate(BENCHMARK_CASES):
-        case_id = case["id"]
-        case_chunks = combined_df[combined_df["case_index"] == idx].copy()
-        if False:
-            fg = (
-                result_split_by_window[idx]
-                if idx < len(result_split_by_window)
-                else None
+
+    if args.mode == "full_grid":
+        print(f"\n{'#'*80}")
+        print("# FULL GRID SEARCH BENCHMARK")
+        print(f"{'#'*80}")
+
+        fg_results: list[FullGridBenchmarkResult] = []
+        for idx, case in enumerate(BENCHMARK_CASES):
+            print(f"\n>>> Running full grid case {idx + 1}/{len(BENCHMARK_CASES)}: {case['id']}")
+            result, chunks_df = run_benchmark_case_full_grid_split_by_window(
+                case, idx, total_chunk_budget=None,
             )
-        fg = None
-        sm = results_smart[idx] if idx < len(results_smart) else None
-        save_single_benchmark_case(
-            BENCHMARK_DIR / f"benchmark_{case_id}",
-            case_index=idx,
-            case_id=case_id,
-            chunks_df=case_chunks,
-            full_grid_split_result=fg,
-            smart_batching_result=sm,
-        )
+            fg_results.append(result)
+
+            parquet_path = BENCHMARK_DIR / f"benchmark_{case['id']}.parquet"
+            append_chunks_to_case_parquet(parquet_path, chunks_df, method=method_label)
+
+        print_summary_full_grid(fg_results)
+
+    else:
+        print(f"\n{'#'*80}")
+        print("# SMART BATCHING BENCHMARK")
+        print(f"{'#'*80}")
+
+        for case in BENCHMARK_CASES:
+            case["chunk_percentage"] = args.chunk_percentage
+
+        sm_results: list[BenchmarkResult] = []
+        for idx, case in enumerate(BENCHMARK_CASES):
+            print(f"\n>>> Running smart batching case {idx + 1}/{len(BENCHMARK_CASES)}: {case['id']}")
+            result, chunks_df = run_benchmark_case(case, idx, total_chunk_budget=None)
+            sm_results.append(result)
+
+            parquet_path = BENCHMARK_DIR / f"benchmark_{case['id']}.parquet"
+            append_chunks_to_case_parquet(parquet_path, chunks_df, method=method_label)
+
+        print_summary(sm_results)
 
 
 if __name__ == "__main__":
