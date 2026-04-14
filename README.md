@@ -256,7 +256,7 @@ A comprehensive collection of financial analysis tools and report generators bui
 **Notebook and script examples for key Bigdata.com APIs**
 
 - Five notebook examples: Search, Volume, Knowledge Graph, Co-mentions, and an end-to-end workflow example
-- Client-ready script library in [`API_Tutorials/Sample_Scripts`](./API_Tutorials/Sample_Scripts/)
+- Client-ready script library: [Sample_Scripts](./API_Tutorials/Sample_Scripts/) — full folder catalog, quickstart, and step-by-step workflow patterns are in [`API_Tutorials/Sample_Scripts/README.md`](./API_Tutorials/Sample_Scripts/README.md)
 - Standardized auth via `BIGDATA_API_KEY` loaded from `.env`
 - Progressive path from API fundamentals to workflow-level signal construction
 - Designed as a practical onboarding and execution path for teams integrating Bigdata.com APIs
