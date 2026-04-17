@@ -99,13 +99,13 @@ BENCHMARK_CASES: list[BenchmarkCase] = [
     }, 
     
 ]
-if False:
+if True:
     BENCHMARK_CASES: list[BenchmarkCase] = [  
         {
-            "id": "confidence_decline_2021_test",
+            "id": "confidence_decline_2010",
             "text": "Decline in customer confidence in the company",
-            "start_date": "2026-01-01",
-            "end_date": "2026-03-31",
+            "start_date": "2010-01-01",
+            "end_date": "2010-12-31",
             "chunk_percentage": 100,
         }, 
         
