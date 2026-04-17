@@ -7,6 +7,8 @@ This module provides a two-step system for efficient semantic search:
 1. **Planning**: Organize search using smart batching and return total expected chunks
 2. **Execution**: Perform search with proportional sampling to preserve distribution
 
+Find more details in the documentation [bigdata-smart-batching](https://pypi.org/project/bigdata-smart-batching/)
+
 ## Table of Contents
 
 1. [Key Benefits](#key-benefits)
@@ -571,7 +573,7 @@ results = execute_search(
 
 ## License
 
-This project is part of the Bigdata.com and WorldQuant Challenge.
+This project is part of the Bigdata.com.
 
 **Disclaimer**: This software is provided "as is" without warranty of any kind, express or implied. The authors
 and contributors assume no responsibility for the accuracy, completeness, or usefulness of any information,
