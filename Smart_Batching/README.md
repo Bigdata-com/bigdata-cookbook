@@ -3,8 +3,11 @@
 A high-performance semantic search system that reduces API queries by **67-99%** (varies by topic specificity) through intelligent company grouping and parallel execution.
 
 This module provides a two-step system for efficient semantic search:
+
 1. **Planning**: Organize search using smart batching and return total expected chunks
 2. **Execution**: Perform search with proportional sampling to preserve distribution
+
+Find more details in the documentation [bigdata-smart-batching](https://pypi.org/project/bigdata-smart-batching/)
 
 ## Table of Contents
 
@@ -18,46 +21,34 @@ This module provides a two-step system for efficient semantic search:
    - [Using the Jupyter Notebook](#using-the-jupyter-notebook)
    - [Basic Usage (Python Script)](#basic-usage-python-script)
    - [Advanced Usage](#advanced-usage)
+     - [Save and Load Plans](#save-and-load-plans)
 5. [How It Works](#how-it-works)
    - [Architecture Overview](#architecture-overview)
    - [Step 1: Planning](#step-1-planning)
    - [Step 2: Execution](#step-2-execution)
-   - [Proportional Sampling](#proportional-sampling)
-   - [Volume-Based Period Splitting](#volume-based-period-splitting)
 6. [Naive vs Smart Batching: Performance Comparison](#naive-vs-smart-batching-performance-comparison)
    - [The Problem with Naive Search](#the-problem-with-naive-search)
    - [Smart Batching Solution](#smart-batching-solution)
    - [Real-World Benchmarks](#real-world-benchmarks)
    - [Advantages of Smart Batching](#advantages-of-smart-batching)
    - [When to Use Each Approach](#when-to-use-each-approach)
-7. [API Reference](#api-reference)
-   - [Helper functions (from `src`)](#helper-functions-from-src)
-   - [`plan_search()`](#plan_search)
-   - [`execute_search()`](#execute_search)
-8. [Examples](#examples)
+7. [Examples](#examples)
    - [Example 1: Basic Search](#example-1-basic-search)
    - [Example 2: Multiple Percentage Runs](#example-2-multiple-percentage-runs)
    - [Example 3: Production Configuration](#example-3-production-configuration)
    - [Example 4: Large-Scale Search with Error Handling](#example-4-large-scale-search-with-error-handling)
-9. [Large-Scale Search & Performance](#large-scale-search-performance)
-   - [Rate Limiting (Sliding Window Algorithm)](#rate-limiting-sliding-window-algorithm)
-   - [Concurrency Control (Semaphore)](#concurrency-control-semaphore)
-   - [Large-Scale Search Considerations](#large-scale-search-considerations)
+   - [Rate limit strategies](#rate-limit-strategies)
    - [Performance Tuning](#performance-tuning)
-10. [Configuration](#configuration)
-    - [Environment Variables](#environment-variables)
-    - [Default Settings](#default-settings)
-11. [Quick Reference](#quick-reference)
-    - [Performance Comparison Summary](#performance-comparison-summary)
-    - [When to Use Smart Batching](#when-to-use-smart-batching)
-12. [Testing](#testing)
-13. [File Structure](#file-structure)
-14. [Troubleshooting](#troubleshooting)
-    - [Rate Limit Issues](#rate-limit-issues)
-    - [Memory Issues](#memory-issues)
-    - [Slow Execution](#slow-execution)
-    - [Planning Takes Too Long](#planning-takes-too-long)
-15. [License](#license)
+     - [Optimize for Speed](#optimize-for-speed)
+     - [Optimize for API Limits](#optimize-for-api-limits)
+     - [Optimize for Memory](#optimize-for-memory)
+8. [Configuration](#configuration)
+   - [Environment Variables](#environment-variables)
+   - [Default Settings](#default-settings)
+9. [Quick Reference](#quick-reference)
+   - [Performance Comparison Summary](#performance-comparison-summary)
+   - [When to Use Smart Batching](#when-to-use-smart-batching)
+10. [License](#license)
 
 ## Key Benefits
 
@@ -88,6 +79,7 @@ This module provides a two-step system for efficient semantic search:
 [UV](https://github.com/astral-sh/uv) is a fast Python package installer and resolver.
 
 1. Install UV (if not already installed):
+
 ```bash
 # macOS and Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -100,13 +92,17 @@ pip install uv
 ```
 
 2. Install dependencies:
+
 ```bash
 uv pip install -r requirements.txt
 ```
 
+This includes **[bigdata-smart-batching](https://pypi.org/project/bigdata-smart-batching/)** (`from bigdata_smart_batching import ...`).
+
 ### Option 2: Using pip
 
 1. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -114,12 +110,14 @@ pip install -r requirements.txt
 ### Environment Setup
 
 Set up environment variables:
+
 ```bash
 export BIGDATA_API_KEY="your_api_key_here"
 export BIGDATA_API_BASE_URL="https://api.bigdata.com"  # Optional, defaults to this
 ```
 
-Or create a `.env` file in the `Smart_batching` directory:
+Or create a `.env` file in the `Smart_Batching` directory:
+
 ```
 BIGDATA_API_KEY=your_api_key_here
 BIGDATA_API_BASE_URL=https://api.bigdata.com
@@ -138,24 +136,23 @@ jupyter notebook test_smart_batching.ipynb
 ```
 
 The notebook includes:
+
 - Step-by-step testing of all functions (plan_search, execute_search, deduplicate_documents, save_plan, load_plan, load_universe_from_csv, convert_to_dataframe)
 - Configuration examples
 - Results analysis
 - Multiple percentage testing
 
-Run the notebook from the `Smart_batching` directory so that `from src import ...` resolves correctly (or add that directory to `sys.path`).
+Install dependencies (including `bigdata-smart-batching` from `requirements.txt`) so that `from bigdata_smart_batching import ...` works in the notebook kernel.
 
 ### Basic Usage (Python Script)
 
-Run from the `Smart_batching` directory (or ensure it is on `sys.path`):
-
 ```python
-from src import plan_search, execute_search, deduplicate_documents, convert_to_dataframe
+from bigdata_smart_batching import plan_search, execute_search, deduplicate_documents, convert_to_dataframe
 
 # Step 1: Plan the search
 plan = plan_search(
     text="earnings revenue profit",
-    universe_csv_path="id_name_mapping_us_top_3000.csv",  # or us_top3000.csv in test_data/
+    universe="id_name_mapping_us_top_3000.csv",  # or us_top3000.csv in test_data/
     start_date="2023-01-01",
     end_date="2023-12-31",
     api_key="your_api_key",  # or set BIGDATA_API_KEY in env
@@ -185,12 +182,12 @@ df = convert_to_dataframe(results)  # one row per chunk
 You can save a plan once and reuse it with different sampling percentages:
 
 ```python
-from src import plan_search, execute_search, save_plan, load_plan, deduplicate_documents
+from bigdata_smart_batching import plan_search, execute_search, save_plan, load_plan, deduplicate_documents
 
 # 1. Create plan and save to disk
 plan = plan_search(
     text="merger acquisition",
-    universe_csv_path="id_name_mapping_us_top_3000.csv",
+    universe="id_name_mapping_us_top_3000.csv",
     start_date="2023-01-01",
     end_date="2023-12-31",
 )
@@ -247,13 +244,14 @@ The `plan_search()` function:
 2. **Queries the comention endpoint** to get chunk volumes per company
 3. **Splits date ranges by volume** when a company exceeds the chunk limit per query: fetches the volume time series and chooses sub-period boundaries so chunk volume is balanced across periods (see [Volume-Based Period Splitting](#volume-based-period-splitting)); optional via `apply_volume_splits` and `min_period_days`
 4. **Creates optimized baskets** of companies grouped by volume:
-   - High-volume companies → individual baskets
-   - Medium-volume companies → grouped baskets
-   - Low-volume companies → large grouped baskets
+  - High-volume companies → individual baskets
+  - Medium-volume companies → grouped baskets
+  - Low-volume companies → large grouped baskets
 5. **Builds complete query structures** with search text embedded
 6. **Returns a plan** with total expected chunks and basket configurations
 
 **Basket Creation Process:**
+
 ```
 Company Chunk Volumes (sorted):
 ┌─────────────────────────────────────────┐
@@ -276,6 +274,7 @@ Result: 4,732 companies → ~17-3,699 baskets (varies by topic)
 ```
 
 **Visual Comparison:**
+
 ```
 Naive Approach:           Smart Batching:
 ┌─────────────┐          ┌─────────────┐
@@ -298,109 +297,18 @@ The `execute_search()` function:
 1. **Calculates proportional chunks** per basket: `expected_chunks * chunk_percentage`
 2. **Ensures minimum** of 1 chunk per basket (if expected > 0)
 3. **Executes searches in parallel** with:
-   - **Rate Limiting**: Sliding window algorithm (100 RPM default)
-   - **Semaphore**: Limits concurrent connections (40 workers default)
-   - **Error Handling**: Retries and graceful failure handling
+  - **Rate Limiting**: Sliding window algorithm (100 RPM default)
+  - **Semaphore**: Limits concurrent connections (40 workers default)
+  - **Error Handling**: Retries and graceful failure handling
 4. **Collects** results (list of document dictionaries, each with a `chunks` array)
 5. **Returns** the list. Use `deduplicate_documents()` to merge duplicate documents, then optionally `convert_to_dataframe()` for one row per chunk
-
-**Execution Flow with Rate Limiting:**
-```
-Baskets Queue (435 baskets)
-    │
-    ├─> Worker 1 ──┐
-    ├─> Worker 2 ──┤
-    ├─> Worker 3 ──┼─> Semaphore (max 40)
-    ├─> ...        ──┤
-    └─> Worker 40 ──┘
-                      │
-                      v
-              ┌───────────────┐
-              │ Rate Limiter  │
-              │ (Sliding Win) │
-              │ 100 RPM       │
-              └───────────────┘
-                      │
-                      v
-              ┌───────────────┐
-              │  API Requests │
-              │  (Parallel)   │
-              └───────────────┘
-                      │
-                      v
-              ┌───────────────┐
-              │   Results     │
-              │  Collection   │
-              └───────────────┘
-```
-
-**Rate Limiting Visualization:**
-```
-Time:  0s    1s    2s    3s    4s    5s    6s    7s
-       │     │     │     │     │     │     │     │
-Window:┌─────┐
-       │ R1  │  R2  R3  R4  R5  R6  R7  R8
-       └─────┘
-            ┌─────┐
-            │ R2  │  R3  R4  R5  R6  R7  R8  R9
-            └─────┘
-                 ┌─────┐
-                 │ R3  │  R4  R5  R6  R7  R8  R9  R10
-                 └─────┘
-                      ┌─────┐
-                      │ R4  │  R5  R6  R7  R8  R9  R10 R11
-                      └─────┘
-
-Window slides forward, keeping only last 5 seconds
-Max requests in window = 100 RPM / 60 * 5 ≈ 8 requests
-```
-
-### Proportional Sampling
-
-When `chunk_percentage=0.1` (10%):
-- Basket with 1000 expected chunks → retrieves 100 chunks
-- Basket with 500 expected chunks → retrieves 50 chunks
-- Basket with 100 expected chunks → retrieves 10 chunks
-- Basket with 10 expected chunks → retrieves 1 chunk (minimum)
-
-This preserves the relative distribution while limiting total chunks.
-
-**Visual Example:**
-```
-Basket Distribution (10% sampling):
-┌─────────────────────────────────────────┐
-│ Basket A: 1000 chunks → 100 chunks (10%)│
-│ Basket B:  500 chunks →  50 chunks (10%)│
-│ Basket C:  100 chunks →  10 chunks (10%)│
-│ Basket D:   10 chunks →   1 chunk  (10%)│
-└─────────────────────────────────────────┘
-Total: 1610 expected → 161 retrieved
-Distribution preserved: ✅
-```
-
-### Volume-Based Period Splitting
-
-When a company’s chunk count for the full date range exceeds the per-query limit (e.g. 1,000 chunks), the planner must split the range into multiple sub-periods. The **volume splitting** implementation uses the **volume time series** from the API (daily chunk counts) to choose sub-period boundaries so that chunk volume is balanced across periods, instead of using fixed calendar splits.
-
-**How it works:**
-
-1. **When it applies**: For any company group that needs more than one period, the planner fetches the volume time series (concurrently per group) from the volume endpoint.
-2. **Breakpoint detection**: `determine_splits_from_volume()` sorts the series by date, computes total chunks, and targets `total_chunks / periods_needed` chunks per period. The internal `_detect_breakpoints()` walks the cumulative chunk counts and picks boundary dates so that:
-   - No period exceeds the target chunk count (keeping each query under the limit).
-   - Each period is at least `min_period_days` days long (default 30), to avoid tiny or degenerate ranges.
-3. **Sub-period volumes**: For each sub-period, chunk volumes per company are derived from the same series via `sub_period_volumes_from_series()`, so basket creation uses actual volumes instead of estimates.
-4. **Fallback**: If the volume series is missing or total chunks are zero, the planner falls back to time-based granularity (e.g. biyearly) and uses estimated sub-period volumes.
-
-**Parameters (in `plan_search()`):**
-
-- **`apply_volume_splits`** (default: `True`): Use volume time series to split periods per company. If `False`, the planner uses time-based granularity and estimated sub-period volumes only.
-- **`min_period_days`** (default: `30`): Minimum length of any sub-period when splitting by volume. Ensures boundaries respect a minimum period length.
 
 ## Naive vs Smart Batching: Performance Comparison
 
 ### The Problem with Naive Search
 
 A naive approach searches each company individually:
+
 - **4,732 companies** × time buckets × topics = **11,357 API queries** (naive approach)
 - Each query is independent and cannot be optimized
 - No knowledge of chunk volumes
@@ -409,6 +317,7 @@ A naive approach searches each company individually:
 ### Smart Batching Solution
 
 Smart batching groups companies intelligently:
+
 - **4,732 companies** → **17-3,699 baskets** (67-99% reduction, varies by topic specificity)
 - Companies grouped by chunk volume
 - High-volume companies get individual baskets
@@ -418,13 +327,15 @@ Smart batching groups companies intelligently:
 
 The following table demonstrates the dramatic query reduction achievable with Smart Batching across different topic types (baseline: 4,732 companies, 24 monthly time buckets, 1 topic):
 
-| Search Text | Naive Approach Queries | Smart Batching Queries | Query Reduction (%) |
-|-------------|----------------------|----------------------|---------------------|
-| Higher ESG Compliance Costs | 11,357 | 435 | **96.2%** (3.8% of naive) |
-| Customer Trust Erosion | 11,357 | 17 | **99.85%** (0.15% of naive) |
-| Decreased Consumer Demand | 11,357 | 504 | **95.6%** (4.4% of naive) |
-| Increased Capex | 11,357 | 87 | **99.2%** (0.77% of naive) |
-| Post-Covid Recovery | 11,357 | 466 | **95.9%** (4.1% of naive) |
+
+| Search Text                 | Naive Approach Queries | Smart Batching Queries | Query Reduction (%)         |
+| --------------------------- | ---------------------- | ---------------------- | --------------------------- |
+| Higher ESG Compliance Costs | 11,357                 | 435                    | **96.2%** (3.8% of naive)   |
+| Customer Trust Erosion      | 11,357                 | 17                     | **99.85%** (0.15% of naive) |
+| Decreased Consumer Demand   | 11,357                 | 504                    | **95.6%** (4.4% of naive)   |
+| Increased Capex             | 11,357                 | 87                     | **99.2%** (0.77% of naive)  |
+| Post-Covid Recovery         | 11,357                 | 466                    | **95.9%** (4.1% of naive)   |
+
 
 **Key Insight**: Query reduction is most dramatic for niche or specialized topics where media coverage is concentrated among fewer companies. For example, "Customer Trust Erosion" achieves a 99.85% reduction (17 queries vs 11,357), while broader topics like "Earnings" show more modest but still significant 67% reductions. The more specialized the topic, the greater the query reduction benefit.
 
@@ -433,9 +344,9 @@ The following table demonstrates the dramatic query reduction achievable with Sm
 ### Advantages of Smart Batching
 
 1. **Massive Query Reduction**: 67-99% fewer API calls (varies by topic specificity)
-   - Niche topics: Up to 99.85% reduction (e.g., "Customer Trust Erosion": 17 vs 11,357 queries)
-   - Specialized topics: 96-97% reduction (e.g., "Higher ESG Compliance Costs": 435 vs 11,357 queries)
-   - Broad topics: 32-67% reduction (e.g., "Earnings": 3,699 vs 11,357 queries)
+  - Niche topics: Up to 99.85% reduction (e.g., "Customer Trust Erosion": 17 vs 11,357 queries)
+  - Specialized topics: 96-97% reduction (e.g., "Higher ESG Compliance Costs": 435 vs 11,357 queries)
+  - Broad topics: 32-67% reduction (e.g., "Earnings": 3,699 vs 11,357 queries)
 2. **Faster Execution**: Parallel processing of fewer, optimized queries
 3. **Cost Efficiency**: Significantly lower API usage costs
 4. **Rate Limit Friendly**: Fewer queries = easier to stay within limits
@@ -447,89 +358,30 @@ The following table demonstrates the dramatic query reduction achievable with Sm
 ### When to Use Each Approach
 
 **Use Naive Search when:**
+
 - Universe is small (< 100 companies)
 - Need exact per-company results
 - Companies have very different search requirements
 
 **Use Smart Batching when:**
+
 - Universe is large (> 500 companies)
 - Companies can be grouped by volume
 - Need efficient, scalable search
 - Want to sample a percentage of results
 - Working with rate limits
 
-### Helper functions (from `src`)
-
-- **`deduplicate_documents(documents)`**: Merges duplicate documents (same document `id`) and their chunks. Call after `execute_search()` before counting chunks or converting to DataFrame.
-- **`load_universe_from_csv(csv_path, id_column='id')`**: Loads entity IDs from a CSV (one per line, or with a column for entity IDs; default column name: `id`). Returns a list of entity ID strings.
-- **`convert_to_dataframe(raw_results)`**: Converts the list of documents (e.g. after `deduplicate_documents`) to a pandas DataFrame with one row per chunk. Columns include `date`, `doc_id`, `headline`, `chunk_text`, `chunk_relevance`, `chunk_sentiment`, `entity_ids`, etc.
-- **`save_plan(plan, path)`** / **`load_plan(path)`**: Save and load a search plan to/from JSON for reuse with different `chunk_percentage` values.
-
-## API Reference
-
-### `plan_search()`
-
-Plan a search using smart batching.
-
-**Parameters:**
-- `text` (str): Search query text
-- `universe_csv_path` (str): Path to CSV file with entity IDs (one per line)
-- `start_date` (str): Start date in YYYY-MM-DD format
-- `end_date` (str): End date in YYYY-MM-DD format
-- `api_key` (str, optional): API key (defaults to BIGDATA_API_KEY env var)
-- `api_base_url` (str, optional): API base URL
-- `volume_query_mode` (str, optional): Method for querying volumes. `"three_pass"` (default) or `"iterative"`. Use `"iterative"` for per-batch iterative discovery.
-- `max_iterations_per_batch` (int, optional): Max iterations per batch when using `"iterative"` mode (default: 10)
-- `apply_volume_splits` (bool, optional): If `True` (default), use volume time series to split date ranges into sub-periods so chunk volume is balanced across periods. If `False`, use time-based granularity and estimated sub-period volumes only. See [Volume-Based Period Splitting](#volume-based-period-splitting).
-- `min_period_days` (int, optional): Minimum number of days per sub-period when splitting by volume (default: 30). Ensures no sub-period is shorter than this.
-
-**Returns:**
-- `Dict` with:
-  - `total_expected_chunks`: Total chunks expected
-  - `baskets`: List of basket configs with complete query structures
-  - `planning_metadata`: Additional metadata
-
-### `execute_search()`
-
-Execute search with proportional sampling, rate limiting, and parallel execution.
-
-**Parameters:**
-- `search_plan` (Dict): Planning result from `plan_search()`
-- `chunk_percentage` (float): Percentage of total chunks (0.0 to 1.0)
-  - `1.0` = 100% of chunks (full retrieval)
-  - `0.1` = 10% of chunks (sampling)
-  - `0.05` = 5% of chunks (light sampling)
-- `requests_per_minute` (int, optional): Rate limit for API calls (default: 100)
-  - Uses sliding window algorithm
-  - Lower values = more conservative, safer for strict rate limits
-  - Higher values = faster but risk hitting rate limits
-- `api_key` (str, optional): API key (defaults to BIGDATA_API_KEY env var)
-- `api_base_url` (str, optional): API base URL
-- `max_workers` (int, optional): Maximum parallel workers / semaphore limit (default: 40)
-  - Controls concurrent API connections
-  - Lower values = fewer connections, more sequential
-  - Higher values = more parallel, faster but more resource-intensive
-
-**Returns:**
-- `List[Dict]`: List of **document** dictionaries. Each document has a `chunks` array and metadata (e.g. `id`, `headline`, `source`, `timestamp`). Use `deduplicate_documents()` to merge duplicate documents, then optionally `convert_to_dataframe()` for one row per chunk.
-
-**Performance Characteristics:**
-- **Time Complexity**: O(b / max_workers) where b = number of baskets
-- **Space Complexity**: O(r) where r = number of result documents/chunks
-- **Rate Limiting**: Sliding window with configurable RPM
-- **Concurrency**: Semaphore-controlled parallel execution
-
 ## Examples
 
 ### Example 1: Basic Search
 
 ```python
-from src import plan_search, execute_search, deduplicate_documents, convert_to_dataframe
+from bigdata_smart_batching import plan_search, execute_search, deduplicate_documents, convert_to_dataframe
 
 # Plan the search (creates optimized baskets)
 plan = plan_search(
     text="earnings revenue profit",
-    universe_csv_path="id_name_mapping_us_top_3000.csv",
+    universe="id_name_mapping_us_top_3000.csv",
     start_date="2023-01-01",
     end_date="2023-12-31"
 )
@@ -548,11 +400,11 @@ df = convert_to_dataframe(results)  # one row per chunk
 ### Example 2: Multiple Percentage Runs
 
 ```python
-from src import plan_search, execute_search, deduplicate_documents
+from bigdata_smart_batching import plan_search, execute_search, deduplicate_documents
 
 plan = plan_search(
     text="merger acquisition",
-    universe_csv_path="id_name_mapping_us_top_3000.csv",
+    universe="id_name_mapping_us_top_3000.csv",
     start_date="2023-01-01",
     end_date="2023-12-31"
 )
@@ -568,12 +420,12 @@ for pct in [0.05, 0.1, 0.25, 0.5]:
 ### Example 3: Production Configuration
 
 ```python
-from src import plan_search, execute_search, deduplicate_documents
+from bigdata_smart_batching import plan_search, execute_search, deduplicate_documents
 
 # Conservative settings for production
 plan = plan_search(
     text="ESG compliance costs",
-    universe_csv_path="id_name_mapping_us_top_3000.csv",
+    universe="id_name_mapping_us_top_3000.csv",
     start_date="2023-01-01",
     end_date="2023-12-31"
 )
@@ -592,13 +444,13 @@ results = deduplicate_documents(results_raw)
 
 ```python
 import logging
-from src import plan_search, execute_search, deduplicate_documents
+from bigdata_smart_batching import plan_search, execute_search, deduplicate_documents
 
 logging.basicConfig(level=logging.INFO)
 
 plan = plan_search(
     text="post-covid recovery",
-    universe_csv_path="id_name_mapping_us_top_3000.csv",
+    universe="id_name_mapping_us_top_3000.csv",
     start_date="2021-01-01",
     end_date="2023-12-31"
 )
@@ -617,110 +469,22 @@ print(f"Successfully retrieved {len(results):,} documents, {n_chunks:,} chunks")
 print(f"Query reduction: {(1 - len(plan['baskets']) / 4731) * 100:.1f}%")
 ```
 
-## Large-Scale Search & Performance
-
-### Rate Limiting (Sliding Window Algorithm)
-
-The system uses a **sliding window rate limiter** to ensure API compliance:
-
-```
-Time Window (5 seconds)
-┌─────────────────────────────────────────┐
-│ [Request 1] [Request 2] ... [Request N] │
-│  <-- Window slides forward -->          │
-└─────────────────────────────────────────┘
-```
-
-**How it works:**
-- Maintains a deque of request timestamps
-- Removes timestamps older than the window (5 seconds)
-- Allows new request only if count < limit (100 RPM = ~1.67 requests/second)
-- Thread-safe implementation for parallel execution
-
-**Example:**
-```python
-# 100 requests per minute = ~1.67 requests per second
-# With 5-second window, max 8-9 requests in window
-# If window is full, request waits until oldest expires
-```
-
-### Concurrency Control (Semaphore)
-
-A **semaphore** limits simultaneous API connections:
-
-```
-┌─────────────────────────────────────────┐
-│     Semaphore (max_workers=40)          │
-│  ┌────┐ ┌────┐ ┌────┐ ... ┌────┐      │
-│  │ W1 │ │ W2 │ │ W3 │     │ W40 │      │
-│  └────┘ └────┘ └────┘     └────┘      │
-│     │      │      │          │          │
-│     v      v      v          v          │
-│  ┌──────────────────────────────┐      │
-│  │    API Requests (Rate        │      │
-│  │    Limited: 100 RPM)         │      │
-│  └──────────────────────────────┘      │
-└─────────────────────────────────────────┘
-```
-
-**Benefits:**
-- Prevents overwhelming the API with too many concurrent connections
-- Works in conjunction with rate limiting
-- Configurable via `max_workers` parameter (default: 40)
-
-### Large-Scale Search Considerations
-
-#### 1. Memory Management
-
-For very large result sets:
-- Results are collected incrementally
-- Consider using `chunk_percentage` to limit results
-- Results can be streamed to disk if needed
-
-#### 2. Time Complexity
-
-**Planning Phase:**
-- O(n) where n = number of companies
-- Co-mention API calls: ~1 per company (can be batched)
-- Basket creation: O(n log n) for sorting
-
-**Execution Phase:**
-- O(b) where b = number of baskets (typically 1-5% of companies)
-- Parallel execution: O(b / max_workers)
-- Rate limiting adds minimal overhead
-
-#### 3. Network Efficiency
-
-```
-Naive: 11,357 sequential requests
-Smart: 435 parallel requests (with rate limiting)
-
-Time Savings:
-- Naive: ~11,357 requests × 0.1s = 1,135 seconds (19 minutes)
-- Smart: ~435 requests / 40 workers × 0.1s = ~1.1 seconds
-- Speedup: ~1,000x faster
-```
-
-#### 4. Error Handling & Resilience
-
-- **Retry Logic**: Failed requests are retried with exponential backoff
-- **Graceful Degradation**: Partial results returned if some baskets fail
-- **Error Reporting**: Detailed logging of failed baskets
-- **Timeout Handling**: Configurable timeouts prevent hanging requests
-
-#### 5. Rate Limit Strategies
+#### Rate limit strategies
 
 **Conservative (Recommended for Production):**
+
 ```python
 execute_search(plan, requests_per_minute=50, max_workers=20)
 ```
 
 **Balanced (Default):**
+
 ```python
 execute_search(plan, requests_per_minute=100, max_workers=40)
 ```
 
 **Aggressive (Use with Caution):**
+
 ```python
 execute_search(plan, requests_per_minute=200, max_workers=60)
 ```
@@ -730,6 +494,7 @@ execute_search(plan, requests_per_minute=200, max_workers=60)
 ### Performance Tuning
 
 #### Optimize for Speed
+
 ```python
 # More workers, higher rate limit
 results = execute_search(
@@ -740,6 +505,7 @@ results = execute_search(
 ```
 
 #### Optimize for API Limits
+
 ```python
 # Fewer workers, lower rate limit
 results = execute_search(
@@ -750,6 +516,7 @@ results = execute_search(
 ```
 
 #### Optimize for Memory
+
 ```python
 # Smaller sample size
 results = execute_search(
@@ -763,7 +530,7 @@ results = execute_search(
 ### Environment Variables
 
 - `BIGDATA_API_KEY`: Required - Your Bigdata API key
-- `BIGDATA_API_BASE_URL`: Optional - API base URL (default: https://api.bigdata.com)
+- `BIGDATA_API_BASE_URL`: Optional - API base URL (default: [https://api.bigdata.com](https://api.bigdata.com))
 
 ### Default Settings
 
@@ -778,17 +545,20 @@ results = execute_search(
 
 ### Performance Comparison Summary
 
-| Metric | Naive Search | Smart Batching | Improvement |
-|--------|-------------|----------------|-------------|
-| **Queries** | 11,357 | 17-3,699 | **67-99% reduction** (varies by topic) |
-| **Execution Time** | ~20 minutes | ~seconds | **~1,000x faster** |
-| **API Costs** | High | Low | **67-99% savings** (varies by topic) |
-| **Rate Limit Risk** | Very High | Low | **Much safer** |
-| **Scalability** | Poor (>1000 companies) | Excellent | **Handles 10K+** |
+
+| Metric              | Naive Search           | Smart Batching | Improvement                            |
+| ------------------- | ---------------------- | -------------- | -------------------------------------- |
+| **Queries**         | 11,357                 | 17-3,699       | **67-99% reduction** (varies by topic) |
+| **Execution Time**  | ~20 minutes            | ~seconds       | **~1,000x faster**                     |
+| **API Costs**       | High                   | Low            | **67-99% savings** (varies by topic)   |
+| **Rate Limit Risk** | Very High              | Low            | **Much safer**                         |
+| **Scalability**     | Poor (>1000 companies) | Excellent      | **Handles 10K+**                       |
+
 
 ### When to Use Smart Batching
 
 ✅ **Use Smart Batching for:**
+
 - Large universes (> 500 companies)
 - Production environments with rate limits
 - Cost-sensitive applications
@@ -796,117 +566,14 @@ results = execute_search(
 - Time-sensitive searches
 
 ❌ **Consider Naive Search for:**
+
 - Very small universes (< 100 companies)
 - When exact per-company queries are required
 - When companies have vastly different search needs
 
-## Testing
-
-Run from the `Smart_batching` directory so that the `search_function` module (or `src`) is on the Python path (e.g. `pytest.ini` has `pythonpath = .`; tests import from `search_function`).
-
-Run all tests:
-```bash
-pytest tests/
-```
-
-Run with coverage (use `--cov=src` if your tests import from `src`):
-```bash
-pytest --cov=src --cov-report=html tests/
-```
-
-Run specific test file:
-```bash
-pytest tests/test_search_function.py -v
-```
-
-## File Structure
-
-```
-Smart_Batching/
-├── src/
-│   ├── __init__.py             # Exports plan_search, execute_search, deduplicate_documents, save_plan, load_plan, load_universe_from_csv, convert_to_dataframe
-│   ├── search_function.py      # Main functions and classes (plan_search, execute_search, deduplicate_documents, save_plan, load_plan, load_universe_from_csv)
-│   ├── output_converter.py     # convert_to_dataframe (documents → DataFrame by chunk)
-│   ├── smart_batching.py       # Smart batching planner logic
-│   └── smart_batching_config.py # Config and API base URL
-├── test_smart_batching.ipynb   # Jupyter notebook for testing (run from Smart_Batching dir)
-├── id_name_mapping_us_top_3000.csv  # Universe file (entity IDs; optional at root)
-├── requirements.txt            # Python dependencies
-├── pytest.ini                  # Pytest configuration
-├── tests/
-│   ├── __init__.py
-│   ├── test_search_function.py    # Unit tests for main functions
-│   ├── test_rate_limiter.py        # Rate limiter tests
-│   ├── test_proportional_sampling.py  # Proportional sampling tests
-│   └── test_validation.py          # Validation/integration tests
-├── test_data/
-│   ├── sample_universe.csv         # Small test universe
-│   ├── us_top3000.csv              # Alternative universe file
-│   └── mock_api_responses.json     # Mock API responses
-└── README.md                   # This file
-```
-
-## Troubleshooting
-
-### Rate Limit Issues
-
-**Problem**: Getting 429 (Too Many Requests) errors
-
-**Solutions**:
-1. Reduce `requests_per_minute`:
-   ```python
-   execute_search(plan, requests_per_minute=50)  # More conservative
-   ```
-
-2. Reduce `max_workers`:
-   ```python
-   execute_search(plan, max_workers=20)  # Fewer concurrent requests
-   ```
-
-3. Check your API rate limits and adjust accordingly
-
-### Memory Issues
-
-**Problem**: Running out of memory with large result sets
-
-**Solutions**:
-1. Use smaller `chunk_percentage`:
-   ```python
-   execute_search(plan, chunk_percentage=0.05)  # 5% instead of 10%
-   ```
-
-2. Process results in batches
-3. Stream results to disk instead of keeping in memory
-
-### Slow Execution
-
-**Problem**: Search execution is taking too long
-
-**Solutions**:
-1. Increase `max_workers` (if rate limits allow):
-   ```python
-   execute_search(plan, max_workers=60)
-   ```
-
-2. Increase `requests_per_minute` (if API allows):
-   ```python
-   execute_search(plan, requests_per_minute=150)
-   ```
-
-3. Use smaller `chunk_percentage` for faster results
-
-### Planning Takes Too Long
-
-**Problem**: `plan_search()` is slow with large universes
-
-**Note**: Planning queries the co-mention API for each company. This is necessary to create optimal baskets. Consider:
-- Caching plans for reuse
-- Using smaller universes if possible
-- Running planning during off-peak hours
-
 ## License
 
-This project is part of the Bigdata.com and WorldQuant Challenge.
+This project is part of the Bigdata.com.
 
 **Disclaimer**: This software is provided "as is" without warranty of any kind, express or implied. The authors
 and contributors assume no responsibility for the accuracy, completeness, or usefulness of any information,

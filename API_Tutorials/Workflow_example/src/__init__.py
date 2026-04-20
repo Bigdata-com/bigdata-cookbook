@@ -9,16 +9,6 @@ This module provides:
 """
 
 from .bigdata_session import AUTH_MODE_API_KEY, BigDataSession
-from .search_function import (
-    plan_search,
-    execute_search,
-    execute_full_grid_search,
-    deduplicate_documents,
-    save_plan,
-    load_plan,
-    load_universe_from_csv,
-)
-from .output_converter import convert_to_dataframe
 from .helper import (
     explode_to_dataframe,
     prepare_sentiment_dataframe,
@@ -46,16 +36,6 @@ __all__ = [
     # Authentication
     'BigDataSession',
     'AUTH_MODE_API_KEY',
-    # Search functions
-    'plan_search',
-    'execute_search',
-    'execute_full_grid_search',
-    'deduplicate_documents',
-    'save_plan',
-    'load_plan',
-    'load_universe_from_csv',
-    # Output conversion
-    'convert_to_dataframe',
     # Helper functions
     'explode_to_dataframe',
     'prepare_sentiment_dataframe',
