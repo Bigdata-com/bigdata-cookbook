@@ -6,7 +6,6 @@ __pycache__/
 .env
 *.db
 financial_agent/data/
-financial_agent/.adk/
 .DS_Store
 dist/
 *.egg-info/
