@@ -208,6 +208,13 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Reusable core module for building custom agent workflows
 - Citation support with inline markers and numbered references
 
+### 🤖 [Google ADK with Bigdata and local data](./Google_ADK_With_BigData/)
+**Standalone Google ADK agent with SQLite, local Markdown research files (FAISS + Gemini embeddings), and Bigdata.com MCP**
+
+- Self-contained `uv` project under `Google_ADK_With_BigData/` with an ADK `financial_agent` (run `uv run adk web .` from that directory)
+- Requires a Bigdata.com API key for MCP (`https://mcp.bigdata.com/`) and a Google Gemini key for the model and embeddings
+- Includes sample prompts and pytest tests; see the folder README for setup and environment variables
+
 ### 🔍 [Large Scale Search](./Search_Large_Scale/)
 **High-Performance Portfolio Search Tool**
 
