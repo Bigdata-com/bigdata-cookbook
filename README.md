@@ -208,6 +208,13 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Reusable core module for building custom agent workflows
 - Citation support with inline markers and numbered references
 
+### 🤖 [Google ADK with Bigdata and local data](./Google_ADK_With_BigData/)
+**Standalone Google ADK agent with SQLite, local Markdown research files (FAISS + Gemini embeddings), and Bigdata.com MCP**
+
+- Multi-source AI agent integrating Bigdata.com Search, Knowledge Graph, and Research Agent APIs
+- Internal data integration with SQLite databases and FAISS vector stores
+- Citation support with inline markers and numbered references
+
 ### 🔍 [Large Scale Search](./Search_Large_Scale/)
 **High-Performance Portfolio Search Tool**
 

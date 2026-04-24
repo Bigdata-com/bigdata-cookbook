@@ -1,7 +1,6 @@
 .env
 .ipynb_checkpoints/
 **/__pycache__/
-**/output/
 .DS_Store
 
 .jupyter/
@@ -11,6 +10,14 @@
 .ipython/
 .cursor/
 
-# Output directory
-output/
+# Output directory (single pattern covers repo root and subdirs)
 **/output/
+
+# Virtual environments (uv / local tooling)
+.venv/
+
+# Google ADK / adk web local session store (anywhere in the repo)
+**/.adk/
+
+# Agent_To_BigData ADK sample — regenerated SQLite (no local .gitignore there)
+Agent_To_BigData/my_agent/data/
