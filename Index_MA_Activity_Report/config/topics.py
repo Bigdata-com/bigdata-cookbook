@@ -269,6 +269,41 @@ MA_TOPICS = [
     #{"topic_name": "Strategic Rationale", "topic_text": "What synergies or strategic benefits are expected from {company}'s deal?"},
 ]
 
+# All corporate actions topics - Google-style keyword searches covering every
+# corporate-action category in the Corporate Actions Tracker (PubT) template.
+# topic_name = category, topic_text = keyword phrase (not a question), 2-3 per category.
+ALL_CA_TOPICS = [
+    # 1. Capital Actions
+    {"topic_name": "Capital Actions", "topic_text": "{company} cash dividend special dividend declaration ex-date record date payment date"},
+    {"topic_name": "Capital Actions", "topic_text": "{company} stock split reverse split stock consolidation scrip dividend stock dividend"},
+    {"topic_name": "Capital Actions", "topic_text": "{company} share buyback repurchase program authorization ATM offering return of capital"},
+
+    # 2. M&A / Structural
+    {"topic_name": "M&A / Structural", "topic_text": "{company} merger acquisition definitive agreement deal closing termination"},
+    {"topic_name": "M&A / Structural", "topic_text": "{company} divestiture asset sale business unit sale spin-off split-off carve-out tracking stock"},
+    {"topic_name": "M&A / Structural", "topic_text": "{company} joint venture strategic partnership consortium tender offer exchange offer"},
+
+    # 3. Debt / Capital Structure
+    {"topic_name": "Debt / Capital Structure", "topic_text": "{company} senior notes bond debenture issuance coupon maturity use of proceeds"},
+    {"topic_name": "Debt / Capital Structure", "topic_text": "{company} term loan revolver credit facility refinancing debt redemption repayment prepayment call notice"},
+    {"topic_name": "Debt / Capital Structure", "topic_text": "{company} credit rating upgrade downgrade outlook covenant amendment waiver convertible notes"},
+
+    # 4. Equity / Shareholder
+    {"topic_name": "Equity / Shareholder", "topic_text": "{company} rights issue rights offering private placement PIPE strategic equity investment"},
+    {"topic_name": "Equity / Shareholder", "topic_text": "{company} secondary offering follow-on block trade accelerated bookbuild IPO direct listing SPAC de-SPAC dual listing"},
+    {"topic_name": "Equity / Shareholder", "topic_text": "{company} delisting going-dark ADR program change lock-up expiry insider sales 10b5-1 plan"},
+
+    # 5. Governance / Control
+    {"topic_name": "Governance / Control", "topic_text": "{company} CEO CFO COO appointment resignation departure interim executive change"},
+    {"topic_name": "Governance / Control", "topic_text": "{company} board of directors chair changes activist investor 13D filing proxy contest board nomination"},
+    {"topic_name": "Governance / Control", "topic_text": "{company} going-private management buyout take-private bid poison pill bylaw charter amendment"},
+
+    # 6. Restructuring / Special
+    {"topic_name": "Restructuring / Special", "topic_text": "{company} bankruptcy Chapter 11 Chapter 7 restructuring support agreement DIP financing reorganization"},
+    {"topic_name": "Restructuring / Special", "topic_text": "{company} name change ticker change CUSIP ISIN change reclassification share class consolidation"},
+    {"topic_name": "Restructuring / Special", "topic_text": "{company} liquidation dissolution wind-down strategic review formal sale process"},
+]
+
 # Topic set registry - maps topic set names to their lists
 TOPIC_SETS = {
     "default": {
@@ -286,6 +321,11 @@ TOPIC_SETS = {
         "name": "M&A Topics",
         "description": "Topics focused on M&A activity, acquisitions, mergers, divestitures, deal terms, and regulatory approvals",
         "topics": MA_TOPICS
+    },
+    "all_corporate_actions": {
+        "name": "All Corporate Actions",
+        "description": "Press-release corporate actions across capital, M&A, debt, equity, governance, and restructuring",
+        "topics": ALL_CA_TOPICS
     }
 }
 

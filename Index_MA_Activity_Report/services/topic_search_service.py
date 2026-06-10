@@ -61,6 +61,11 @@ from config.topics import STANDARD_TOPICS
 
 logger = logging.getLogger(__name__)
 
+# Sentinel to distinguish "argument not provided" (keep the historical
+# positive/negative sentiment filter) from an explicit None (no sentiment filter).
+_UNSET = object()
+_DEFAULT_SENTIMENT_VALUES = ["positive", "negative"]
+
 
 class TopicVariations(BaseModel):
     """Pydantic model for topic variations from Gemini."""
@@ -658,10 +663,13 @@ Return exactly 3 variations, each as a complete search query."""
         topic: str,
         topic_index: int,
         days: int = 7,
-        max_chunks: int = 10
+        max_chunks: int = 10,
+        source_ids: Optional[List[str]] = None,
+        sentiment_values=_UNSET,
+        category_values: Optional[List[str]] = None
     ) -> List[Dict]:
         """
-        Perform topic-based search with sentiment filtering.
+        Perform topic-based search with optional sentiment, source, and category filters.
         
         Args:
             ticker: Stock ticker symbol
@@ -671,6 +679,15 @@ Return exactly 3 variations, each as a complete search query."""
             topic_index: Index of topic in STANDARD_TOPICS list
             days: Number of days to look back
             max_chunks: Maximum chunks to return
+            source_ids: Optional list of source IDs to restrict results to
+                (adds a source INCLUDE filter, e.g. ["DFF004"]). None = no source filter.
+            sentiment_values: Sentiment categories (e.g. ["positive", "negative"]).
+                If omitted, defaults to the historical ["positive", "negative"] filter.
+                Pass None explicitly to disable sentiment filtering (include neutral).
+            category_values: Optional source category list overriding the default set.
+                When None and no source_ids are provided, the default category set is used;
+                when source_ids are provided, the category filter is omitted to avoid
+                over-narrowing results.
             
         Returns:
             List of article dictionaries tagged with topic
@@ -717,6 +734,40 @@ Return exactly 3 variations, each as a complete search query."""
             jitter = exponential_delay * random.uniform(0, 0.3)
             return exponential_delay + jitter
         
+        # Build filters dynamically so source/sentiment/category are optional.
+        default_categories = [
+            "expert_interviews",
+            "filings",
+            "news",
+            "podcasts",
+            "research",
+            "transcripts",
+        ]
+        filters: Dict = {
+            "timestamp": {
+                "start": self._format_timestamp(start_time),
+                "end": self._format_timestamp(end_time)
+            },
+            "entity": {
+                "all_of": [entity_id]
+            },
+        }
+        # Source filter takes precedence; when present we omit the category filter
+        # (unless an explicit category override is supplied) to avoid over-narrowing.
+        if source_ids:
+            filters["source"] = {"mode": "INCLUDE", "values": source_ids}
+            if category_values:
+                filters["category"] = {"mode": "INCLUDE", "values": category_values}
+        else:
+            filters["category"] = {
+                "mode": "INCLUDE",
+                "values": category_values if category_values else default_categories,
+            }
+        # Resolve sentiment: omitted -> historical default; explicit None -> no filter.
+        resolved_sentiment = _DEFAULT_SENTIMENT_VALUES if sentiment_values is _UNSET else sentiment_values
+        if resolved_sentiment:
+            filters["sentiment"] = {"values": resolved_sentiment}
+
         for attempt in range(max_retries):
             # Acquire rate limit token before each attempt
             await self.rate_limiter.acquire()
@@ -732,29 +783,7 @@ Return exactly 3 variations, each as a complete search query."""
                     json={
                         "query": {
                             "text": formatted_topic,
-                            "filters": {
-                                "timestamp": {
-                                    "start": self._format_timestamp(start_time),
-                                    "end": self._format_timestamp(end_time)
-                                },
-                                "entity": {
-                                    "all_of": [entity_id]
-                                },
-                                "category": {
-                                    "mode": "INCLUDE",
-                                    "values": [
-                                        "expert_interviews",
-                                        "filings",
-                                        "news",
-                                        "podcasts",
-                                        "research",
-                                        "transcripts"
-                                    ]
-                                },
-                                "sentiment": {
-                                    "values": ["positive", "negative"]
-                                }
-                            },
+                            "filters": filters,
                             "max_chunks": max_chunks
                         }
                     },
@@ -932,10 +961,13 @@ Return exactly 3 variations, each as a complete search query."""
         batch_size: int = 50,
         custom_topics: Optional[List[str]] = None,
         min_relevance: float = 0.0,
-        query_reformulation: bool = False
+        query_reformulation: bool = False,
+        source_ids: Optional[List[str]] = None,
+        sentiment_values=_UNSET,
+        category_values: Optional[List[str]] = None
     ) -> Dict:
         """
-        Search topics for a ticker (sentiment-filtered parallel topic searches).
+        Search topics for a ticker (parallel topic searches with optional filters).
         
         For baseline/entity-only search, use search_baseline() directly instead.
         
@@ -947,6 +979,11 @@ Return exactly 3 variations, each as a complete search query."""
             custom_topics: Custom list of topic templates (overrides topics parameter)
             min_relevance: Minimum relevance threshold to filter results
             query_reformulation: If True, use Gemini to generate 3 variations of each topic
+            source_ids: Optional list of source IDs to restrict results to (e.g. ["DFF004"])
+            sentiment_values: Sentiment categories (e.g. ["positive", "negative"]).
+                If omitted, defaults to the historical ["positive", "negative"] filter.
+                Pass None explicitly to disable sentiment filtering (include neutral).
+            category_values: Optional source category override list
             
         Returns:
             Dictionary with topic results and metadata
@@ -1046,7 +1083,10 @@ Return exactly 3 variations, each as a complete search query."""
             (
                 self.search_single_topic(
                     ticker, entity_id, company_name, topic_text, query_idx, days,
-                    max_chunks=chunks_per_query
+                    max_chunks=chunks_per_query,
+                    source_ids=source_ids,
+                    sentiment_values=sentiment_values,
+                    category_values=category_values
                 ),
                 topic_text,
                 is_variation,
@@ -1173,7 +1213,10 @@ Return exactly 3 variations, each as a complete search query."""
         topics: Optional[List[str]] = None,
         custom_topics: Optional[List[str]] = None,
         min_relevance: float = 0.0,
-        query_reformulation: bool = False
+        query_reformulation: bool = False,
+        source_ids: Optional[List[str]] = None,
+        sentiment_values=_UNSET,
+        category_values: Optional[List[str]] = None
     ) -> List[Dict]:
         """
         Search multiple tickers in parallel (topic searches only).
@@ -1187,6 +1230,10 @@ Return exactly 3 variations, each as a complete search query."""
             custom_topics: Custom list of topic templates (overrides topics parameter)
             min_relevance: Minimum relevance threshold to filter results
             query_reformulation: If True, use Gemini to generate 3 variations of each topic
+            source_ids: Optional list of source IDs to restrict results to (e.g. ["DFF004"])
+            sentiment_values: Sentiment categories. Omitted -> historical ["positive","negative"];
+                explicit None -> no sentiment filter.
+            category_values: Optional source category override list
             
         Returns:
             List of results dictionaries, one per ticker
@@ -1201,7 +1248,10 @@ Return exactly 3 variations, each as a complete search query."""
                 topics=topics,
                 custom_topics=custom_topics,
                 min_relevance=min_relevance,
-                query_reformulation=query_reformulation
+                query_reformulation=query_reformulation,
+                source_ids=source_ids,
+                sentiment_values=sentiment_values,
+                category_values=category_values
             )
             for ticker in tickers
         ]
