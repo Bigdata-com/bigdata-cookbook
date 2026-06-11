@@ -1,0 +1,29 @@
+rank,entity_id,name,sector,country,total_headlines,total_chunks,included
+1.0,013528,PepsiCo Inc.,Consumer Goods,US,1169,13502,True
+2.0,EEA6B3,Coca-Cola Co.,Consumer Goods,US,210,1667,True
+3.0,C74288,Siemens AG,Industrials,DE,128,526,True
+4.0,E09E2B,NVIDIA Corp.,Technology,US,105,444,True
+5.0,1F9258,Celsius Holdings Inc.,Consumer Goods,US,87,354,True
+6.0,713810,Walmart Inc.,Consumer Services,US,61,437,True
+7.0,CDCD30,Varun Beverages Ltd.,Consumer Goods,IN,41,0,True
+8.0,F1C69A,Palantir Technologies Inc.,Technology,US,34,0,True
+9.0,8D4486,IBM Corp.,Technology,US,32,0,True
+10.0,7XVFEZ,Vngr Beverage LLC,Consumer Goods,US,30,0,True
+11.0,4A6F00,Alphabet Inc.,Technology,US,23,0,True
+12.0,CF2C64,Frito-Lay Inc.,Consumer Goods,US,22,360,True
+13.0,D3C241,Frito-Lay North America Inc.,Consumer Goods,US,19,312,True
+14.0,B1J0IE,Link Snacks Inc.,Consumer Services,US,16,0,True
+15.0,D09938,Monster Beverage Corp.,Consumer Goods,US,15,0,True
+16.0,03CF95,PayPal Holdings Inc.,Consumer Services,US,15,0,True
+17.0,14C7B2,Keurig Dr. Pepper Inc.,Consumer Goods,US,15,0,True
+18.0,HOH6LF,The Vita Coco Co. Inc.,Consumer Services,US,10,0,True
+19.0,12DE76,Cisco Systems Inc.,Technology,US,8,0,True
+20.0,H5C4V5,Yahoo Inc.,Technology,US,5,0,True
+21.0,AE8A7E,Rivian Automotive Inc.,Consumer Goods,US,5,0,True
+22.0,USQSKZ,Ben & Jerry's Homemade Inc.,Consumer Goods,US,4,0,True
+23.0,EC46EC,Contineum Therapeutics Inc.,Health Care,US,3,0,True
+24.0,C8FAC7,Anheuser-Busch InBev NV,Consumer Goods,BE,0,607,True
+25.0,2D469F,BP PLC,Energy,GB,0,573,True
+,97EB87,Zacks Investment Research Inc.,Financials,US,10,495,False
+,JD5ZCQ,Hyundai Capital America Inc.,Financials,US,0,345,False
+,BC9793,HSBC Holdings PLC,Financials,GB,0,316,False

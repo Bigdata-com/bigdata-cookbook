@@ -36,7 +36,7 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Generates investment intelligence from AI transformation narratives
 - Creates structured reports ranking companies by AI resilience
 
-### ⚖️ [Regulatory Issues in Tech Report Generator](./Report_Generator_Regulatory_Isses_in_Tech/)
+### ⚖️ [Regulatory Issues in Tech Report Generator](./Report_Generator_Regulatory_Issues_in_Tech/)
 **Automated Analysis of Regulatory Risks and Company Mitigation Strategies**
 
 - Maps sector-wide regulatory issues across technology domains
@@ -180,6 +180,93 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Thematic screening of companies via MCP tools
 - Compatible with Cursor, Claude Desktop, and other MCP clients
 - Enables AI agents to interact with Bigdata platform for research and analysis
+
+### 📌 [MCP Dashboard Demo](./MCP_Dashboard_Demo/)
+**Illustration: MCP-grounded dashboard (frozen snapshot)**
+
+- React + Vite demo: typed **`GROUNDED_DATA`** in `src/dashboard.jsx` populated via **Bigdata.com MCP** (market tearsheet, search, country tearsheets)—**no in-browser API**
+- Shows source-attributed panels (Iran–Gulf example); **cookbook copy frozen 2026-03-18**; deploy and live refresh live in a **separate production repo**
+- Example GitHub Actions and Fly.io workflows are **reference-only** under [`MCP_Dashboard_Demo/docs/reference-workflows/`](./MCP_Dashboard_Demo/docs/reference-workflows/) (not active CI here)
+
+### 🔬 [Research Agent Sync Response](./Research_Agent_Sync_Response/)
+**Python Client for Research Agent API with Citation Support**
+
+- Simple synchronous interface wrapping the Research Agent streaming API
+- Bigdata.com standard citation format with full source metadata
+- Inline citation markers `[1]`, `[2]` with numbered reference lists
+- Multiple output formats: plain answer, citations JSON, or combined results
+- Follow-up conversation support with chat ID continuation
+- Configurable research effort levels (lite/standard) for speed vs. depth tradeoff
+
+### 🤖 [Agent to Bigdata](./Agent_To_Bigdata/)
+**Modular Framework for Building AI Agents with Bigdata.com Integration**
+
+- Multi-source AI agent integrating Bigdata.com Search, Knowledge Graph, and Research Agent APIs
+- Internal data integration with SQLite databases and FAISS vector stores
+- Hierarchical agent architecture with smart tool routing (internal-first, external escalation)
+- LangSmith observability for production monitoring and tracing
+- Reusable core module for building custom agent workflows
+- Citation support with inline markers and numbered references
+
+### 🤖 [Google ADK with Bigdata and local data](./Google_ADK_With_BigData/)
+**Standalone Google ADK agent with SQLite, local Markdown research files (FAISS + Gemini embeddings), and Bigdata.com MCP**
+
+- Multi-source AI agent integrating Bigdata.com Search, Knowledge Graph, and Research Agent APIs
+- Internal data integration with SQLite databases and FAISS vector stores
+- Citation support with inline markers and numbered references
+
+### 🔍 [Large Scale Search](./Search_Large_Scale/)
+**High-Performance Portfolio Search Tool**
+
+- Entity resolution with CSV caching for ticker-to-entity ID mapping
+- Parallel processing with ThreadPoolExecutor for searching hundreds of tickers
+- Multi-layered rate limiting (sliding window + concurrency semaphore + auto-retry)
+- SQLite storage with indexed queries for fast result retrieval
+- Customizable research topics with company name placeholders
+- Query interface to filter results by ticker, topic, or custom criteria
+
+### 📊 [Index M&A Activity Report](./Index_MA_Activity_Report/)
+**Automated M&A Analysis and Report Generation Tool**
+
+- M&A news search for specified tickers using Bigdata.com API
+- AI-powered executive briefs summarizing key M&A developments
+- Structured deal analysis tables identifying acquisition targets
+- Desk notes per ticker with source attribution
+- Automated report generation with deal tables, summaries, and source links
+
+### 📦 [Smart Batching](./Smart_Batching/)
+**Optimized Semantic Search with Intelligent Query Planning and Large-Scale Execution**
+
+- **Two-Step System**: Planning phase creates optimized baskets, execution phase performs search with proportional sampling
+- **Query Optimization**: Reduces API queries by 96-99% (varies by topic specificity) through intelligent company grouping
+  - Niche topics: Up to 99.85% reduction (e.g., "Customer Trust Erosion": 17 queries vs 11,357 naive)
+  - Specialized topics: 96-97% reduction (e.g., "Higher ESG Compliance Costs": 435 queries)
+- **Large-Scale Search Execution**: Follows Search_Large_Scale pattern with:
+  - Parallel processing using ThreadPoolExecutor for high-throughput searches
+  - Multi-layered rate limiting (sliding window algorithm + concurrency semaphore)
+  - Automatic retry with exponential backoff for robust error handling
+  - Proportional sampling to retrieve percentage of results while preserving distribution
+- **Volume-Based Batching**: Automatic granularity determination and basket creation maximizing efficiency
+- **Production Ready**: Comprehensive error handling, logging, and plan persistence for reuse
+- **Scalable**: Efficiently handles universes with 10,000+ companies
+
+### 🔍 [Batch Search API](./Batch_Search_API/)
+**One Batch Job for Large-Scale Search Across Full Universes**
+
+- Scale to full universes (e.g. Global All-Cap, 10,000+ companies) without client-side rate limits or thousands of round-trips
+- Single batch job: submit one JSONL file with all queries; the service runs them asynchronously and returns one result file
+- No client-side rate limiting: no QPS management, connection pools, or thousands of round-trips
+- Entity-level post-processing: deduplicate chunks, assign to query entities only, aggregate score and volume per entity
+- Sector–country heatmap: optional bottom-up macro view by sector and country (e.g. G12)
+
+### 📚 [Bigdata.com API Examples](./API_Tutorials/)
+**Notebook and script examples for key Bigdata.com APIs**
+
+- Five notebook examples: Search, Volume, Knowledge Graph, Co-mentions, and an end-to-end workflow example
+- Client-ready script library: [Sample_Scripts](./API_Tutorials/Sample_Scripts/) — full folder catalog, quickstart, and step-by-step workflow patterns are in [`API_Tutorials/Sample_Scripts/README.md`](./API_Tutorials/Sample_Scripts/README.md)
+- Standardized auth via `BIGDATA_API_KEY` loaded from `.env`
+- Progressive path from API fundamentals to workflow-level signal construction
+- Designed as a practical onboarding and execution path for teams integrating Bigdata.com APIs
 
 ## Quick Start
 
@@ -330,6 +417,51 @@ bigdata-cookbook/
 │   ├── build_your_mcp.py
 │   ├── assets/
 │   ├── Dockerfile
+│   └── README.md
+├── MCP_Dashboard_Demo/                            # MCP-grounded dashboard illustration (frozen snapshot)
+│   ├── src/
+│   ├── docs/reference-workflows/
+│   ├── Dockerfile
+│   └── README.md
+├── Research_Agent_Sync_Response/                    # Research Agent API client
+│   ├── research_client_usage.ipynb
+│   ├── research_client.py
+│   ├── output/
+│   └── README.md
+├── Agent_To_Bigdata/                                # AI agent framework with Bigdata.com integration
+│   ├── agent_to_research_agent.ipynb
+│   ├── agent_to_search.ipynb
+│   ├── langgraph_core.py
+│   ├── research_client.py
+│   ├── requirements.txt
+│   ├── static/
+│   └── README.md
+├── Search_Large_Scale/                              # Large-scale portfolio search
+│   ├── large_search.ipynb
+│   ├── output/
+│   └── README.md
+├── Index_MA_Activity_Report/                        # M&A activity report generation
+│   ├── index_ma_report.ipynb
+│   ├── config/
+│   ├── services/
+│   ├── requirements.txt
+│   └── README.md
+├── Smart_Batching/                                  # Optimized query planning
+│   ├── ...
+│   └── README.md
+├── Batch_Search_API/                                # Batch Search API — one job for thousands of queries
+│   ├── Batch_Search_API.ipynb
+│   ├── src/
+│   ├── data/
+│   ├── requirements.txt
+│   └── README.md
+├── API_Tutorials/                                   # Bigdata.com API examples bundle
+│   ├── Search_API/
+│   ├── Volume_API/
+│   ├── Knowledge_Graph_API/
+│   ├── CoMentions_API/
+│   ├── Workflow_example/
+│   ├── Sample_Scripts/
 │   └── README.md
 └── README.md                                        # This file
 ```

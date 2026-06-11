@@ -1,0 +1,70 @@
+name: Dashboard Update Cycle
+
+# Reference only: copy to .github/workflows/ in your deployment repo, then uncomment `on:` below.
+# on:
+#   schedule:
+#     # Every 4 hours — adjust to 8h ("0 */8 * * *") in quieter periods
+#     - cron: "0 */4 * * *"
+#   workflow_dispatch:
+#     inputs:
+#       reason:
+#         description: "Reason for manual trigger"
+#         required: false
+#         default: "Manual update cycle"
+
+jobs:
+  regenerate:
+    name: LLM Update Cycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "Dashboard Bot"
+          git config user.email "bot@noreply.github.com"
+
+      - name: Install Cursor CLI (if available) or use direct LLM call
+        run: |
+          echo "Update cycle triggered at $(date -u '+%Y-%m-%d %H:%M UTC')"
+          echo "Skills: skills/dashboard-gen.md + skills/bigdata-mcp-grounding.md + skills/frontend-design.md"
+          echo "Spec: spec/dashboard-spec.md"
+          echo ""
+          echo "This job is a placeholder for the Cursor automation agent."
+          echo "To execute a live cycle, run the agent manually in Cursor with:"
+          echo "  1. Open the project"
+          echo "  2. Ask: 'Run a dashboard update cycle following skills/dashboard-gen.md'"
+          echo "  3. The agent will query Bigdata.com MCP, regenerate src/dashboard.jsx, and commit"
+          echo ""
+          echo "For full CI automation, replace this step with your LLM API call."
+
+      # Placeholder: In production, replace with actual LLM API call
+      # that reads the skills files, queries Bigdata.com MCP, generates
+      # the new src/dashboard.jsx, and commits it.
+      #
+      # Example (Claude API):
+      # - name: Run LLM update cycle
+      #   env:
+      #     ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      #     BIGDATA_API_KEY: ${{ secrets.BIGDATA_API_KEY }}
+      #   run: |
+      #     python scripts/run_update_cycle.py
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet src/dashboard.jsx && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push if dashboard changed
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git add src/dashboard.jsx
+          git commit -m "chore: regenerate dashboard — $(date -u '+%Y-%m-%d %H:%M UTC')
+
+          Updated GROUNDED_DATA via Bigdata.com MCP update cycle.
+          Triggered by: ${{ github.event_name }}${{ github.event.inputs.reason && format(' ({0})', github.event.inputs.reason) || '' }}"
+          git push origin main

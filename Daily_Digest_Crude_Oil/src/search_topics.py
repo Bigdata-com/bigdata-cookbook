@@ -28,7 +28,7 @@ def search_by_keywords(keywords: List[str], start_date: str, end_date: str, scop
         
     #print('input type', type(start_date), type(end_date))
 
-    date_ranges = create_date_ranges(start_date, end_date,  frequency=freq)
+    date_ranges = create_date_ranges(start_date, end_date, frequency=freq)
 
     # print('create date range type', type(date_ranges))
     # print('create date range element type', type(date_ranges[0]))

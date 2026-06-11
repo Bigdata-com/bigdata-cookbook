@@ -1,0 +1,1 @@
+Markdown files in this directory are loaded at startup, embedded with **Gemini**, and indexed in the in-memory FAISS store alongside a few seed memos defined in `agent.py`. Add your own `*.md` files to extend the demo.
