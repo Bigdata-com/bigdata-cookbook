@@ -6,7 +6,7 @@ It leverages [Bigdata](https://bigdata.com/), [bigdata-smart-batching](https://d
 
 Each run is isolated in its own directory under `runs/<run_name>/`, so concurrent or repeated runs never overwrite each other.
 
-## Architecture overview
+## Execution overview example
 
 ![Screener Example](assets/screener_flowchart.svg)
 
