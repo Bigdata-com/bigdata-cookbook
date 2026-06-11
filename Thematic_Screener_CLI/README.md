@@ -2,7 +2,7 @@
 
 This Thematic Screener CLI is a Beta environment that presents a Command-line tool for running a four-stage thematic screening pipeline: generate theme labels, build search plans, execute document search, and label sentences with company-level summaries.
 
-It leverages Bigdata, bigdata-smart-batching library and OpenAI.
+It leverages [Bigdata](https://bigdata.com/), [bigdata-smart-batching](https://docs.bigdata.com/use-cases/search-service/smart-batching) library and OpenAI.
 
 Each run is isolated in its own directory under `runs/<run_name>/`, so concurrent or repeated runs never overwrite each other.
 
