@@ -53,7 +53,11 @@ from typing import List, Dict, Optional, Tuple
 import logging
 from pydantic import BaseModel
 
-from .rate_limiter import RateLimiter
+from .rate_limiter import (
+    RateLimiter,
+    AsyncSlidingWindowRateLimiter,
+    AsyncConcurrencyLimiter,
+)
 from .company_cache import CompanyDataCache, CompanyData
 from .llm_service import LLMService
 from .llm_factory import LLMServiceFactory
@@ -91,8 +95,11 @@ class TopicSearchService:
         api_key: str,
         base_url: str = "https://api.bigdata.com/v1",
         rate_limiter: Optional[RateLimiter] = None,
+        concurrency_limiter: Optional[AsyncConcurrencyLimiter] = None,
         company_cache: Optional[CompanyDataCache] = None,
-            gemini_service: Optional[LLMService] = None,
+        gemini_service: Optional[LLMService] = None,
+        max_concurrent: int = 10,
+        max_requests_per_minute: int = 460,
     ):
         """
         Initialize topic search service.
@@ -100,13 +107,23 @@ class TopicSearchService:
         Args:
             api_key: Bigdata.com API key
             base_url: Base URL for Bigdata API
-            rate_limiter: Rate limiter instance (creates new if None)
+            rate_limiter: Rate limiter instance (defaults to sliding window 460 RPM)
+            concurrency_limiter: Limits simultaneous HTTP connections (default: 10)
             company_cache: Company cache instance (creates new if None)
-            gemini_service: LLM service instance for query reformulation (creates new if None, backward compatible)
+            gemini_service: LLM service instance for query reformulation (creates new if None)
+            max_concurrent: Default max simultaneous API connections
+            max_requests_per_minute: Sliding-window RPM cap (8% below 500 RPM limit)
         """
         self.api_key = api_key
         self.base_url = base_url
-        self.rate_limiter = rate_limiter or RateLimiter(max_tokens=200, refill_period=60)
+        self.rate_limiter = rate_limiter or AsyncSlidingWindowRateLimiter(
+            max_requests=max_requests_per_minute,
+            period_seconds=60,
+            window_size=5,
+        )
+        self.concurrency_limiter = concurrency_limiter or AsyncConcurrencyLimiter(
+            max_concurrent=max_concurrent
+        )
         self.company_cache = company_cache or CompanyDataCache(ttl_hours=24)
         self._session: Optional[aiohttp.ClientSession] = None
         
@@ -338,6 +355,84 @@ Return exactly 3 variations, each as a complete search query."""
         
         return list(doc_map.values())
     
+    async def _api_post(
+        self,
+        endpoint: str,
+        payload: dict,
+        *,
+        timeout_seconds: int = 30,
+        max_retries: int = 5,
+        label: str = "API",
+    ) -> Optional[dict]:
+        """
+        POST to Bigdata API with concurrency cap, sliding-window rate limiting,
+        and automatic retry (matches Search_Large_Scale protection layers).
+        """
+        url = f"{self.base_url}{endpoint}"
+        headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
+        session = await self._get_session()
+
+        for attempt in range(max_retries):
+            try:
+                async with self.concurrency_limiter:
+                    await self.rate_limiter.acquire()
+                    async with session.post(
+                        url,
+                        headers=headers,
+                        json=payload,
+                        timeout=aiohttp.ClientTimeout(total=timeout_seconds),
+                    ) as response:
+                        if response.status == 200:
+                            return await response.json()
+                        if response.status == 404:
+                            return None
+                        if response.status == 429:
+                            if hasattr(self.rate_limiter, "rate_limit_warnings"):
+                                self.rate_limiter.rate_limit_warnings += 1
+                            if attempt < max_retries - 1:
+                                logger.warning(
+                                    f"{label}: 429 rate limited, retry {attempt + 1}/{max_retries}"
+                                )
+                                await asyncio.sleep(1.0)
+                                continue
+                            logger.error(f"{label}: 429 after {max_retries} retries")
+                            return None
+                        if response.status == 403:
+                            if attempt < max_retries - 1:
+                                delay = min(1.0 * (1.5 ** (attempt // 2)), 5.0)
+                                logger.warning(
+                                    f"{label}: 403 blocked, retry in {delay:.1f}s "
+                                    f"({attempt + 1}/{max_retries})"
+                                )
+                                await asyncio.sleep(delay)
+                                continue
+                            logger.error(f"{label}: 403 after {max_retries} retries")
+                            return None
+                        error_text = await response.text()
+                        logger.warning(
+                            f"{label}: HTTP {response.status} - {error_text[:200]}"
+                        )
+                        return None
+            except asyncio.TimeoutError:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(min(1.0 * (attempt + 1), 3.0))
+                    continue
+                logger.warning(f"{label}: timeout after {max_retries} retries")
+                return None
+            except TimeoutError:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(1.0)
+                    continue
+                logger.warning(f"{label}: rate limiter timeout")
+                return None
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(min(1.0 * (attempt + 1), 3.0))
+                    continue
+                logger.warning(f"{label}: error after {max_retries} retries: {e}")
+                return None
+        return None
+    
     async def get_company_data(self, ticker: str) -> Optional[CompanyData]:
         """
         Get company entity ID and name from Knowledge Graph API.
@@ -350,62 +445,32 @@ Return exactly 3 variations, each as a complete search query."""
             CompanyData with entity_id and company_name, or None if not found
         """
         ticker = ticker.upper()
-        
+
         # Check cache first
         cached = self.company_cache.get(ticker)
         if cached:
             return cached
-        
+
         logger.info(f"Fetching company data for {ticker} from Knowledge Graph API")
-        
-        # Acquire rate limit token
-        await self.rate_limiter.acquire()
-        
-        try:
-            session = await self._get_session()
-            async with session.post(
-                    f"{self.base_url}/knowledge-graph/companies",
-                    headers={
-                        "X-API-KEY": self.api_key,
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "query": ticker,
-                        "types": ["PUBLIC"]
-                    },
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        companies = data.get("results", [])
-                        
-                        if companies:
-                            entity_id = companies[0]["id"]
-                            company_name = companies[0]["name"]
-                            
-                            # Cache the result
-                            company_data = self.company_cache.set(
-                                ticker, entity_id, company_name
-                            )
-                            
-                            logger.info(
-                                f"Found company: {company_name} ({ticker}) -> {entity_id}"
-                            )
-                            return company_data
-                        else:
-                            logger.warning(f"No companies found for ticker: {ticker}")
-                    else:
-                        error_text = await response.text()
-                        logger.error(
-                            f"Knowledge Graph API error: {response.status} - {error_text}"
-                        )
-        
-        except asyncio.TimeoutError:
-            logger.error(f"Timeout fetching company data for {ticker}")
-        except Exception as e:
-            logger.error(f"Error fetching company data for {ticker}: {str(e)}")
-        
-        return None
+
+        data = await self._api_post(
+            "/knowledge-graph/companies",
+            {"query": ticker, "types": ["PUBLIC"]},
+            label=f"entity lookup {ticker}",
+        )
+        if not data:
+            return None
+
+        companies = data.get("results", [])
+        if not companies:
+            logger.warning(f"No companies found for ticker: {ticker}")
+            return None
+
+        entity_id = companies[0]["id"]
+        company_name = companies[0]["name"]
+        company_data = self.company_cache.set(ticker, entity_id, company_name)
+        logger.info(f"Found company: {company_name} ({ticker}) -> {entity_id}")
+        return company_data
     
     async def search_baseline(
         self,
@@ -710,30 +775,7 @@ Return exactly 3 variations, each as a complete search query."""
         
         end_time = datetime.now(timezone.utc)
         start_time = end_time - timedelta(days=days)
-        
-        # Retry logic for rate limit and CloudFront blocking errors
-        max_retries = 3
-        base_retry_delay = 5.0  # Base delay in seconds
-        
-        def calculate_wait_time(attempt: int, is_403: bool = False) -> float:
-            """
-            Calculate wait time with exponential backoff and jitter.
-            
-            Args:
-                attempt: Current attempt number (0-indexed)
-                is_403: If True, use longer delays for CloudFront blocks
-            
-            Returns:
-                Wait time in seconds
-            """
-            # For 403 errors, use longer base delay (CloudFront blocks need more time)
-            base = base_retry_delay * (3 if is_403 else 1)
-            # Exponential backoff: base * 2^attempt
-            exponential_delay = base * (2 ** attempt)
-            # Add jitter: random 0-30% of the delay
-            jitter = exponential_delay * random.uniform(0, 0.3)
-            return exponential_delay + jitter
-        
+
         # Build filters dynamically so source/sentiment/category are optional.
         default_categories = [
             "expert_interviews",
@@ -768,190 +810,86 @@ Return exactly 3 variations, each as a complete search query."""
         if resolved_sentiment:
             filters["sentiment"] = {"values": resolved_sentiment}
 
-        for attempt in range(max_retries):
-            # Acquire rate limit token before each attempt
-            await self.rate_limiter.acquire()
-            
-            try:
-                session = await self._get_session()
-                async with session.post(
-                    f"{self.base_url}/search",
-                    headers={
-                        "X-API-KEY": self.api_key,
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "query": {
-                            "text": formatted_topic,
-                            "filters": filters,
-                            "max_chunks": max_chunks
-                        }
-                    },
-                    timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    # Handle rate limit errors (429) with retry
-                    if response.status == 429:
-                        error_text = await response.text()
-                        if attempt < max_retries - 1:
-                            wait_time = calculate_wait_time(attempt, is_403=False)
-                            logger.warning(
-                                f"Rate limit error (429) for topic search ({ticker}). "
-                                f"Retrying in {wait_time:.1f}s (attempt {attempt + 1}/{max_retries})"
-                            )
-                            await asyncio.sleep(wait_time)
-                            continue  # Retry the loop
-                        else:
-                            logger.error(
-                                f"Rate limit error (429) after {max_retries} attempts: {error_text}"
-                            )
-                            raise Exception(f"Rate limit exceeded after {max_retries} retries: {error_text}")
-                    
-                    # Handle CloudFront blocking errors (403) with retry
-                    if response.status == 403:
-                        error_text = await response.text()
-                        if attempt < max_retries - 1:
-                            wait_time = calculate_wait_time(attempt, is_403=True)
-                            logger.warning(
-                                f"CloudFront blocking error (403) for topic search ({ticker}). "
-                                f"Retrying in {wait_time:.1f}s (attempt {attempt + 1}/{max_retries})"
-                            )
-                            await asyncio.sleep(wait_time)
-                            continue  # Retry the loop
-                        else:
-                            logger.error(
-                                f"CloudFront blocking error (403) after {max_retries} attempts"
-                            )
-                            raise Exception(f"CloudFront blocking after {max_retries} retries")
-                    
-                    if response.status == 200:
-                        data = await response.json()
-                        results = data.get("results", [])
-                        
-                        # Deduplicate by document ID first
-                        deduplicated = self._deduplicate_by_document_id(results)
-                        
-                        articles = []
-                        for i, item in enumerate(deduplicated):
-                            article = item["article"]
-                            best_chunk = item["best_chunk"]
-                            relevance = item["relevance"]
-                            
-                            chunk_text = best_chunk.get("text", "")
-                            summary = chunk_text[:200] + "..." if len(chunk_text) > 200 else chunk_text
-                            
-                            # Parse timestamp for time_ago
-                            timestamp = article.get("timestamp", "")
-                            time_ago = self._get_time_ago(timestamp)
-                            
-                            # Get detections from the chunk
-                            detections = best_chunk.get("detections", [])
-                            
-                            # Try to get category from article, or infer from search query
-                            # The API filters by category but may not return it in response
-                            doc_type = article.get("category") or article.get("document_type") or article.get("type") or ""
-                            # If not found, check if we can infer from the article structure
-                            # We search multiple categories, so try to infer from other fields
-                            if not doc_type:
-                                # Check if it's a transcript based on headline or other indicators
-                                headline_lower = article.get("headline", "").lower()
-                                if "transcript" in headline_lower or "earnings call" in headline_lower:
-                                    doc_type = "transcripts"
-                                elif "filing" in headline_lower or "sec" in headline_lower:
-                                    doc_type = "filings"
-                                elif "podcast" in headline_lower:
-                                    doc_type = "podcasts"
-                                elif "research" in headline_lower or "report" in headline_lower:
-                                    doc_type = "research"
-                                else:
-                                    # Default to news if we can't determine
-                                    doc_type = "news"
-                            
-                            # Extract and clean source field
-                            source_value = article.get("source", {}).get("name", "Unknown") if isinstance(article.get("source"), dict) else str(article.get("source", "Unknown"))
-                            # Remove "Unknown," prefix if present
-                            if source_value.startswith("Unknown,"):
-                                source_value = source_value.replace("Unknown,", "", 1).strip()
-                            elif source_value == "Unknown":
-                                source_value = ""
-                            
-                            articles.append({
-                                "id": article.get("id", f"topic_{topic_index}_{i}"),
-                                "headline": article.get("headline", "No headline"),
-                                "timestamp": timestamp,
-                                "time_ago": time_ago,
-                                "source": source_value,
-                                "summary": summary,
-                                "full_text": chunk_text,  # Full chunk text for expanded view
-                                "document_url": article.get("url"),  # URL to original article (from "url" field)
-                                "relevance": relevance,
-                                "document_type": doc_type,
-                                "search_type": "topic",
-                                "topic": formatted_topic,
-                                "topic_name": topic_name,
-                                "topic_index": topic_index,
-                                "ticker": ticker,
-                                "detections": detections,  # Entity detections from the chunk
-                            })
-                        
-                        if articles:
-                            logger.debug(
-                                f"Topic {topic_index} for {ticker}: {len(articles)} unique articles (from {len(results)} raw results)"
-                            )
-                        
-                        return articles
-                    
-                    else:
-                        # Don't log every 404/empty result as error
-                        if response.status != 404:
-                            error_text = await response.text()
-                            # 429 and 403 should have been caught above, but handle them here too as fallback
-                            if response.status == 429:
-                                if attempt < max_retries - 1:
-                                    wait_time = calculate_wait_time(attempt, is_403=False)
-                                    logger.warning(
-                                        f"Rate limit error (429) for topic search ({ticker}). "
-                                        f"Retrying in {wait_time:.1f}s (attempt {attempt + 1}/{max_retries})"
-                                    )
-                                    await asyncio.sleep(wait_time)
-                                    continue
-                                else:
-                                    raise Exception(f"Rate limit exceeded after {max_retries} retries: {error_text}")
-                            elif response.status == 403:
-                                if attempt < max_retries - 1:
-                                    wait_time = calculate_wait_time(attempt, is_403=True)
-                                    logger.warning(
-                                        f"CloudFront blocking error (403) for topic search ({ticker}). "
-                                        f"Retrying in {wait_time:.1f}s (attempt {attempt + 1}/{max_retries})"
-                                    )
-                                    await asyncio.sleep(wait_time)
-                                    continue
-                                else:
-                                    raise Exception(f"CloudFront blocking after {max_retries} retries")
-                            logger.warning(
-                                f"Topic search error for {ticker} topic {topic_index}: "
-                                f"{response.status} - {error_text[:200]}"  # Truncate long error messages
-                            )
-                        return []
-            
-            except asyncio.TimeoutError:
-                if attempt < max_retries - 1:
-                    wait_time = calculate_wait_time(attempt, is_403=False)
-                    logger.warning(f"Timeout in topic {topic_index} search for {ticker}, retrying in {wait_time:.1f}s...")
-                    await asyncio.sleep(wait_time)
-                    continue
-                logger.warning(f"Timeout in topic {topic_index} search for {ticker} after {max_retries} attempts")
-                return []
-            except Exception as e:
-                error_str = str(e)
-                if ("Rate limit" in error_str or "CloudFront" in error_str) and attempt < max_retries - 1:
-                    # Re-raise retryable errors to be handled by retry logic
-                    raise
-                logger.warning(f"Error in topic {topic_index} search for {ticker}: {error_str}")
-                return []
-        
-        # If we get here, all retries failed
-        logger.error(f"Failed to complete topic {topic_index} search for {ticker} after {max_retries} attempts")
-        return []
+        payload = {
+            "query": {
+                "text": formatted_topic,
+                "filters": filters,
+                "max_chunks": max_chunks,
+            }
+        }
+        data = await self._api_post(
+            "/search",
+            payload,
+            label=f"topic {topic_index}/{ticker}",
+        )
+        if not data:
+            return []
+
+        results = data.get("results", [])
+        deduplicated = self._deduplicate_by_document_id(results)
+
+        articles = []
+        for i, item in enumerate(deduplicated):
+            article = item["article"]
+            best_chunk = item["best_chunk"]
+            relevance = item["relevance"]
+
+            chunk_text = best_chunk.get("text", "")
+            summary = chunk_text[:200] + "..." if len(chunk_text) > 200 else chunk_text
+
+            timestamp = article.get("timestamp", "")
+            time_ago = self._get_time_ago(timestamp)
+            detections = best_chunk.get("detections", [])
+
+            doc_type = article.get("category") or article.get("document_type") or article.get("type") or ""
+            if not doc_type:
+                headline_lower = article.get("headline", "").lower()
+                if "transcript" in headline_lower or "earnings call" in headline_lower:
+                    doc_type = "transcripts"
+                elif "filing" in headline_lower or "sec" in headline_lower:
+                    doc_type = "filings"
+                elif "podcast" in headline_lower:
+                    doc_type = "podcasts"
+                elif "research" in headline_lower or "report" in headline_lower:
+                    doc_type = "research"
+                else:
+                    doc_type = "news"
+
+            source_value = (
+                article.get("source", {}).get("name", "Unknown")
+                if isinstance(article.get("source"), dict)
+                else str(article.get("source", "Unknown"))
+            )
+            if source_value.startswith("Unknown,"):
+                source_value = source_value.replace("Unknown,", "", 1).strip()
+            elif source_value == "Unknown":
+                source_value = ""
+
+            articles.append({
+                "id": article.get("id", f"topic_{topic_index}_{i}"),
+                "headline": article.get("headline", "No headline"),
+                "timestamp": timestamp,
+                "time_ago": time_ago,
+                "source": source_value,
+                "summary": summary,
+                "full_text": chunk_text,
+                "document_url": article.get("url"),
+                "relevance": relevance,
+                "document_type": doc_type,
+                "search_type": "topic",
+                "topic": formatted_topic,
+                "topic_name": topic_name,
+                "topic_index": topic_index,
+                "ticker": ticker,
+                "detections": detections,
+            })
+
+        if articles:
+            logger.debug(
+                f"Topic {topic_index} for {ticker}: {len(articles)} unique articles "
+                f"(from {len(results)} raw results)"
+            )
+        return articles
     
     async def search_ticker(
         self,
@@ -1205,6 +1143,140 @@ Return exactly 3 variations, each as a complete search query."""
                 "rate_limiter_stats": self.rate_limiter.get_metrics(),
             }
         }
+
+    async def search_portfolio_topics(
+        self,
+        tickers: List[str],
+        days: int = 7,
+        custom_topics: Optional[List] = None,
+        source_ids: Optional[List[str]] = None,
+        sentiment_values=_UNSET,
+        category_values: Optional[List[str]] = None,
+        max_concurrent: int = 10,
+        max_chunks_per_query: int = 10,
+        entity_workers: int = 10,
+        show_progress: bool = False,
+    ) -> Tuple[Dict[str, Dict], Dict]:
+        """
+        Flat parallel portfolio search (Search_Large_Scale pattern).
+
+        All entity×topic queries share one concurrency pool instead of nesting
+        18 parallel topic searches inside each entity batch. Much faster for
+        large universes because only ``max_concurrent`` HTTP calls run at once.
+
+        Returns:
+            Tuple of (results_by_ticker, search_stats)
+        """
+        topics = custom_topics or STANDARD_TOPICS
+        run_start = datetime.now()
+
+        if max_concurrent != self.concurrency_limiter.max_concurrent:
+            self.concurrency_limiter = AsyncConcurrencyLimiter(max_concurrent=max_concurrent)
+
+        # Phase 1: resolve entities in parallel
+        entity_sem = asyncio.Semaphore(entity_workers)
+
+        async def resolve_entity(ticker: str) -> Tuple[str, Optional[CompanyData]]:
+            async with entity_sem:
+                data = await self.get_company_data(ticker)
+                return ticker.upper(), data
+
+        resolved = await asyncio.gather(*[resolve_entity(t) for t in tickers])
+        entities: Dict[str, CompanyData] = {
+            ticker: data for ticker, data in resolved if data is not None
+        }
+
+        # Phase 2: flat entity×topic task queue (concurrency capped globally)
+        async def run_topic_search(
+            ticker: str,
+            company_data: CompanyData,
+            topic_idx: int,
+            topic: dict,
+        ) -> Tuple[str, List[Dict]]:
+            articles = await self.search_single_topic(
+                ticker,
+                company_data.entity_id,
+                company_data.company_name,
+                topic,
+                topic_idx,
+                days,
+                max_chunks=max_chunks_per_query,
+                source_ids=source_ids,
+                sentiment_values=sentiment_values,
+                category_values=category_values,
+            )
+            return ticker, articles
+
+        task_coros = [
+            run_topic_search(ticker, cd, idx, topic)
+            for ticker, cd in entities.items()
+            for idx, topic in enumerate(topics)
+        ]
+        total_queries = len(task_coros)
+        logger.info(
+            f"Portfolio search: {len(entities)} entities × {len(topics)} topics "
+            f"= {total_queries} queries, max {max_concurrent} concurrent"
+        )
+        if show_progress:
+            print(
+                f"Searching {len(entities)} entities × {len(topics)} topics "
+                f"= {total_queries} API queries (max {max_concurrent} concurrent)..."
+            )
+
+        tasks = [asyncio.create_task(coro) for coro in task_coros]
+        raw_results: List = []
+        for completed, task in enumerate(asyncio.as_completed(tasks), start=1):
+            try:
+                result = await task
+            except Exception as exc:
+                logger.error(f"Portfolio search task failed: {exc}")
+                result = exc
+            raw_results.append(result)
+            if show_progress and (completed % max(1, len(topics)) == 0 or completed == total_queries):
+                print(f"  [{completed}/{total_queries}] queries complete")
+
+        grouped: Dict[str, List[Dict]] = {t: [] for t in entities}
+        for result in raw_results:
+            if isinstance(result, Exception):
+                logger.error(f"Portfolio search task failed: {result}")
+                continue
+            ticker, articles = result
+            if articles:
+                grouped[ticker].extend(articles)
+
+        all_results: Dict[str, Dict] = {}
+        for ticker, company_data in entities.items():
+            topic_results = self._deduplicate_across_topics(grouped.get(ticker, []))
+            all_results[ticker] = {
+                "ticker": ticker,
+                "company_name": company_data.company_name,
+                "entity_id": company_data.entity_id,
+                "topic_results": topic_results,
+                "total_results": len(topic_results),
+            }
+
+        for ticker in tickers:
+            key = ticker.upper()
+            if key not in all_results:
+                all_results[key] = {
+                    "ticker": key,
+                    "error": "Company not found",
+                    "topic_results": [],
+                    "total_results": 0,
+                }
+
+        elapsed = (datetime.now() - run_start).total_seconds()
+        stats = {
+            "entities_requested": len(tickers),
+            "entities_resolved": len(entities),
+            "topics_per_entity": len(topics),
+            "total_queries": total_queries,
+            "elapsed_seconds": round(elapsed, 2),
+            "queries_per_second": round(total_queries / elapsed, 2) if elapsed > 0 else 0.0,
+            "rate_limiter": self.rate_limiter.get_metrics(),
+            "concurrency": self.concurrency_limiter.get_metrics(),
+        }
+        return all_results, stats
     
     async def search_multiple_tickers(
         self,
