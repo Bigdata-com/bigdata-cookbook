@@ -15,12 +15,15 @@ from typing import Any
 
 CONFIG_FILENAME = "config.json"
 THEMES_FILENAME = "themes.txt"
+TAXONOMY_FILENAME = "taxonomy.json"
 PLANS_DIRNAME = "plans"
 RESULTS_DIRNAME = "results"
 RESULTS_FILENAME = "results.json"
 LABELED_SENTENCES_FILENAME = "labeled_sentences.csv"
 COMPANY_SUMMARIES_FILENAME = "company_summaries.csv"
 SCREENER_RESULTS_FILENAME = "screener_results.csv"
+REPORT_JSON_FILENAME = "report.json"
+REPORT_EXCEL_FILENAME = "report.xlsx"
 
 
 def default_run_name() -> str:
@@ -60,6 +63,18 @@ class RunContext:
     @property
     def themes_path(self) -> Path:
         return self.run_dir / THEMES_FILENAME
+
+    @property
+    def taxonomy_path(self) -> Path:
+        return self.run_dir / TAXONOMY_FILENAME
+
+    @property
+    def report_json_path(self) -> Path:
+        return self.run_dir / REPORT_JSON_FILENAME
+
+    @property
+    def report_excel_path(self) -> Path:
+        return self.run_dir / REPORT_EXCEL_FILENAME
 
     @property
     def plans_dir(self) -> Path:
@@ -123,3 +138,18 @@ class RunContext:
         """Write labels to ``themes.txt`` (one per line)."""
         self.ensure_run_dir()
         self.themes_path.write_text("\n".join(labels) + "\n", encoding="utf-8")
+
+    def write_taxonomy(self, taxonomy: dict[str, Any]) -> None:
+        """Persist the full taxonomy tree to ``taxonomy.json``."""
+        self.ensure_run_dir()
+        with self.taxonomy_path.open("w", encoding="utf-8") as handle:
+            json.dump(taxonomy, handle, indent=2)
+
+    def read_taxonomy(self) -> dict[str, Any]:
+        """Read the persisted taxonomy tree from ``taxonomy.json``."""
+        if not self.taxonomy_path.exists():
+            raise FileNotFoundError(
+                f"taxonomy file not found at {self.taxonomy_path}; run the 'generate-labels' step first"
+            )
+        with self.taxonomy_path.open(encoding="utf-8") as handle:
+            return json.load(handle)

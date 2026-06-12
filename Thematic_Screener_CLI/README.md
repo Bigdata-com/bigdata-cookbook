@@ -1,10 +1,21 @@
 # Thematic Screener CLI
 
-This Thematic Screener CLI is a Beta environment that presents a Command-line tool for running a four-stage thematic screening pipeline: generate theme labels, build search plans, execute document search, and label sentences with company-level summaries.
+This Thematic Screener CLI is a Beta environment that presents a Command-line tool for running a four-stage screening pipeline: generate labels, build search plans, execute document search, and label sentences with company-level summaries. It then exports the results as JSON and Excel.
 
 It leverages [Bigdata](https://bigdata.com/), [bigdata-smart-batching](https://docs.bigdata.com/use-cases/search-service/smart-batching) library and OpenAI.
 
 Each run is isolated in its own directory under `runs/<run_name>/`, so concurrent or repeated runs never overwrite each other.
+
+## Analysis modes
+
+The pipeline runs in one of two modes, selected with `--mode` (persisted in `config.json`):
+
+| Mode | Description |
+|------|-------------|
+| `thematic-screener` (default) | Decompose a **theme** into sub-themes and screen companies for thematic exposure (original behavior). |
+| `risk-analyzer` | Decompose a **risk** into a risk-channel / risk-factor / sub-scenario taxonomy and screen companies for risk exposure. The JSON export matches the [Bigdata Risk Analyzer](https://github.com/Bigdata-com/bigdata-risk-analyzer) app schema, so a run can be uploaded there for visualization. |
+
+Only the prompts, defaults, and label semantics change between modes; the search, batching, and export mechanics are shared.
 
 ## Execution overview example
 
@@ -56,13 +67,17 @@ uv run python -m src.cli summarize-plans --run-name demo
 
 | Step | Subcommand | Description |
 |------|------------|-------------|
-| 1 | `generate-labels` | Generate a taxonomy of sub-themes from a main theme and analyst focus |
-| 2 | `plans` | Build one Bigdata search plan per theme over a company universe |
+| 1 | `generate-labels` | Generate a taxonomy of sub-themes/risks from a main concept and analyst focus |
+| 2 | `plans` | Build one Bigdata search plan per label over a company universe |
 | 3 | `search` | Execute all plans and store deduplicated documents |
 | 4 | `label-sentences` | Label sentences, summarize companies, export final CSV |
+| 5 | `export-json` | Export results as JSON (uploadable to the Risk Analyzer app) |
+| 6 | `export-excel` | Export results as a multi-sheet Excel workbook |
 | — | `summarize-plans` | Print per-plan chunk counts and total (no API calls) |
 
-Use `run-all` to execute all four steps in sequence within one isolated run.
+Use `run-all` to execute steps 1-6 in sequence within one isolated run.
+
+Step 1 also writes the full taxonomy tree to `taxonomy.json`, which the export steps use to reconstruct the risk-channel / risk-factor / sub-scenario hierarchy. The `export-json` and `export-excel` steps do not call any APIs (no `.env` keys required).
 
 ### Config persistence
 
@@ -79,6 +94,15 @@ Plans use `XNAS_companies.csv` by default. The file must contain:
 
 For production runs, pass a larger universe CSV with `--universe`. The cookbook repo includes `Batch_Search_API/global_all_caps.csv` (~10k companies) with the same required columns.
 
+The following optional columns enrich the JSON export when present (otherwise `sector`/`industry` default to `Unknown` and `ticker`/`country` to `null`):
+
+| Optional column | Maps to JSON field |
+|-----------------|--------------------|
+| `TICKER` | `ticker` |
+| `SECTOR` | `sector` |
+| `INDUSTRY` | `industry` |
+| `COUNTRY` | `country` |
+
 ## CLI reference
 
 Entry point:
@@ -93,6 +117,7 @@ python -m src.cli <subcommand> [options]
 |--------|---------|-------------|
 | `--run-name` | `run_YYYYMMDD_HHMMSS` | Unique name for this run directory |
 | `--runs-root` | `runs` | Parent directory that holds all runs |
+| `--mode` | `thematic-screener` | Analysis mode: `thematic-screener` or `risk-analyzer` (persisted in `config.json`) |
 
 ### `generate-labels` — generate theme labels
 
@@ -125,6 +150,15 @@ Uses `main_theme` and `universe` from `config.json` (set by earlier pipeline ste
 |--------|---------|-------------|
 | `--labeling-model` | `gpt-4o-mini` | OpenAI model for sentence labeling |
 | `--summary-model` | `gpt-4o-mini` | OpenAI model for company summaries |
+| `--rerank-threshold` | `0.0` | Drop retrieved chunks whose relevance is below this value (`0.0` keeps all) |
+
+### `export-json` — export results as JSON
+
+Reads `screener_results.csv`, `taxonomy.json`, and the universe (from `config.json`) and writes `runs/<run_name>/report.json`. The JSON follows the Risk Analyzer app schema (`risk_scoring`, `risk_taxonomy`, `content`) and can be uploaded into the [Bigdata Risk Analyzer](https://github.com/Bigdata-com/bigdata-risk-analyzer) app's config panel for visualization. No API keys required.
+
+### `export-excel` — export results as Excel
+
+Writes `runs/<run_name>/report.xlsx` with sheets: `Results` (labeled sentences), `Company Summaries`, `Company Scoring` (company x label counts with a composite score), and `Taxonomy` (flattened tree). No API keys required.
 
 ### `summarize-plans` — summarize search plans
 
@@ -136,14 +170,16 @@ Prints per-plan chunk counts and a total to stdout. Does not call any APIs (no `
 
 ### `run-all` — full pipeline
 
-Runs `generate-labels` → `plans` → `search` → `label-sentences` in one isolated run. Accepts the union of all options above.
+Runs `generate-labels` → `plans` → `search` → `label-sentences` → `export-json` → `export-excel` in one isolated run. Accepts the union of all options above.
 
 ## Defaults
 
 | Setting | Value |
 |---------|-------|
-| Main theme | AI disruption in product development |
-| Analyst focus | How companies are including AI in their development cycle |
+| Main theme (thematic mode) | AI disruption in product development |
+| Analyst focus (thematic mode) | How companies are including AI in their development cycle |
+| Main risk (risk mode) | US Government Shutdown |
+| Analyst focus (risk mode) | How a prolonged federal funding lapse affects company operations and revenue |
 | Start date | `2025-06-01` |
 | End date | `2026-06-09` |
 | Labels model | `gpt-4o` |
@@ -174,6 +210,17 @@ python -m src.cli plans --run-name my_run
 
 # Summarize plans for an existing run (no API keys needed)
 python -m src.cli summarize-plans --run-name my_run
+
+# Risk-analyzer mode: full pipeline for a risk, then upload report.json to the app
+python -m src.cli run-all \
+  --run-name shutdown_risk \
+  --mode risk-analyzer \
+  --main-theme "US Government Shutdown" \
+  --analyst-focus "How a prolonged federal funding lapse affects company operations and revenue"
+
+# Re-export an existing run (no API keys needed)
+python -m src.cli export-json --run-name shutdown_risk
+python -m src.cli export-excel --run-name shutdown_risk
 ```
 
 ## Notes

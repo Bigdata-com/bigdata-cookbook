@@ -30,12 +30,14 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from src import screener
+from src.modes import AnalysisMode, get_profile
 from src.run_context import RunContext
 
 logger = logging.getLogger("screener.cli")
 
 DEFAULT_RUNS_ROOT = "runs"
 DEFAULT_UNIVERSE = "XNAS_companies.csv"
+DEFAULT_MODE = AnalysisMode.THEMATIC_SCREENER.value
 
 
 def _load_environment() -> None:
@@ -76,20 +78,26 @@ def _from_config(config: dict[str, Any], key: str, default: Any) -> Any:
 
 def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
     config = context.load_config()
-    main_theme = _resolve(args, config, "main_theme", screener.DEFAULT_MAIN_THEME)
-    analyst_focus = _resolve(args, config, "analyst_focus", screener.DEFAULT_ANALYST_FOCUS)
+    mode = _resolve(args, config, "mode", DEFAULT_MODE)
+    profile = get_profile(mode)
+    main_theme = _resolve(args, config, "main_theme", profile.default_main_theme)
+    analyst_focus = _resolve(args, config, "analyst_focus", profile.default_analyst_focus)
     model = _resolve(args, config, "labels_model", screener.DEFAULT_LABELS_MODEL)
 
-    logger.info("Generating labels for theme: %s", main_theme)
-    labels = screener.generate_labels(
+    logger.info("Generating labels in %s mode for: %s", mode, main_theme)
+    root = screener.generate_taxonomy(
         main_theme=main_theme,
         analyst_focus=analyst_focus,
         model=model,
+        profile=profile,
     )
+    labels = screener.leaf_labels(root, profile)
 
     context.write_themes(labels)
+    context.write_taxonomy(root.model_dump())
     context.save_config(
         {
+            "mode": mode,
             "main_theme": main_theme,
             "analyst_focus": analyst_focus,
             "labels_model": model,
@@ -178,9 +186,14 @@ def run_label(
     results: list[dict[str, Any]] | None = None,
 ) -> pd.DataFrame:
     config = context.load_config()
-    main_theme = _from_config(config, "main_theme", screener.DEFAULT_MAIN_THEME)
+    mode = _from_config(config, "mode", DEFAULT_MODE)
+    profile = get_profile(mode)
+    main_theme = _from_config(config, "main_theme", profile.default_main_theme)
     labeling_model = _resolve(args, config, "labeling_model", screener.DEFAULT_LABELING_MODEL)
     summary_model = _resolve(args, config, "summary_model", screener.DEFAULT_SUMMARY_MODEL)
+    rerank_threshold = _resolve(
+        args, config, "rerank_threshold", screener.DEFAULT_RERANK_THRESHOLD
+    )
     universe_path = _from_config(config, "universe", DEFAULT_UNIVERSE)
 
     labels = context.read_themes()
@@ -189,14 +202,17 @@ def run_label(
 
     universe_df = screener.load_universe(universe_path)
 
-    sentences = screener.extract_sentences(results, universe_df)
-    logger.info("Extracted %d sentences", len(sentences))
+    sentences = screener.extract_sentences(results, universe_df, rerank_threshold=rerank_threshold)
+    logger.info(
+        "Extracted %d sentences (rerank_threshold=%s)", len(sentences), rerank_threshold
+    )
 
     parsed_responses = screener.label_sentences(
         sentences=sentences,
         main_theme=main_theme,
         labels=labels,
         model=labeling_model,
+        profile=profile,
     )
     merged_df = screener.build_labeled_dataframe(sentences, parsed_responses)
     merged_df.to_csv(context.labeled_sentences_path, index=False)
@@ -206,6 +222,7 @@ def run_label(
         merged_df=merged_df,
         main_theme=main_theme,
         model=summary_model,
+        profile=profile,
     )
     company_summaries_df.to_csv(context.company_summaries_path, index=False)
     logger.info(
@@ -221,6 +238,7 @@ def run_label(
         {
             "labeling_model": labeling_model,
             "summary_model": summary_model,
+            "rerank_threshold": rerank_threshold,
         }
     )
     logger.info(
@@ -231,11 +249,68 @@ def run_label(
     return screener_df
 
 
+def _load_screener_df(context: RunContext) -> pd.DataFrame:
+    if not context.screener_results_path.exists():
+        raise FileNotFoundError(
+            f"screener results not found at {context.screener_results_path}; "
+            "run the 'label-sentences' step first"
+        )
+    return pd.read_csv(context.screener_results_path)
+
+
+def _load_taxonomy_root(context: RunContext) -> screener.Node:
+    return screener.Node.model_validate(context.read_taxonomy())
+
+
+def run_export_json(context: RunContext, args: argparse.Namespace) -> dict[str, Any]:
+    config = context.load_config()
+    mode = _from_config(config, "mode", DEFAULT_MODE)
+    universe_path = _from_config(config, "universe", DEFAULT_UNIVERSE)
+
+    universe_df = screener.load_universe(universe_path)
+    root = _load_taxonomy_root(context)
+    screener_df = _load_screener_df(context)
+
+    report = screener.build_report_json(screener_df, root, universe_df, mode)
+    with context.report_json_path.open("w", encoding="utf-8") as handle:
+        json.dump(report, handle, indent=2, default=str)
+
+    scoring_key = "risk_scoring" if "risk_scoring" in report else "theme_scoring"
+    logger.info(
+        "Wrote %s JSON (%d companies) to %s",
+        mode,
+        len(report[scoring_key]),
+        context.report_json_path,
+    )
+    return report
+
+
+def run_export_excel(context: RunContext, args: argparse.Namespace) -> Path:
+    root = _load_taxonomy_root(context)
+    screener_df = _load_screener_df(context)
+
+    if context.company_summaries_path.exists():
+        company_summaries_df = pd.read_csv(context.company_summaries_path)
+    else:
+        company_summaries_df = pd.DataFrame(columns=["company_name", "summary"])
+
+    output_path = screener.export_excel(
+        screener_df=screener_df,
+        company_summaries_df=company_summaries_df,
+        root=root,
+        path=context.report_excel_path,
+    )
+    logger.info("Wrote Excel workbook to %s", output_path)
+    return output_path
+
+
 def run_all(context: RunContext, args: argparse.Namespace) -> None:
     run_labels(context, args)
     run_plans(context, args)
     results = run_search(context, args)
     run_label(context, args, results=results)
+    run_export_json(context, args)
+    run_export_excel(context, args)
     logger.info("run-all complete for %s", context.run_dir)
 
 
@@ -257,6 +332,14 @@ def _cmd_label(args: argparse.Namespace) -> None:
 
 def _cmd_run_all(args: argparse.Namespace) -> None:
     run_all(_make_context(args), args)
+
+
+def _cmd_export_json(args: argparse.Namespace) -> None:
+    run_export_json(_make_context(args), args)
+
+
+def _cmd_export_excel(args: argparse.Namespace) -> None:
+    run_export_excel(_make_context(args), args)
 
 
 def run_summarize_plans(args: argparse.Namespace) -> None:
@@ -284,6 +367,13 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
         "--runs-root",
         default=DEFAULT_RUNS_ROOT,
         help="Parent directory that holds all runs (default: runs).",
+    )
+    parser.add_argument(
+        "--mode",
+        action="store",
+        choices=[mode.value for mode in AnalysisMode],
+        default=argparse.SUPPRESS,
+        help="Analysis mode (default: thematic-screener). Persisted in config.json.",
     )
 
 
@@ -331,6 +421,13 @@ def _add_label_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--summary-model", action="store", default=argparse.SUPPRESS, help="Model used to summarize companies."
     )
+    parser.add_argument(
+        "--rerank-threshold",
+        type=float,
+        action="store",
+        default=argparse.SUPPRESS,
+        help="Drop chunks with relevance below this threshold (default: 0.0 = keep all).",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -377,7 +474,28 @@ def build_parser() -> argparse.ArgumentParser:
         default=argparse.SUPPRESS,
         help="Model used to summarize companies.",
     )
+    run_all_parser.add_argument(
+        "--rerank-threshold",
+        type=float,
+        action="store",
+        default=argparse.SUPPRESS,
+        help="Drop chunks with relevance below this threshold (default: 0.0 = keep all).",
+    )
     run_all_parser.set_defaults(func=_cmd_run_all, requires_api_keys=True)
+
+    export_json_parser = subparsers.add_parser(
+        "export-json",
+        help="Export results as risk-analyzer JSON (uploadable to the app).",
+    )
+    _add_common_args(export_json_parser)
+    export_json_parser.set_defaults(func=_cmd_export_json, requires_api_keys=False)
+
+    export_excel_parser = subparsers.add_parser(
+        "export-excel",
+        help="Export results as a multi-sheet Excel workbook.",
+    )
+    _add_common_args(export_excel_parser)
+    export_excel_parser.set_defaults(func=_cmd_export_excel, requires_api_keys=False)
 
     summarize_plans_parser = subparsers.add_parser(
         "summarize-plans",

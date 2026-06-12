@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,22 +26,25 @@ from bigdata_smart_batching import (
     save_plan,
 )
 
-from src.helpers import get_leaf_summaries, print_tree
+from src.helpers import (
+    build_leaf_ancestry,
+    get_leaf_labels,
+    get_leaf_summaries,
+    print_tree,
+)
+from src.modes import AnalysisMode, LeafField, ModeProfile, get_profile
 from src.openai_parallel import (
     ChatRequest,
     RateLimitConfig,
     run_chat_requests_parallel,
 )
-from src.prompts import (
-    SYSTEM_MESSAGE_LABELS,
-    SYSTEM_PROMPT_LABELING,
-    USER_MESSAGE_LABELS,
-)
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MAIN_THEME = "AI disruption in product development"
-DEFAULT_ANALYST_FOCUS = "How companies are including AI in their development cycle"
+_THEMATIC_PROFILE = get_profile(AnalysisMode.THEMATIC_SCREENER)
+
+DEFAULT_MAIN_THEME = _THEMATIC_PROFILE.default_main_theme
+DEFAULT_ANALYST_FOCUS = _THEMATIC_PROFILE.default_analyst_focus
 DEFAULT_START_DATE = "2025-06-01"
 DEFAULT_END_DATE = "2026-06-09"
 DEFAULT_LABELS_MODEL = "gpt-4o"
@@ -48,6 +52,7 @@ DEFAULT_LABELING_MODEL = "gpt-4o-mini"
 DEFAULT_SUMMARY_MODEL = "gpt-4o-mini"
 DEFAULT_CHUNK_PERCENTAGE = 0.02
 DEFAULT_REQUESTS_PER_MINUTE = 350
+DEFAULT_RERANK_THRESHOLD = 0.0
 DEFAULT_SEARCH_CATEGORY: dict[str, Any] = {
     "mode": "INCLUDE",
     "values": ["news_premium", "transcripts", "filings"],
@@ -55,6 +60,15 @@ DEFAULT_SEARCH_CATEGORY: dict[str, Any] = {
 
 UNIVERSE_ID_COLUMN = "RP_COMPANY_ID"
 UNIVERSE_NAME_COLUMN = "COMPANY_NAME"
+
+# Optional universe columns used to enrich the risk-analyzer export. When absent
+# the corresponding fields fall back to "Unknown" (sector/industry) or None.
+UNIVERSE_TICKER_COLUMN = "TICKER"
+UNIVERSE_SECTOR_COLUMN = "SECTOR"
+UNIVERSE_INDUSTRY_COLUMN = "INDUSTRY"
+UNIVERSE_COUNTRY_COLUMN = "COUNTRY"
+
+UNKNOWN_VALUE = "Unknown"
 
 MAX_MOTIVATIONS_CHARS = 120_000
 
@@ -66,6 +80,7 @@ class Node(BaseModel):
     label: str
     summary: str
     children: list["Node"] = Field(default_factory=list)
+    keywords: list[str] = Field(default_factory=list)
 
 
 Node.model_rebuild()
@@ -77,18 +92,20 @@ class CompanySummary(BaseModel):
     summary: str
 
 
-def generate_labels(
+def generate_taxonomy(
     main_theme: str,
     analyst_focus: str,
     model: str = DEFAULT_LABELS_MODEL,
+    profile: ModeProfile | None = None,
     client: OpenAI | None = None,
     print_taxonomy: bool = True,
-) -> list[str]:
-    """Generate leaf-level theme labels for ``main_theme`` via the LLM.
+) -> Node:
+    """Generate the sub-concept taxonomy tree for ``main_theme`` via the LLM.
 
-    Prompts the model for a taxonomy tree, then extracts the summaries of
-    all leaf nodes as the working label set.
+    The mode ``profile`` selects the prompts so the same call produces a theme
+    taxonomy (thematic-screener) or a risk taxonomy (risk-analyzer).
     """
+    active_profile = profile if profile is not None else _THEMATIC_PROFILE
     openai_client = client if client is not None else OpenAI()
     completion = openai_client.chat.completions.parse(
         model=model,
@@ -101,13 +118,13 @@ def generate_labels(
         messages=[
             {
                 "role": "system",
-                "content": SYSTEM_MESSAGE_LABELS.format(
+                "content": active_profile.labels_system_prompt.format(
                     main_theme=main_theme, analyst_focus=analyst_focus
                 ),
             },
             {
                 "role": "user",
-                "content": USER_MESSAGE_LABELS.format(main_theme=main_theme),
+                "content": active_profile.labels_user_prompt.format(main_theme=main_theme),
             },
         ],
     )
@@ -118,7 +135,43 @@ def generate_labels(
     if print_taxonomy:
         print_tree(root)
 
+    return root
+
+
+def leaf_labels(root: Node, profile: ModeProfile | None = None) -> list[str]:
+    """Extract the working label set from the taxonomy per the mode profile.
+
+    Thematic mode uses leaf ``summary`` values (historical behavior); risk mode
+    uses leaf ``label`` values so they line up with the taxonomy and scoring.
+    """
+    active_profile = profile if profile is not None else _THEMATIC_PROFILE
+    if active_profile.leaf_field is LeafField.LABEL:
+        return get_leaf_labels(root)
     return get_leaf_summaries(root)
+
+
+def generate_labels(
+    main_theme: str,
+    analyst_focus: str,
+    model: str = DEFAULT_LABELS_MODEL,
+    profile: ModeProfile | None = None,
+    client: OpenAI | None = None,
+    print_taxonomy: bool = True,
+) -> list[str]:
+    """Generate the leaf-level working label set for ``main_theme``.
+
+    Thin wrapper over :func:`generate_taxonomy` and :func:`leaf_labels`; kept
+    for backward compatibility.
+    """
+    root = generate_taxonomy(
+        main_theme=main_theme,
+        analyst_focus=analyst_focus,
+        model=model,
+        profile=profile,
+        client=client,
+        print_taxonomy=print_taxonomy,
+    )
+    return leaf_labels(root, profile)
 
 
 def plan_filename(label: str) -> str:
@@ -246,21 +299,41 @@ def run_search(
 def extract_sentences(
     results: list[dict[str, Any]],
     company_df: pd.DataFrame,
+    rerank_threshold: float = DEFAULT_RERANK_THRESHOLD,
 ) -> list[dict[str, Any]]:
     """Flatten retrieved documents into labeled sentence records.
 
     Each chunk becomes a sentence with an id, text, and resolved company
-    name (looked up from the universe DataFrame).
+    name (looked up from the universe DataFrame). Chunks whose ``relevance``
+    score is below ``rerank_threshold`` are dropped (a threshold of ``0.0``
+    keeps every chunk).
     """
     sentences: list[dict[str, Any]] = []
     idx = 0
     for document in results:
+        document_id = document.get("id")
+        headline = document.get("headline")
+        timestamp = document.get("timestamp")
+        url = document.get("url")
         for chunk in document.get("chunks", []):
+            relevance = chunk.get("relevance")
+            if (
+                rerank_threshold
+                and relevance is not None
+                and relevance < rerank_threshold
+            ):
+                continue
             sentences.append(
                 {
                     "sentence_id": idx,
                     "text": chunk.get("text"),
                     "entity": chunk.get("entity_ids"),
+                    "document_id": document_id,
+                    "headline": headline,
+                    "timestamp": timestamp,
+                    "url": url,
+                    "sentiment": chunk.get("sentiment"),
+                    "relevance": relevance,
                 }
             )
             idx += 1
@@ -278,29 +351,44 @@ def extract_sentences(
     return sentences
 
 
+_LABELING_PAYLOAD_FIELDS = ("sentence_id", "text", "company_name")
+
+
+def _labeling_payload(sentence: dict[str, Any]) -> dict[str, Any]:
+    """Project a sentence onto the fields shown to the labeling model.
+
+    Document metadata kept for downstream export (headline, timestamp, ...) is
+    intentionally excluded so the labeling prompt is identical to its historical
+    form.
+    """
+    return {key: sentence[key] for key in _LABELING_PAYLOAD_FIELDS if key in sentence}
+
+
 def label_sentences(
     sentences: list[dict[str, Any]],
     main_theme: str,
     labels: list[str],
     model: str = DEFAULT_LABELING_MODEL,
+    profile: ModeProfile | None = None,
     requests_per_minute: int = 10000,
     max_concurrent_requests: int = 20,
 ) -> dict[str, dict[str, str]]:
-    """Label each sentence against the theme and label set.
+    """Label each sentence against the theme/risk and label set.
 
     Returns a flat mapping of ``sentence_id`` -> label fields.
     """
+    active_profile = profile if profile is not None else _THEMATIC_PROFILE
     requests = [
         ChatRequest(
             request_id=str(sentence["sentence_id"]),
             messages=[
                 {
                     "role": "system",
-                    "content": SYSTEM_PROMPT_LABELING.format(
+                    "content": active_profile.labeling_system_prompt.format(
                         main_theme=main_theme, labels=str(labels)
                     ),
                 },
-                {"role": "user", "content": str(sentence)},
+                {"role": "user", "content": str(_labeling_payload(sentence))},
             ],
             model=model,
             response_format={"type": "json_object"},
@@ -355,21 +443,9 @@ def build_labeled_dataframe(
     return merged_df.reset_index(drop=True)
 
 
-def _company_summary_system_prompt(main_theme: str) -> str:
-    return f"""You are assisting a professional analyst evaluating how the theme
-"{main_theme}" affects companies.
-
-You will receive a company name and a list of analyst motivations. Each motivation explains why a
-specific sentence was labeled in the context of the theme.
-
-Write one cohesive company-level summary that:
-- Synthesizes the main themes and business exposures implied by the motivations
-- Highlights the most important products, markets, and revenue/cost drivers when mentioned
-- Avoids repeating the same point; merge overlapping motivations
-- Uses clear, professional prose (1 short paragraph)
-- Does not invent facts beyond what the motivations support
-
-Return JSON only: {{"summary": "<your summary>"}}"""
+def _company_summary_system_prompt(main_theme: str, profile: ModeProfile | None = None) -> str:
+    active_profile = profile if profile is not None else _THEMATIC_PROFILE
+    return active_profile.company_summary_template.format(main_theme=main_theme)
 
 
 def _motivations_block(motivations: pd.Series) -> str:
@@ -387,6 +463,7 @@ def summarize_companies(
     merged_df: pd.DataFrame,
     main_theme: str,
     model: str = DEFAULT_SUMMARY_MODEL,
+    profile: ModeProfile | None = None,
     requests_per_minute: int = 10000,
     max_concurrent_requests: int = 20,
 ) -> pd.DataFrame:
@@ -403,7 +480,7 @@ def summarize_companies(
         company_motivations["motivations_text"].str.len() > 0
     ]
 
-    system_prompt = _company_summary_system_prompt(main_theme)
+    system_prompt = _company_summary_system_prompt(main_theme, profile)
     summary_requests = [
         ChatRequest(
             request_id=row.company_name,
@@ -468,3 +545,317 @@ def build_screener_dataframe(
         result["summary"] = pd.NA
         return result
     return merged_df.merge(company_summaries_df, on="company_name", how="left")
+
+
+# ---------------------------------------------------------------------------
+# Risk-analyzer exports
+#
+# These builders convert the labeled-sentence artifacts into the JSON schema
+# consumed by the Bigdata Risk Analyzer app (``risk_scoring`` / ``risk_taxonomy``
+# / ``content``) and into a multi-sheet Excel workbook.
+# ---------------------------------------------------------------------------
+
+
+def _clean_scalar(value: Any) -> Any:
+    """Return ``None`` for missing/NaN scalars, otherwise the value itself."""
+    try:
+        if value is None or (pd.api.types.is_scalar(value) and pd.isna(value)):
+            return None
+    except (TypeError, ValueError):
+        return value
+    return value
+
+
+def _split_timestamp(timestamp: Any) -> tuple[str, str]:
+    """Split an ISO timestamp into ``(date, time_period)`` strings.
+
+    ``date`` is ``YYYY-MM-DD`` and ``time_period`` is ``Mon YYYY`` (e.g. ``Jun 2026``).
+    Returns empty strings when the timestamp is missing or unparsable.
+    """
+    if not isinstance(timestamp, str) or not timestamp:
+        return "", ""
+    date_part = timestamp[:10]
+    try:
+        parsed = datetime.fromisoformat(timestamp)
+    except ValueError:
+        return date_part, ""
+    return date_part, parsed.strftime("%b %Y")
+
+
+def _company_metadata_lookup(universe_df: pd.DataFrame) -> dict[str, dict[str, Any]]:
+    """Map company name to ticker/sector/industry/country from the universe.
+
+    Optional columns are used when present; otherwise sector/industry default to
+    ``"Unknown"`` and ticker/country to ``None``.
+    """
+    columns = set(universe_df.columns)
+    lookup: dict[str, dict[str, Any]] = {}
+    for _, row in universe_df.iterrows():
+        name = row[UNIVERSE_NAME_COLUMN]
+        lookup[name] = {
+            "ticker": _clean_scalar(row[UNIVERSE_TICKER_COLUMN])
+            if UNIVERSE_TICKER_COLUMN in columns
+            else None,
+            "sector": _clean_scalar(row[UNIVERSE_SECTOR_COLUMN]) or UNKNOWN_VALUE
+            if UNIVERSE_SECTOR_COLUMN in columns
+            else UNKNOWN_VALUE,
+            "industry": _clean_scalar(row[UNIVERSE_INDUSTRY_COLUMN]) or UNKNOWN_VALUE
+            if UNIVERSE_INDUSTRY_COLUMN in columns
+            else UNKNOWN_VALUE,
+            "country": _clean_scalar(row[UNIVERSE_COUNTRY_COLUMN])
+            if UNIVERSE_COUNTRY_COLUMN in columns
+            else None,
+        }
+    return lookup
+
+
+def build_risk_taxonomy(root: Node) -> dict[str, Any]:
+    """Serialize the taxonomy tree to the app's ``risk_taxonomy`` shape."""
+    return root.model_dump()
+
+
+def _risk_factor_channel(label: str, ancestry: dict[str, list[str]]) -> tuple[str, str]:
+    """Derive ``(risk_factor, risk_channel)`` for a leaf sub-scenario.
+
+    ``risk_factor`` is the immediate parent label and ``risk_channel`` the
+    grandparent, falling back gracefully for shallow trees.
+    """
+    chain = ancestry.get(label, [])
+    risk_factor = chain[-1] if chain else label
+    risk_channel = chain[-2] if len(chain) >= 2 else risk_factor
+    return risk_factor, risk_channel
+
+
+def build_content_chunks(
+    screener_df: pd.DataFrame,
+    root: Node,
+    universe_df: pd.DataFrame,
+) -> list[dict[str, Any]]:
+    """Build the ``content`` array of labeled chunks for the app JSON."""
+    ancestry = build_leaf_ancestry(root)
+    metadata = _company_metadata_lookup(universe_df)
+
+    chunks: list[dict[str, Any]] = []
+    for _, row in screener_df.iterrows():
+        label = _clean_scalar(row.get("label")) or ""
+        company = _clean_scalar(row.get("company_name")) or ""
+        date, time_period = _split_timestamp(row.get("timestamp"))
+        risk_factor, risk_channel = _risk_factor_channel(label, ancestry)
+        company_meta = metadata.get(company, {})
+
+        chunks.append(
+            {
+                "time_period": time_period,
+                "date": date,
+                "company": company,
+                "sector": company_meta.get("sector", UNKNOWN_VALUE),
+                "industry": company_meta.get("industry", UNKNOWN_VALUE),
+                "country": company_meta.get("country"),
+                "ticker": company_meta.get("ticker"),
+                "document_id": _clean_scalar(row.get("document_id")) or "",
+                "headline": _clean_scalar(row.get("headline")) or "",
+                "quote": _clean_scalar(row.get("text")) or "",
+                "motivation": _clean_scalar(row.get("motivation")) or "",
+                "sub_scenario": label,
+                "risk_channel": risk_channel,
+                "risk_factor": risk_factor,
+                "highlights": [],
+            }
+        )
+    return chunks
+
+
+def build_risk_scoring(
+    screener_df: pd.DataFrame,
+    universe_df: pd.DataFrame,
+) -> dict[str, Any]:
+    """Aggregate per-company risk scoring (counts) for the app JSON."""
+    metadata = _company_metadata_lookup(universe_df)
+    scoring: dict[str, Any] = {}
+
+    summaries: dict[str, Any] = {}
+    if "summary" in screener_df.columns:
+        for company, group in screener_df.groupby("company_name", sort=True):
+            summaries[company] = _clean_scalar(group["summary"].iloc[0])
+
+    for company, group in screener_df.groupby("company_name", sort=True):
+        counts = group["label"].value_counts()
+        risks = {str(label): int(count) for label, count in counts.items()}
+        company_meta = metadata.get(company, {})
+        scoring[str(company)] = {
+            "ticker": company_meta.get("ticker"),
+            "sector": company_meta.get("sector", UNKNOWN_VALUE),
+            "industry": company_meta.get("industry", UNKNOWN_VALUE),
+            "composite_score": int(sum(risks.values())),
+            "motivation": summaries.get(company),
+            "risks": risks,
+        }
+    return scoring
+
+
+def build_risk_analysis_json(
+    screener_df: pd.DataFrame,
+    root: Node,
+    universe_df: pd.DataFrame,
+) -> dict[str, Any]:
+    """Assemble the full risk-format payload (``risk_scoring`` / ``risk_taxonomy`` / ``content``)."""
+    return {
+        "risk_scoring": build_risk_scoring(screener_df, universe_df),
+        "risk_taxonomy": build_risk_taxonomy(root),
+        "content": build_content_chunks(screener_df, root, universe_df),
+    }
+
+
+def build_theme_scoring(
+    screener_df: pd.DataFrame,
+    universe_df: pd.DataFrame,
+    all_labels: list[str],
+) -> dict[str, Any]:
+    """Aggregate per-company theme scoring for the theme-format app JSON.
+
+    Every company's ``themes`` map lists the full leaf-label set (0 when a
+    label is absent) and ``composite_score`` is the total count of relevant
+    quotes.
+    """
+    metadata = _company_metadata_lookup(universe_df)
+
+    summaries: dict[str, Any] = {}
+    if "summary" in screener_df.columns:
+        for company, group in screener_df.groupby("company_name", sort=True):
+            summaries[company] = _clean_scalar(group["summary"].iloc[0])
+
+    scoring: dict[str, Any] = {}
+    for company, group in screener_df.groupby("company_name", sort=True):
+        counts = group["label"].value_counts().to_dict()
+        themes = {str(label): int(counts.get(label, 0)) for label in all_labels}
+        company_meta = metadata.get(company, {})
+        scoring[str(company)] = {
+            "ticker": company_meta.get("ticker"),
+            "industry": company_meta.get("industry", UNKNOWN_VALUE),
+            "motivation": summaries.get(company),
+            "composite_score": int(sum(themes.values())),
+            "themes": themes,
+        }
+    return scoring
+
+
+def build_theme_content(
+    screener_df: pd.DataFrame,
+    universe_df: pd.DataFrame,
+) -> list[dict[str, Any]]:
+    """Build the ``content`` array of labeled chunks for the theme-format JSON."""
+    metadata = _company_metadata_lookup(universe_df)
+
+    chunks: list[dict[str, Any]] = []
+    for _, row in screener_df.iterrows():
+        company = _clean_scalar(row.get("company_name")) or ""
+        date, time_period = _split_timestamp(row.get("timestamp"))
+        company_meta = metadata.get(company, {})
+
+        chunks.append(
+            {
+                "time_period": time_period,
+                "date": date,
+                "company": company,
+                "sector": company_meta.get("sector", UNKNOWN_VALUE),
+                "industry": company_meta.get("industry", UNKNOWN_VALUE),
+                "country": company_meta.get("country"),
+                "ticker": company_meta.get("ticker"),
+                "document_id": _clean_scalar(row.get("document_id")) or "",
+                "headline": _clean_scalar(row.get("headline")) or "",
+                "quote": _clean_scalar(row.get("text")) or "",
+                "motivation": _clean_scalar(row.get("motivation")) or "",
+                "theme": _clean_scalar(row.get("label")) or "",
+            }
+        )
+    return chunks
+
+
+def build_theme_report(
+    screener_df: pd.DataFrame,
+    root: Node,
+    universe_df: pd.DataFrame,
+) -> dict[str, Any]:
+    """Assemble the full theme-format payload (``theme_scoring`` / ``theme_taxonomy`` / ``content``)."""
+    all_labels = get_leaf_labels(root)
+    return {
+        "theme_scoring": build_theme_scoring(screener_df, universe_df, all_labels),
+        "theme_taxonomy": build_risk_taxonomy(root),
+        "content": build_theme_content(screener_df, universe_df),
+    }
+
+
+def build_report_json(
+    screener_df: pd.DataFrame,
+    root: Node,
+    universe_df: pd.DataFrame,
+    mode: AnalysisMode | str,
+) -> dict[str, Any]:
+    """Build the app-uploadable report JSON in the shape matching ``mode``.
+
+    Risk mode emits the ``risk_scoring`` schema; thematic mode emits the
+    ``theme_scoring`` schema.
+    """
+    resolved = AnalysisMode(mode) if not isinstance(mode, AnalysisMode) else mode
+    if resolved is AnalysisMode.RISK_ANALYZER:
+        return build_risk_analysis_json(screener_df, root, universe_df)
+    return build_theme_report(screener_df, root, universe_df)
+
+
+def build_company_scoring_df(screener_df: pd.DataFrame) -> pd.DataFrame:
+    """Build a company x label count matrix with a composite-score column."""
+    if screener_df.empty or "label" not in screener_df.columns:
+        return pd.DataFrame(columns=["company_name", "Composite Score"])
+
+    counts = (
+        screener_df.groupby(["company_name", "label"]).size().reset_index(name="count")
+    )
+    pivot = (
+        counts.pivot(index="company_name", columns="label", values="count")
+        .fillna(0)
+        .astype(int)
+    )
+    pivot["Composite Score"] = pivot.sum(axis=1)
+    return pivot.sort_values("Composite Score", ascending=False).reset_index()
+
+
+def build_taxonomy_df(root: Node) -> pd.DataFrame:
+    """Flatten the taxonomy tree into rows (node, label, summary, parent, depth)."""
+    rows: list[dict[str, Any]] = []
+
+    def _walk(node: Node, parent: str | None, depth: int) -> None:
+        rows.append(
+            {
+                "node": node.node,
+                "label": node.label,
+                "summary": node.summary,
+                "parent": parent,
+                "depth": depth,
+            }
+        )
+        for child in node.children:
+            _walk(child, node.label, depth + 1)
+
+    _walk(root, None, 0)
+    return pd.DataFrame(rows)
+
+
+def export_excel(
+    screener_df: pd.DataFrame,
+    company_summaries_df: pd.DataFrame,
+    root: Node,
+    path: str | Path,
+) -> Path:
+    """Write a multi-sheet Excel workbook summarizing the run."""
+    output_path = Path(path)
+    scoring_df = build_company_scoring_df(screener_df)
+    taxonomy_df = build_taxonomy_df(root)
+
+    with pd.ExcelWriter(output_path, engine="openpyxl") as writer:
+        screener_df.to_excel(writer, sheet_name="Results", index=False)
+        if not company_summaries_df.empty:
+            company_summaries_df.to_excel(writer, sheet_name="Company Summaries", index=False)
+        scoring_df.to_excel(writer, sheet_name="Company Scoring", index=False)
+        taxonomy_df.to_excel(writer, sheet_name="Taxonomy", index=False)
+
+    return output_path
