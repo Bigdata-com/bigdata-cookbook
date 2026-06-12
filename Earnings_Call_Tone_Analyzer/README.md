@@ -149,16 +149,16 @@ Get your Bigdata API key at [platform.bigdata.com/api-keys](https://platform.big
 
 ## Performance & cost
 
-Measured on a 20-company sample:
+Measured on a 100-company sample:
 
-| Metric | Per Company | 1,000 Companies (est.) |
-|--------|------------|------------------------|
-| Wall time | ~2.5s | ~42 min |
-| Bigdata API calls | ~7 | ~7,000 |
-| OpenAI API calls | ~7 | ~7,000 |
-| OpenAI input tokens | ~57,500 | ~57.5M |
-| OpenAI output tokens | ~2,600 | ~2.6M |
-| OpenAI cost | ~$0.015 | **~$15** |
+| Metric | Per Company | 100 Companies | 1,000 Companies (est.) |
+|--------|------------|---------------|------------------------|
+| Wall time | ~2.1s | 3m 34s | ~35 min |
+| Bigdata API calls | ~7.1 | 705 | ~7,100 |
+| OpenAI API calls | ~6.9 | 687 | ~6,900 |
+| OpenAI input tokens | ~54,700 | 5.4M | ~54.7M |
+| OpenAI output tokens | ~2,500 | 246K | ~2.5M |
+| OpenAI cost | **$0.014** | $1.39 | **~$14** |
 
 ## Data sources
 
