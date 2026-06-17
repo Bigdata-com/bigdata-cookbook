@@ -123,7 +123,7 @@ All Python dependencies for the notebook are listed in `requirements.txt` and wi
 
 5. **Run the notebook**:
    - Run the cells sequentially, following the step-by-step instructions
-   - Cells 1-4 (load CSV, configure, define helpers) run without the service; from cell 5 on, the service must be reachable at `http://localhost:8000`
+   - Steps 1-4 (load CSV, configure, set output paths, define helpers) run without the service; from Step 5 (Run Brief V2 Batches Sequentially) onward, the service must be reachable at `http://localhost:8000`
 
 ## Project Structure
 
@@ -161,7 +161,7 @@ The notebook implements an end-to-end workflow for large-scale Brief V2 generati
 
 ### Key Settings
 
-- **BATCH_SIZE**: Number of companies submitted per `run-parallel` call (recommended: 50; the service caps concurrent entities via `MAX_CONCURRENT_ENTITIES`, default 10).
+- **BATCH_SIZE**: Number of companies submitted per `run-parallel` call. The service caps how many entities run concurrently via `MAX_CONCURRENT_ENTITIES` (default 10), regardless of batch size.
 
   **Note:** A single `run-parallel` call can accept a large entity list, so batching is not strictly required. The batching approach in this notebook is a guideline for:
   - **Scheduling across time zones**: distribute processing to optimize resource usage
