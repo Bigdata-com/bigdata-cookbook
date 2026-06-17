@@ -168,7 +168,7 @@ The notebook implements an end-to-end workflow for large-scale Brief V2 generati
   - **Concurrent service instances**: run multiple service instances (each with its own Bigdata key and 450 QPM budget) to process different batches in parallel
   - **Per-batch customization**: apply different windows or categories to different batches
 
-- **FORCE_WINDOW_START** / **FORCE_WINDOW_END**: The report window. **A 24-hour window is the recommended baseline.** Wider windows degrade quality and cost and collapse the day-by-day novelty filtering into a single run. For longer historical ranges, use the service's `POST /api/v1/scan` endpoint instead, which splits the range into per-day windows automatically.
+- **FORCE_WINDOW_START** / **FORCE_WINDOW_END**: The report window for the run. **A 24-hour window is the recommended baseline** — one day at a time produces the sharpest bullets and the most reliable novelty comparisons. Wider windows degrade on four axes: prompt size (larger prompts risk hitting context limits), search coverage (each query has a result cap, so some developments are missed), cost (roughly proportional to news volume), and temporal coherence (multi-week windows mix different states of a developing situation). For multi-day or historical ranges, prefer the service's `POST /api/v1/scan` endpoint, which splits the range into windows and processes them sequentially, producing a separate brief per window.
 - **POLL_INTERVAL_SECONDS** / **BATCH_TIMEOUT_SECONDS**: How often to poll batch status, and the per-batch timeout.
 
 ### Example Configuration
