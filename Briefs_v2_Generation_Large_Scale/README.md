@@ -45,9 +45,11 @@ docker run -d \
   bigdata_briefs
 ```
 
-Or, using the bundled compose file (API only, no cron):
+Or, using the bundled compose file (API only, no cron). Compose reads the keys from a `.env` file, so create it first:
 
 ```bash
+cp .env.example .env
+# Edit .env to set BIGDATA_API_KEY and OPENAI_API_KEY
 docker compose up -d --build
 ```
 
@@ -72,7 +74,7 @@ For local testing no authentication is needed. (For a shared or public deploymen
 
 ### Additional Requirements
 
-- Python 3.8 or higher
+- Python 3.9 or higher
 - [uv](https://github.com/astral-sh/uv) package manager (recommended) or pip
 - Bigdata.com API key
 - OpenAI API key (used by the briefs service)
