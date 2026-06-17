@@ -6,7 +6,33 @@ The notebook (`portfolio_briefs_generation_v2.ipynb`) talks to the v2 pipeline t
 
 ## High Level Design
 
-![High Level diagram](static/media/diagram.png)
+```mermaid
+flowchart LR
+    subgraph Client["Your environment (notebook)"]
+        direction TB
+        CSV[("CSV<br/>RP_ENTITY_ID")]
+        NB["Large-scale notebook<br/>batch · poll · export"]
+        OUT["Results<br/>JSON + Excel"]
+        CSV --> NB
+        NB --> OUT
+    end
+
+    subgraph Service["bigdata-briefs-v2 service (Docker)"]
+        direction TB
+        API["REST API<br/>run-parallel · status · reports/bullets"]
+        PIPE["Pipeline<br/>search → bullets → grounding → novelty"]
+        DB[("Briefs DB")]
+        API --> PIPE --> DB
+    end
+
+    subgraph BD["Bigdata.com"]
+        PLAT["Data platform"]
+    end
+
+    NB -- "1 submit batch & poll status" --> API
+    PIPE -- "2 news retrieval" --> PLAT
+    API -- "3 published bullets" --> NB
+```
 
 ## Features
 
@@ -133,10 +159,8 @@ Briefs_v2_Generation_Large_Scale/
 ├── requirements.txt                       # Python dependencies (notebook side)
 ├── portfolio_briefs_generation_v2.ipynb   # Brief V2 large-scale notebook
 ├── static/
-│   ├── data/
-│   │   └── US_100.csv                     # Company identifiers CSV (RP_ENTITY_ID column)
-│   └── media/
-│       └── diagram.png                    # High-level diagram
+│   └── data/
+│       └── US_100.csv                     # Company identifiers CSV (RP_ENTITY_ID column)
 └── output/                                # Generated artifacts (created at runtime)
     ├── brief_v2_batch_summaries.json      # Per-batch submission + status metadata
     ├── brief_v2_first5_bullets.json       # Raw bullets for the first 5 entities (preview)
