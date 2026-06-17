@@ -83,7 +83,7 @@ All Python dependencies for the notebook are listed in `requirements.txt` and wi
 
 1. **Navigate to the project directory**:
    ```bash
-   cd Briefs_2_Generation_Large_Scale
+   cd Briefs_v2_Generation_Large_Scale
    ```
 
 2. **Create a virtual environment** (choose one method):
@@ -128,7 +128,7 @@ All Python dependencies for the notebook are listed in `requirements.txt` and wi
 ## Project Structure
 
 ```
-Briefs_2_Generation_Large_Scale/
+Briefs_v2_Generation_Large_Scale/
 ├── README.md                              # Project documentation
 ├── requirements.txt                       # Python dependencies (notebook side)
 ├── portfolio_briefs_generation_v2.ipynb   # Brief V2 large-scale notebook
@@ -193,7 +193,7 @@ payload_batch = {
 }
 ```
 
-The v2 pipeline discovers themes, scores relevance, validates grounding, and filters novelty automatically, so there are no `topics`, `novelty`, or `source_rank_boost` knobs to set as in v1. Optional flags you can add to the payload include `generate_narrative`, `ranking_metric`, `categories`, and `force_overlap` (see the service README).
+The pipeline discovers themes, scores relevance, validates grounding, and filters novelty automatically, so the only inputs you provide are the entities and the window. Optional flags you can add to the payload include `generate_narrative`, `ranking_metric`, `categories`, and `force_overlap` (see the service README).
 
 ## Output Files
 
