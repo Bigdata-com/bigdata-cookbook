@@ -47,29 +47,85 @@ MAX_RETRIES = 5
 BACKOFF_BASE = 1.0           # first retry after ~1 s
 BACKOFF_MAX = 60.0
 
+# ── Loughran-McDonald dictionary ───────────────────────────────────────────
+
+def _load_lm_dictionary() -> dict[str, set[str]]:
+    path = Path(__file__).parent / "lm_dictionary.json"
+    with open(path) as f:
+        raw = json.load(f)
+    return {k: set(v) for k, v in raw.items()}
+
+LM_DICT = _load_lm_dictionary()
+
+
+def lm_score_text(text: str) -> dict:
+    """Deterministic Loughran-McDonald word-count analysis."""
+    words = re.findall(r"[a-zA-Z]+", text)
+    words_upper = [w.upper() for w in words]
+    total = len(words_upper)
+
+    counts = {cat: 0 for cat in LM_DICT}
+    for w in words_upper:
+        for cat, wordset in LM_DICT.items():
+            if w in wordset:
+                counts[cat] += 1
+
+    pos = counts["positive"]
+    neg = counts["negative"]
+    unc = counts["uncertainty"]
+    sm = counts["strong_modal"]
+    wm = counts["weak_modal"]
+
+    net_tone = (pos - neg) / max(total, 1)
+    uncertainty_ratio = unc / max(total, 1)
+    modal_ratio = (sm - wm) / max(sm + wm, 1)
+
+    return {
+        "word_count": total,
+        "positive": pos,
+        "negative": neg,
+        "uncertainty": unc,
+        "litigious": counts["litigious"],
+        "constraining": counts["constraining"],
+        "strong_modal": sm,
+        "weak_modal": wm,
+        "net_tone": round(net_tone, 6),
+        "uncertainty_ratio": round(uncertainty_ratio, 6),
+        "modal_ratio": round(modal_ratio, 4),
+    }
+
+
 # ── Prompts ─────────────────────────────────────────────────────────────────
 TONE_PROMPT = """You are a senior equity analyst specializing in NLP-based earnings call analysis.
 
-Analyze the following earnings call transcript for management tone using the Loughran-McDonald financial sentiment dictionary and tone weighting. Focus on:
-- Word choice (positive/negative financial terms)
-- Forward-looking language strength
-- Hedging and uncertainty language
-- Confidence indicators (definitive vs tentative)
+You are given an earnings call transcript AND a pre-computed Loughran-McDonald word-count analysis. The word counts are deterministic and accurate — do not re-count. Your job is to INTERPRET the transcript in context, using the L-M statistics as a quantitative anchor.
+
+Focus on:
+- How the L-M word counts map to actual management statements (context matters — "decline" in a risk disclaimer vs CEO remarks)
+- Forward-looking language strength (accelerating, expanding vs cautious, uncertain)
+- Hedging and uncertainty patterns (where in the call, how frequent)
+- Confidence indicators (definitive vs tentative statements)
 - Guidance tone (raising/maintaining/lowering)
 
 Company: {company_name} ({ticker})
 Quarter: {quarter_label}
 
+LOUGHRAN-McDONALD WORD-COUNT ANALYSIS:
+{lm_stats}
+
 TRANSCRIPT:
 {transcript_text}
+
+Use the L-M net_tone as a starting anchor, then adjust based on your contextual interpretation. The final sentiment_score should reflect both the quantitative word counts and the qualitative context.
 
 Respond with ONLY a valid JSON object (no markdown, no code fences):
 {{
   "quarter_label": "{quarter_label}",
   "tone_category": "<one of: Very Bullish, Bullish, Neutral, Bearish, Very Bearish>",
-  "sentiment_score": <float between -1.0 and 1.0, using Loughran-McDonald weighted scoring>,
+  "sentiment_score": <float between -1.0 and 1.0>,
+  "lm_net_tone": <the pre-computed net_tone value, for reference>,
   "key_nlp_signals": [
-    "<signal 1: e.g. 'Strong use of positive forward-looking terms (accelerating, expanding, confident)'>",
+    "<signal 1: e.g. 'L-M negative count elevated (247) but concentrated in risk disclaimers, not management commentary'>",
     "<signal 2>",
     "<signal 3>"
   ],
@@ -77,7 +133,7 @@ Respond with ONLY a valid JSON object (no markdown, no code fences):
     "<insight 1: actionable observation for investors>",
     "<insight 2>"
   ],
-  "summary": "<2-3 sentence summary of management tone>"
+  "summary": "<2-3 sentence summary of management tone, referencing both L-M statistics and contextual interpretation>"
 }}
 """
 
@@ -348,15 +404,20 @@ class ToneAnalyzer:
 
     async def analyze_tone(self, company_name: str, ticker: str,
                            quarter_label: str, transcript_text: str) -> dict | None:
+        lm_stats = lm_score_text(transcript_text)
+        lm_stats_str = "\n".join(f"  {k}: {v}" for k, v in lm_stats.items())
         prompt = TONE_PROMPT.format(
             company_name=company_name, ticker=ticker,
             quarter_label=quarter_label, transcript_text=transcript_text,
+            lm_stats=lm_stats_str,
         )
         try:
             raw = await self._oai_call(
                 [{"role": "user", "content": prompt}],
                 label=f"tone:{ticker}:{quarter_label}", max_completion_tokens=1500)
-            return _parse_json_response(raw)
+            result = _parse_json_response(raw)
+            result["lm_stats"] = lm_stats
+            return result
         except Exception as e:
             log.error(f"Tone analysis failed for {ticker} {quarter_label}: {e}")
             return None
