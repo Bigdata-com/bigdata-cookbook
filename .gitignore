@@ -21,3 +21,6 @@
 
 # Agent_To_BigData ADK sample — regenerated SQLite (no local .gitignore there)
 Agent_To_BigData/my_agent/data/
+
+# Runs
+*/runs

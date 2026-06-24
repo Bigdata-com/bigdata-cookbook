@@ -17,8 +17,7 @@ This project uses [uv](https://docs.astral.sh/uv/) as the package manager. If yo
 From this directory (`Thematic_Screener_CLI/`):
 
 ```bash
-uv venv
-uv pip install -r requirements.txt
+uv sync
 ```
 
 Copy `.env.example` to `.env` and set your API keys:
@@ -35,6 +34,19 @@ Required environment variables:
 | `BIGDATA_API_KEY` | Search planning and document retrieval |
 
 Run commands from this directory so `.env` is found automatically.
+
+## Claude Desktop MCP
+
+This project also exposes a local MCP server for Claude Desktop:
+
+```bash
+uv run thematic-screener-mcp
+```
+
+For the full Claude Desktop configuration snippet, human-in-the-loop workflow instructions,
+and tool contract details, see `mcp/README.md` and `mcp/claude-skill.md`.
+
+For Cursor, use the project skill at `.cursor/skills/thematic-screener/SKILL.md`.
 
 ## Quick start
 
@@ -100,7 +112,7 @@ python -m src.cli <subcommand> [options]
 |--------|---------|-------------|
 | `--main-theme` | see defaults below | Main screening theme |
 | `--analyst-focus` | see defaults below | Analyst focus guiding the taxonomy |
-| `--labels-model` | `gpt-4o` | OpenAI model for label generation |
+| `--labels-model` | `gpt-5.4-nano` | OpenAI model for label generation |
 
 ### `plans` — build search plans
 
@@ -123,8 +135,8 @@ Uses `main_theme` and `universe` from `config.json` (set by earlier pipeline ste
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--labeling-model` | `gpt-4o-mini` | OpenAI model for sentence labeling |
-| `--summary-model` | `gpt-4o-mini` | OpenAI model for company summaries |
+| `--labeling-model` | `gpt-5.4-nano` | OpenAI model for sentence labeling |
+| `--summary-model` | `gpt-5.4-nano` | OpenAI model for company summaries |
 
 ### `summarize-plans` — summarize search plans
 
@@ -146,9 +158,9 @@ Runs `generate-labels` → `plans` → `search` → `label-sentences` in one iso
 | Analyst focus | How companies are including AI in their development cycle |
 | Start date | `2025-06-01` |
 | End date | `2026-06-09` |
-| Labels model | `gpt-4o` |
-| Labeling model | `gpt-4o-mini` |
-| Summary model | `gpt-4o-mini` |
+| Labels model | `gpt-5.4-nano` |
+| Labeling model | `gpt-5.4-nano` |
+| Summary model | `gpt-5.4-nano` |
 | Chunk percentage | `0.02` (2%) |
 | Search requests/min | `350` |
 | Document categories | `news_premium`, `transcripts`, `filings` |
@@ -169,7 +181,7 @@ python -m src.cli generate-labels \
   --main-theme "Ophthalmology medical devices" \
   --analyst-focus "Surgical and diagnostic eye care"
 
-# Resume a run: plans only (reads themes.txt and config from the run dir)
+# Resume a run: plans only (reads themes.txt, search_queries.txt, and config from the run dir)
 python -m src.cli plans --run-name my_run
 
 # Summarize plans for an existing run (no API keys needed)

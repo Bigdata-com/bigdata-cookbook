@@ -23,6 +23,7 @@ Design choices
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
 import random
 import time
@@ -107,7 +108,7 @@ class ChatRequest:
 
     request_id: str
     messages: list[Message]
-    model: str = "gpt-4o-mini"
+    model: str = "gpt-5.4-nano"
     temperature: float = 0.0
     top_p: float = 1.0
     seed: int | None = 42
@@ -393,20 +394,6 @@ class ParallelOpenAIClient:
         )
 
 
-def _apply_nest_asyncio() -> bool:
-    """Patch the running event loop with ``nest_asyncio`` if available.
-
-    Returns ``True`` when the patch was applied, ``False`` when the
-    ``nest_asyncio`` package is not installed.
-    """
-    try:
-        import nest_asyncio  # type: ignore[import-not-found]
-    except ImportError:
-        return False
-    nest_asyncio.apply()
-    return True
-
-
 def run_chat_requests_parallel(
     requests: Sequence[ChatRequest],
     rate_limit: RateLimitConfig | None = None,
@@ -427,10 +414,8 @@ def run_chat_requests_parallel(
     ----------
     allow_nested_loop:
         When ``True`` (the default) and a running event loop is detected
-        (e.g. inside a Jupyter notebook), the function will attempt to use
-        ``nest_asyncio`` to patch the loop so ``asyncio.run`` works. If the
-        package is not installed, an :class:`OpenAIParallelError` is raised
-        with installation instructions.
+        (e.g. inside MCP hosts or Jupyter), the batch runs in a worker thread
+        with its own event loop. Set to ``False`` to raise instead.
     show_progress:
         When True (the default), display a ``tqdm`` progress bar that
         advances each time a request completes. Renders as a notebook
@@ -453,10 +438,13 @@ def run_chat_requests_parallel(
                 progress_desc=progress_desc,
             )
 
+    def run_in_new_loop() -> list[ChatResponse]:
+        return asyncio.run(runner())
+
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        return asyncio.run(runner())
+        return run_in_new_loop()
 
     if not allow_nested_loop:
         raise OpenAIParallelError(
@@ -465,12 +453,5 @@ def run_chat_requests_parallel(
             "directly instead."
         )
 
-    if not _apply_nest_asyncio():
-        raise OpenAIParallelError(
-            "A running event loop was detected (e.g. inside a Jupyter notebook) "
-            "but nest_asyncio is not installed. Install it with "
-            "`pip install nest_asyncio` or await "
-            "`ParallelOpenAIClient.run_batch` directly from an async cell."
-        )
-
-    return asyncio.run(runner())
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(run_in_new_loop).result()
