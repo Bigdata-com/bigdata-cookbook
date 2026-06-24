@@ -81,13 +81,18 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
     model = _resolve(args, config, "labels_model", screener.DEFAULT_LABELS_MODEL)
 
     logger.info("Generating labels for theme: %s", main_theme)
-    labels = screener.generate_labels(
+    root = screener.generate_labels(
         main_theme=main_theme,
         analyst_focus=analyst_focus,
         model=model,
     )
+    labels, search_queries = screener.write_taxonomy_artifacts(
+        root,
+        themes_path=context.themes_path,
+        search_queries_path=context.search_queries_path,
+        taxonomy_tree_path=context.taxonomy_tree_path,
+    )
 
-    context.write_themes(labels)
     context.save_config(
         {
             "main_theme": main_theme,
@@ -95,13 +100,19 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
             "labels_model": model,
         }
     )
-    logger.info("Wrote %d labels to %s", len(labels), context.themes_path)
+    logger.info(
+        "Wrote %d labels and %d search queries to %s",
+        len(labels),
+        len(search_queries),
+        context.run_dir,
+    )
     return labels
 
 
 def run_plans(context: RunContext, args: argparse.Namespace) -> list[Path]:
     config = context.load_config()
     labels = context.read_themes()
+    search_queries = context.read_search_queries()
 
     universe_path = _resolve(args, config, "universe", DEFAULT_UNIVERSE)
     start_date = _resolve(args, config, "start_date", screener.DEFAULT_START_DATE)
@@ -119,6 +130,7 @@ def run_plans(context: RunContext, args: argparse.Namespace) -> list[Path]:
     context.ensure_plans_dir()
     saved = screener.build_plans(
         labels=labels,
+        search_queries=search_queries,
         company_ids=company_ids,
         plans_dir=context.plans_dir,
         start_date=start_date,
@@ -179,6 +191,7 @@ def run_label(
 ) -> pd.DataFrame:
     config = context.load_config()
     main_theme = _from_config(config, "main_theme", screener.DEFAULT_MAIN_THEME)
+    analyst_focus = _from_config(config, "analyst_focus", screener.DEFAULT_ANALYST_FOCUS)
     labeling_model = _resolve(args, config, "labeling_model", screener.DEFAULT_LABELING_MODEL)
     summary_model = _resolve(args, config, "summary_model", screener.DEFAULT_SUMMARY_MODEL)
     universe_path = _from_config(config, "universe", DEFAULT_UNIVERSE)
@@ -195,6 +208,7 @@ def run_label(
     parsed_responses = screener.label_sentences(
         sentences=sentences,
         main_theme=main_theme,
+        analyst_focus=analyst_focus,
         labels=labels,
         model=labeling_model,
     )

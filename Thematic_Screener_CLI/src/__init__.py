@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from src.helpers import (
+    get_leaf_labels,
+    get_leaf_pairs,
+    get_leaf_search_queries,
+    get_leaf_summaries,
+    print_tree,
+)
 from src.openai_parallel import (
     ChatRequest,
     ChatResponse,
@@ -12,9 +19,6 @@ from src.openai_parallel import (
     run_chat_requests_parallel,
 )
 
-from src.helpers import get_leaf_summaries, print_tree
-
-
 __all__ = [
     "ChatRequest",
     "ChatResponse",
@@ -23,6 +27,9 @@ __all__ = [
     "RateLimitConfig",
     "SlidingWindowRateLimiter",
     "run_chat_requests_parallel",
+    "get_leaf_labels",
+    "get_leaf_pairs",
+    "get_leaf_search_queries",
     "get_leaf_summaries",
     "print_tree",
 ]
