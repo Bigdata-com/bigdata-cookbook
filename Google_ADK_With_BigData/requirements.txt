@@ -1,0 +1,8 @@
+google-adk>=1.0.0
+google-genai>=1.0.0
+python-dotenv>=1.0.0
+cryptography>=46.0.5
+langchain-community>=0.3.0
+langchain-core>=1.2.11
+faiss-cpu>=1.7.4
+langchain-google-genai>=4.2.1
