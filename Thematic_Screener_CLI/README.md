@@ -12,12 +12,16 @@ Each run is isolated in its own directory under `runs/<run_name>/`, so concurren
 
 ## Setup
 
-This project uses [uv](https://docs.astral.sh/uv/) as the package manager. If you use another package manager please refer to it's documentation.
+This project uses [uv](https://docs.astral.sh/uv/) as the package manager (recommended). A `requirements.txt` is also provided for use with pip or other package managers.
 
 From this directory (`Thematic_Screener_CLI/`):
 
 ```bash
+# with uv (recommended)
 uv sync
+
+# with pip
+pip install -r requirements.txt
 ```
 
 Copy `.env.example` to `.env` and set your API keys:
