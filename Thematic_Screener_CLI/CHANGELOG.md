@@ -45,6 +45,7 @@ All notable changes to Thematic Screener CLI are documented in this file.
 
 ### Fixed
 
+- Retrieval budget used `$0.015` per chunk; pricing is **`$0.015` per 10 chunks** (`estimated_cost_usd = selected_chunks / 10 * 0.015`).
 - MCP labeling `nest_asyncio` failure when invoked from Claude Desktop’s async tool context
 - MCP tool timeouts on long enrichment: split labeling into resumable batches; defer `labeled_sentences.csv` until labeling completes
 - Optimistic labeling latency estimates replaced with wave-based models calibrated from live benchmarks

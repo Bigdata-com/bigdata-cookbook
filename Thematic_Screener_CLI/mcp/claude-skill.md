@@ -87,16 +87,16 @@ Present budget options using chunks and dollars:
 ```text
 Planning found 184,000 expected chunks.
 
-Quick scan: 0.5%, about 920 chunks, about $13.80
-Balanced: 2.0%, about 3,680 chunks, about $55.20
-Deep dive: 5.0%, about 9,200 chunks, about $138.00
+Quick scan: 0.5%, about 920 chunks, about $1.38
+Balanced: 2.0%, about 3,680 chunks, about $5.52
+Deep dive: 5.0%, about 9,200 chunks, about $13.80
 Custom: choose a chunk count, percentage, or dollar cap
 ```
 
 The cost formula is:
 
 ```text
-estimated_cost_usd = selected_chunks * 0.015
+estimated_cost_usd = (selected_chunks / 10) * 0.015
 ```
 
 **Required gate:** do not call `approve_budget` or `run_retrieval` until the user picks a budget.

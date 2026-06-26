@@ -105,14 +105,14 @@ def build_search_plans(
 @mcp.tool()
 def estimate_retrieval_budget(
     run_id: str,
-    cost_per_chunk_usd: float = mcp_workflow.COST_PER_CHUNK_USD,
+    retrieval_cost_usd_per_10_chunks: float = mcp_workflow.RETRIEVAL_COST_USD_PER_UNIT,
     presets: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Estimate chunk counts and dollar cost before retrieval."""
     return _run_workflow(
         mcp_workflow.estimate_retrieval_budget,
         run_id=run_id,
-        cost_per_chunk_usd=cost_per_chunk_usd,
+        retrieval_cost_usd_per_10_chunks=retrieval_cost_usd_per_10_chunks,
         presets=presets,
     )
 

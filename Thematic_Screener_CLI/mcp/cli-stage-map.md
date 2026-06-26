@@ -24,7 +24,7 @@ The CLI currently exposes:
 | Mindmap validation | `validate_mindmap` | New validation layer | Validation is product logic around the generated taxonomy. |
 | Mindmap revision | `update_mindmap` | New revision layer | Can update `taxonomy_tree.json` and regenerate `themes.txt` and `search_queries.txt`. |
 | Planning | `build_search_plans` | `screener.build_plans` | Uses `search_queries.txt` for retrieval text; plan filenames derive from leaf labels. |
-| Budget preview | `estimate_retrieval_budget` | `screener.summarize_plans`, `format_plans_summary` | Extend summary with presets and cost at `$0.015/chunk`. |
+| Budget preview | `estimate_retrieval_budget` | `screener.summarize_plans`, `format_plans_summary` | Extend summary with presets and cost at `$0.015` per 10 chunks. |
 | Budget approval | `approve_budget` | `config.json` | Persist selected chunk percentage, chunk cap, or dollar cap. |
 | Retrieval | `run_retrieval` | `screener.run_search` | Same retrieval, using approved budget only. |
 | Evidence digest | `summarize_retrieval` | New digest layer over `results/results.json` | Required even when labeling is skipped. |
@@ -80,23 +80,24 @@ runs/<run_name>/
 
 ## Cost Calculation
 
-Use a constant:
+Use constants:
 
 ```text
-COST_PER_CHUNK_USD = 0.015
+RETRIEVAL_CHUNKS_PER_COST_UNIT = 10
+RETRIEVAL_COST_USD_PER_UNIT = 0.015
 ```
 
 For each budget preset:
 
 ```text
 selected_chunks = round(total_expected_chunks * chunk_percentage)
-estimated_cost_usd = selected_chunks * COST_PER_CHUNK_USD
+estimated_cost_usd = (selected_chunks / 10) * 0.015
 ```
 
 For a dollar cap:
 
 ```text
-selected_chunks = floor(max_cost_usd / COST_PER_CHUNK_USD)
+selected_chunks = floor(max_cost_usd * 10 / 0.015)
 chunk_percentage = selected_chunks / total_expected_chunks
 ```
 
