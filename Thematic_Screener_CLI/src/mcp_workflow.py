@@ -26,7 +26,8 @@ DEFAULT_RUNS_ROOT = PROJECT_ROOT / "runs"
 DEFAULT_GLOBAL_UNIVERSE = PROJECT_ROOT / "global_all_caps.csv"
 SAMPLE_XNAS_UNIVERSE = PROJECT_ROOT / "XNAS_companies.csv"
 
-COST_PER_CHUNK_USD = 0.015
+RETRIEVAL_CHUNKS_PER_COST_UNIT = 10
+RETRIEVAL_COST_USD_PER_UNIT = 0.015
 DEFAULT_ENRICHMENT_REQUESTS_PER_MINUTE = 10_000
 DEFAULT_ENRICHMENT_MAX_CONCURRENT = 40
 CHARS_PER_TOKEN_ESTIMATE = 4
@@ -929,9 +930,47 @@ def build_search_plans(
     )
 
 
+def _estimate_retrieval_cost_usd(
+    selected_chunks: int,
+    *,
+    cost_usd_per_unit: float = RETRIEVAL_COST_USD_PER_UNIT,
+    chunks_per_unit: int = RETRIEVAL_CHUNKS_PER_COST_UNIT,
+) -> float:
+    """Estimate retrieval spend from chunk count ($0.015 per 10 chunks by default)."""
+    if selected_chunks <= 0:
+        return 0.0
+    return round((selected_chunks / chunks_per_unit) * cost_usd_per_unit, 2)
+
+
+def _max_chunks_for_retrieval_budget(
+    max_cost_usd: float,
+    *,
+    cost_usd_per_unit: float = RETRIEVAL_COST_USD_PER_UNIT,
+    chunks_per_unit: int = RETRIEVAL_CHUNKS_PER_COST_UNIT,
+) -> int:
+    """Return the maximum chunk count affordable under a dollar cap."""
+    if max_cost_usd <= 0 or cost_usd_per_unit <= 0:
+        return 1
+    return max(1, math.floor(max_cost_usd * chunks_per_unit / cost_usd_per_unit))
+
+
+def _retrieval_pricing_from_budget(budget_payload: dict[str, Any]) -> tuple[float, int]:
+    """Read retrieval pricing from a budget payload, including legacy per-chunk keys."""
+    if "retrieval_cost_usd_per_10_chunks" in budget_payload:
+        return (
+            float(budget_payload["retrieval_cost_usd_per_10_chunks"]),
+            int(budget_payload.get("retrieval_chunks_per_cost_unit", RETRIEVAL_CHUNKS_PER_COST_UNIT)),
+        )
+    legacy_per_chunk = budget_payload.get("cost_per_chunk_usd")
+    if legacy_per_chunk is not None:
+        # Older runs stored 0.015 as if it were per chunk; pricing is per 10 chunks.
+        return (RETRIEVAL_COST_USD_PER_UNIT, RETRIEVAL_CHUNKS_PER_COST_UNIT)
+    return (RETRIEVAL_COST_USD_PER_UNIT, RETRIEVAL_CHUNKS_PER_COST_UNIT)
+
+
 def estimate_retrieval_budget(
     run_id: str,
-    cost_per_chunk_usd: float = COST_PER_CHUNK_USD,
+    retrieval_cost_usd_per_10_chunks: float = RETRIEVAL_COST_USD_PER_UNIT,
     presets: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Estimate chunks and dollar cost from saved plans."""
@@ -948,7 +987,10 @@ def estimate_retrieval_budget(
                 "name": str(preset["name"]),
                 "chunk_percentage": chunk_percentage,
                 "selected_chunks": selected_chunks,
-                "estimated_cost_usd": round(selected_chunks * cost_per_chunk_usd, 2),
+                "estimated_cost_usd": _estimate_retrieval_cost_usd(
+                    selected_chunks,
+                    cost_usd_per_unit=retrieval_cost_usd_per_10_chunks,
+                ),
             }
         )
 
@@ -957,7 +999,8 @@ def estimate_retrieval_budget(
         "run_id": context.run_name,
         "created_at": _utc_now(),
         "total_expected_chunks": total_expected_chunks,
-        "cost_per_chunk_usd": cost_per_chunk_usd,
+        "retrieval_cost_usd_per_10_chunks": retrieval_cost_usd_per_10_chunks,
+        "retrieval_chunks_per_cost_unit": RETRIEVAL_CHUNKS_PER_COST_UNIT,
         "presets": preset_rows,
         "per_plan": per_plan,
     }
@@ -970,7 +1013,8 @@ def estimate_retrieval_budget(
         status="pending_approval",
         summary=f"Planning found {total_expected_chunks:,} expected chunks before sampling.",
         total_expected_chunks=total_expected_chunks,
-        cost_per_chunk_usd=cost_per_chunk_usd,
+        retrieval_cost_usd_per_10_chunks=retrieval_cost_usd_per_10_chunks,
+        retrieval_chunks_per_cost_unit=RETRIEVAL_CHUNKS_PER_COST_UNIT,
         presets=preset_rows,
         artifacts=[_artifact_handle("budget_summary", BUDGET_SUMMARY_FILENAME)],
         next_actions=["approve_budget"],
@@ -984,11 +1028,22 @@ def approve_budget(run_id: str, selection: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(budget_payload, dict):
         raise McpWorkflowError("Invalid budget_summary.json payload")
     total_expected_chunks = int(budget_payload["total_expected_chunks"])
-    cost_per_chunk_usd = float(budget_payload.get("cost_per_chunk_usd", COST_PER_CHUNK_USD))
+    cost_usd_per_unit, chunks_per_unit = _retrieval_pricing_from_budget(budget_payload)
 
-    approved = _resolve_budget_selection(selection, budget_payload, total_expected_chunks)
-    approved["estimated_cost_usd"] = round(int(approved["selected_chunks"]) * cost_per_chunk_usd, 2)
-    approved["cost_per_chunk_usd"] = cost_per_chunk_usd
+    approved = _resolve_budget_selection(
+        selection,
+        budget_payload,
+        total_expected_chunks,
+        cost_usd_per_unit=cost_usd_per_unit,
+        chunks_per_unit=chunks_per_unit,
+    )
+    approved["estimated_cost_usd"] = _estimate_retrieval_cost_usd(
+        int(approved["selected_chunks"]),
+        cost_usd_per_unit=cost_usd_per_unit,
+        chunks_per_unit=chunks_per_unit,
+    )
+    approved["retrieval_cost_usd_per_10_chunks"] = cost_usd_per_unit
+    approved["retrieval_chunks_per_cost_unit"] = chunks_per_unit
     approved["created_at"] = _utc_now()
     _write_json(context.run_dir / BUDGET_APPROVAL_FILENAME, approved)
     context.save_config({"chunk_percentage": approved["chunk_percentage"]})
@@ -1012,6 +1067,9 @@ def _resolve_budget_selection(
     selection: dict[str, Any],
     budget_payload: dict[str, Any],
     total_expected_chunks: int,
+    *,
+    cost_usd_per_unit: float = RETRIEVAL_COST_USD_PER_UNIT,
+    chunks_per_unit: int = RETRIEVAL_CHUNKS_PER_COST_UNIT,
 ) -> dict[str, Any]:
     if "preset" in selection:
         preset_name = str(selection["preset"])
@@ -1040,7 +1098,11 @@ def _resolve_budget_selection(
         }
     if "max_cost_usd" in selection:
         max_cost_usd = float(selection["max_cost_usd"])
-        selected_chunks = max(1, math.floor(max_cost_usd / COST_PER_CHUNK_USD))
+        selected_chunks = _max_chunks_for_retrieval_budget(
+            max_cost_usd,
+            cost_usd_per_unit=cost_usd_per_unit,
+            chunks_per_unit=chunks_per_unit,
+        )
         return {
             "selection": {"max_cost_usd": max_cost_usd},
             "chunk_percentage": selected_chunks / total_expected_chunks,

@@ -38,7 +38,7 @@ resumable analyst workflow exposed through MCP tools.
    - Estimate cost with:
 
      ```text
-     estimated_cost_usd = selected_chunks * 0.015
+     estimated_cost_usd = (selected_chunks / 10) * 0.015
      ```
 
    - Present budget presets:

@@ -203,7 +203,7 @@
       "required": ["run_id"],
       "properties": {
         "run_id": {"type": "string"},
-        "cost_per_chunk_usd": {"type": "number", "const": 0.015},
+        "retrieval_cost_usd_per_10_chunks": {"type": "number", "const": 0.015},
         "presets": {
           "type": "array",
           "items": {"$ref": "#/$defs/BudgetPreset"},

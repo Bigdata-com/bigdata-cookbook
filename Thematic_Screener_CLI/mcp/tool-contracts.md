@@ -281,7 +281,7 @@ Request:
 ```json
 {
   "run_id": "ai_product_dev_20260618",
-  "cost_per_chunk_usd": 0.015,
+  "retrieval_cost_usd_per_10_chunks": 0.015,
   "presets": [
     {"name": "quick_scan", "chunk_percentage": 0.005},
     {"name": "balanced", "chunk_percentage": 0.02},
@@ -299,25 +299,26 @@ Response:
   "status": "pending_approval",
   "summary": "Planning found 184,000 expected chunks before sampling.",
   "total_expected_chunks": 184000,
-  "cost_per_chunk_usd": 0.015,
+  "retrieval_cost_usd_per_10_chunks": 0.015,
+  "retrieval_chunks_per_cost_unit": 10,
   "presets": [
     {
       "name": "quick_scan",
       "chunk_percentage": 0.005,
       "selected_chunks": 920,
-      "estimated_cost_usd": 13.8
+      "estimated_cost_usd": 1.38
     },
     {
       "name": "balanced",
       "chunk_percentage": 0.02,
       "selected_chunks": 3680,
-      "estimated_cost_usd": 55.2
+      "estimated_cost_usd": 5.52
     },
     {
       "name": "deep_dive",
       "chunk_percentage": 0.05,
       "selected_chunks": 9200,
-      "estimated_cost_usd": 138.0
+      "estimated_cost_usd": 13.8
     }
   ],
   "next_actions": ["approve_budget"]
@@ -357,11 +358,11 @@ Response:
   "run_id": "ai_product_dev_20260618",
   "stage": "budget_approval",
   "status": "completed",
-  "summary": "Approved balanced retrieval: about 3,680 chunks and $55.20.",
+  "summary": "Approved balanced retrieval: about 3,680 chunks and $5.52.",
   "approved_budget": {
     "chunk_percentage": 0.02,
     "selected_chunks": 3680,
-    "estimated_cost_usd": 55.2
+    "estimated_cost_usd": 5.52
   },
   "next_actions": ["run_retrieval"]
 }
