@@ -91,10 +91,13 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
         model=model,
         profile=profile,
     )
-    labels = screener.leaf_labels(root, profile)
-
-    context.write_themes(labels)
-    context.write_taxonomy(root.model_dump())
+    labels, search_queries = screener.write_taxonomy_artifacts(
+        root,
+        themes_path=context.themes_path,
+        search_queries_path=context.search_queries_path,
+        taxonomy_tree_path=context.taxonomy_tree_path,
+        profile=profile,
+    )
     context.save_config(
         {
             "mode": mode,
@@ -103,13 +106,19 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
             "labels_model": model,
         }
     )
-    logger.info("Wrote %d labels to %s", len(labels), context.themes_path)
+    logger.info(
+        "Wrote %d labels and %d search queries to %s",
+        len(labels),
+        len(search_queries),
+        context.run_dir,
+    )
     return labels
 
 
 def run_plans(context: RunContext, args: argparse.Namespace) -> list[Path]:
     config = context.load_config()
     labels = context.read_themes()
+    search_queries = context.read_search_queries()
 
     universe_path = _resolve(args, config, "universe", DEFAULT_UNIVERSE)
     start_date = _resolve(args, config, "start_date", screener.DEFAULT_START_DATE)
@@ -127,6 +136,7 @@ def run_plans(context: RunContext, args: argparse.Namespace) -> list[Path]:
     context.ensure_plans_dir()
     saved = screener.build_plans(
         labels=labels,
+        search_queries=search_queries,
         company_ids=company_ids,
         plans_dir=context.plans_dir,
         start_date=start_date,
@@ -189,6 +199,7 @@ def run_label(
     mode = _from_config(config, "mode", DEFAULT_MODE)
     profile = get_profile(mode)
     main_theme = _from_config(config, "main_theme", profile.default_main_theme)
+    analyst_focus = _from_config(config, "analyst_focus", profile.default_analyst_focus)
     labeling_model = _resolve(args, config, "labeling_model", screener.DEFAULT_LABELING_MODEL)
     summary_model = _resolve(args, config, "summary_model", screener.DEFAULT_SUMMARY_MODEL)
     rerank_threshold = _resolve(
@@ -210,6 +221,7 @@ def run_label(
     parsed_responses = screener.label_sentences(
         sentences=sentences,
         main_theme=main_theme,
+        analyst_focus=analyst_focus,
         labels=labels,
         model=labeling_model,
         profile=profile,

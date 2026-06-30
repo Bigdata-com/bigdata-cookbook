@@ -1,0 +1,348 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/thematic-screener-mcp.schema.json",
+  "title": "Thematic Screener MCP Schemas",
+  "type": "object",
+  "$defs": {
+    "RunStatus": {
+      "type": "string",
+      "enum": ["created", "pending_approval", "running", "completed", "failed"]
+    },
+    "Stage": {
+      "type": "string",
+      "enum": [
+        "intent_capture",
+        "mindmap_creation",
+        "mindmap_validation",
+        "mindmap_revision",
+        "planning",
+        "budget_preview",
+        "budget_approval",
+        "retrieval",
+        "evidence_digest",
+        "labeling",
+        "company_summaries",
+        "artifact_access"
+      ]
+    },
+    "ArtifactHandle": {
+      "type": "object",
+      "required": ["artifact_id", "path", "preview_available"],
+      "properties": {
+        "artifact_id": {"type": "string"},
+        "path": {"type": "string"},
+        "preview_available": {"type": "boolean"},
+        "queryable": {"type": "boolean", "default": false},
+        "description": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "UniverseInput": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "default_global_all_caps",
+            "default_europe_ml_caps",
+            "sample_xnas",
+            "csv_path",
+            "uploaded_csv",
+            "inline_entity_ids"
+          ]
+        },
+        "path": {"type": "string"},
+        "upload_id": {"type": "string"},
+        "entity_ids": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1
+        },
+        "id_column": {
+          "type": "string",
+          "enum": ["RP_ENTITY_ID", "RP_COMPANY_ID"]
+        },
+        "name_column": {"type": "string", "default": "COMPANY_NAME"}
+      },
+      "additionalProperties": false
+    },
+    "UniverseSummary": {
+      "type": "object",
+      "required": ["mode", "row_count", "id_column"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "default_global_all_caps",
+            "default_europe_ml_caps",
+            "sample_xnas",
+            "csv_path",
+            "uploaded_csv",
+            "inline_entity_ids"
+          ]
+        },
+        "row_count": {"type": "integer", "minimum": 0},
+        "id_column": {"type": "string"},
+        "name_column": {"type": ["string", "null"]},
+        "warnings": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "ToolResponse": {
+      "type": "object",
+      "required": ["run_id", "stage", "status", "summary"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "stage": {"$ref": "#/$defs/Stage"},
+        "status": {"$ref": "#/$defs/RunStatus"},
+        "summary": {"type": "string"},
+        "universe_summary": {"$ref": "#/$defs/UniverseSummary"},
+        "artifacts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/ArtifactHandle"}
+        },
+        "next_actions": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "additionalProperties": true
+    },
+    "CreateRunRequest": {
+      "type": "object",
+      "required": ["main_theme", "analyst_focus"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "main_theme": {"type": "string", "minLength": 1},
+        "analyst_focus": {"type": "string", "minLength": 1},
+        "universe": {
+          "$ref": "#/$defs/UniverseInput",
+          "default": {"mode": "default_global_all_caps"}
+        },
+        "start_date": {"type": "string", "format": "date"},
+        "end_date": {"type": "string", "format": "date"},
+        "output_goal": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "ValidateUniverseRequest": {
+      "type": "object",
+      "required": ["run_id", "universe"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "universe": {"$ref": "#/$defs/UniverseInput"}
+      },
+      "additionalProperties": false
+    },
+    "GenerateMindmapRequest": {
+      "type": "object",
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "max_leaf_labels": {"type": "integer", "minimum": 1},
+        "style": {
+          "type": "string",
+          "enum": ["analyst_screening", "broad_research", "focused_due_diligence"],
+          "default": "analyst_screening"
+        }
+      },
+      "additionalProperties": false
+    },
+    "MindmapValidationFinding": {
+      "type": "object",
+      "required": ["severity", "check", "message"],
+      "properties": {
+        "severity": {"type": "string", "enum": ["low", "medium", "high"]},
+        "check": {
+          "type": "string",
+          "enum": ["overlap", "searchability", "focus_alignment", "budget_risk"]
+        },
+        "message": {"type": "string"},
+        "suggested_action": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "ValidateMindmapRequest": {
+      "type": "object",
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["overlap", "searchability", "focus_alignment", "budget_risk"]
+          },
+          "default": ["overlap", "searchability", "focus_alignment", "budget_risk"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "UpdateMindmapRequest": {
+      "type": "object",
+      "required": ["run_id", "instructions"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "instructions": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "BudgetPreset": {
+      "type": "object",
+      "required": ["name", "chunk_percentage"],
+      "properties": {
+        "name": {"type": "string"},
+        "chunk_percentage": {"type": "number", "exclusiveMinimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "EstimateRetrievalBudgetRequest": {
+      "type": "object",
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "retrieval_cost_usd_per_10_chunks": {"type": "number", "const": 0.015},
+        "presets": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/BudgetPreset"},
+          "default": [
+            {"name": "quick_scan", "chunk_percentage": 0.005},
+            {"name": "balanced", "chunk_percentage": 0.02},
+            {"name": "deep_dive", "chunk_percentage": 0.05}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "BudgetSelection": {
+      "type": "object",
+      "oneOf": [
+        {
+          "required": ["preset"],
+          "properties": {"preset": {"type": "string"}}
+        },
+        {
+          "required": ["chunk_percentage"],
+          "properties": {"chunk_percentage": {"type": "number", "exclusiveMinimum": 0}}
+        },
+        {
+          "required": ["selected_chunks"],
+          "properties": {"selected_chunks": {"type": "integer", "minimum": 1}}
+        },
+        {
+          "required": ["max_cost_usd"],
+          "properties": {"max_cost_usd": {"type": "number", "exclusiveMinimum": 0}}
+        }
+      ]
+    },
+    "ApproveBudgetRequest": {
+      "type": "object",
+      "required": ["run_id", "selection"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "selection": {"$ref": "#/$defs/BudgetSelection"}
+      },
+      "additionalProperties": false
+    },
+    "RunRetrievalRequest": {
+      "type": "object",
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "requests_per_minute": {"type": "integer", "minimum": 1, "default": 350}
+      },
+      "additionalProperties": false
+    },
+    "SummarizeRetrievalRequest": {
+      "type": "object",
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "max_representative_chunks": {"type": "integer", "minimum": 1, "default": 30},
+        "group_by": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["theme", "company", "source_category"]
+          },
+          "default": ["theme", "company", "source_category"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "RunLabelingRequest": {
+      "type": "object",
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "model": {"type": "string", "default": "gpt-5.4-nano"},
+        "requests_per_minute": {"type": "integer", "minimum": 1, "default": 10000},
+        "max_concurrent_requests": {"type": "integer", "minimum": 1, "default": 40}
+      },
+      "additionalProperties": false
+    },
+    "LabeledEvidenceRecord": {
+      "type": "object",
+      "required": [
+        "sentence_id",
+        "company_name",
+        "text",
+        "motivation",
+        "label",
+        "revenue_generation",
+        "cost_efficiency",
+        "materiality"
+      ],
+      "properties": {
+        "sentence_id": {"type": "string"},
+        "company_name": {"type": "string"},
+        "text": {"type": "string"},
+        "motivation": {"type": "string"},
+        "label": {"type": "string"},
+        "revenue_generation": {"type": "string", "enum": ["Nan", "low", "medium", "high"]},
+        "cost_efficiency": {"type": "string", "enum": ["Nan", "low", "medium", "high"]},
+        "materiality": {"type": "string", "enum": ["unclear", "low", "medium", "high"]}
+      },
+      "additionalProperties": true
+    },
+    "RunCompanySummariesRequest": {
+      "type": "object",
+      "required": ["run_id"],
+      "properties": {
+        "run_id": {"type": "string"},
+        "model": {"type": "string", "default": "gpt-5.4-nano"},
+        "source": {
+          "type": "string",
+          "enum": ["labeled_sentences"],
+          "default": "labeled_sentences"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtifactManifestRecord": {
+      "type": "object",
+      "required": ["artifact_id", "run_id", "stage", "path", "content_type", "created_at"],
+      "properties": {
+        "artifact_id": {"type": "string"},
+        "run_id": {"type": "string"},
+        "stage": {"$ref": "#/$defs/Stage"},
+        "path": {"type": "string"},
+        "content_type": {"type": "string"},
+        "schema": {"type": "object"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "row_count": {"type": "integer", "minimum": 0},
+        "document_count": {"type": "integer", "minimum": 0},
+        "chunk_count": {"type": "integer", "minimum": 0},
+        "created_at": {"type": "string", "format": "date-time"},
+        "description": {"type": "string"},
+        "preview_available": {"type": "boolean", "default": false},
+        "queryable": {"type": "boolean", "default": false}
+      },
+      "additionalProperties": false
+    }
+  }
+}

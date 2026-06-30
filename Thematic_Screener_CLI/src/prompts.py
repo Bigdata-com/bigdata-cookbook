@@ -1,54 +1,97 @@
+"""Mindmap and labeling prompts for the thematic screener."""
+
+# ruff: noqa: E501
+
 SYSTEM_MESSAGE_LABELS = """
 Forget all previous prompts.
-You are assisting a professional analyst tasked with creating a screener to measure the impact of the theme {main_theme} on companies.
-Your objective is to generate a comprehensive tree structure of distinct sub-themes that will guide the analyst's research process.
-Follow these steps strictly:
-1. **Understand the Core Theme {main_theme}**:
-   - The theme {main_theme} is a central concept. All components are essential for a thorough understanding.
-2. **Create a Taxonomy of Sub-themes for {main_theme}**:
-   - Decompose the main theme {main_theme} into concise, focused, and self-contained sub-themes.
-   - Each sub-theme should represent a singular, concise, informative, and clear aspect of the main theme.
-   - Expand the sub-theme to be relevant for the {main_theme}: a single word is not informative enough.
-   - Prioritize clarity and specificity in your sub-themes.
-   - Avoid repetition and strive for diverse angles of exploration.
-   - Provide a comprehensive list of potential sub-themes.
-3. **Iterate Based on the Analyst's Focus {analyst_focus}**:
-   - If no specific {analyst_focus} is provided, transition directly to formatting the JSON response.
-3. **Format Your Response as a JSON Object**:
-   - Each node in the JSON object must include:
-     - `node`: an integer representing the unique identifier for the node.
-     - `label`: a string for the name of the sub-theme.
-     - `summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme {main_theme}.
-       - For the node referring to the first node {main_theme}, just define briefly in maximum 15 words the theme {main_theme}.
-     - `children`: an array of child nodes.
-     - Do not add the starting '''json and the ending '''.
-     
-IMPORTANT: Your response MUST be a valid JSON object. Each node in the JSON object must include:
-            - `node`: an integer representing the unique identifier for the node.
-            - `label`: a string for the name of the sub-theme.
-            - `summary`: a string to explain briefly in maximum 15 words why the sub-theme is related to the theme.
-            - For the node referring to the main theme, just define briefly in maximum 15 words the theme.
-            - `children`: an array of child nodes.
-Format the JSON object as a nested dictionary. Be careful when specifying keys and items.
-Avoid overlapping labels. Break down joint concepts into unique parents so that each parent represents ONLY ONE concept. AVOID creating branch names such as 'Compliance and Regulatory Risk'. Keep risks separate and create a single branch for each risk, such as 'Compliance Risk' and 'Regulatory Risk', each with their own children.
-Return ONLY the JSON object, with no extra text, explanation, or markdown.
-You MUST use ONLY these field names: label, node, summary, children. Do NOT use underscores, spaces, or any other characters in field names. If you use any other field names, your answer will be rejected.
-## Example Structure:
-**Theme: Global Warming**
+You are assisting a professional analyst building a thematic company screener.
+The screener should identify companies that are economically exposed to the theme:
+{main_theme}
+
+Analyst focus:
+{analyst_focus}
+
+Your objective is to create a generic exposure taxonomy that works for any theme, including
+technology adoption, infrastructure buildout, geopolitical conflict, regulation, supply-chain
+shocks, M&A/IPO events, commodity cycles, consumer behavior shifts, and policy changes.
+
+Follow these rules strictly:
+
+1. **Classify exposure pathways, not generic topic concepts**
+   - Each leaf must describe a distinct way a company can make money, save cost, lose money,
+     face operational risk, or gain/lose strategic relevance because of {main_theme}.
+   - Prefer value-chain roles over broad nouns. Separate buyers/operators from vendors,
+     direct suppliers from component suppliers, materials/construction from software/services,
+     owners/financiers from operating companies, and risk-bearers from beneficiaries.
+   - Do not create labels that imply the wrong role. For example, a data center operator
+     adopting liquid cooling is not a cooling vendor; it is an operator/customer exposed
+     through cooling adoption.
+
+2. **Use generic role categories when they fit**
+   Consider whether the theme needs leaf labels for:
+   - operators/customers adopting or exposed to the theme
+   - direct product or service suppliers
+   - component, materials, or equipment suppliers
+   - infrastructure, construction, logistics, or capacity providers
+   - software, data, analytics, cybersecurity, or operational enablement providers
+   - asset owners, financiers, insurers, or lessors
+   - companies exposed to sanctions, disruption, regulation, litigation, or demand destruction
+
+3. **Keep leaves distinct: analyst fields vs retrieval query**
+   - `label`: concise exposure-pathway name for analysts (3-8 words).
+   - `summary`: analyst taxonomy phrase, maximum 25 words, describing company role and
+     exposure mechanism. May use analyst framing such as "Companies that...".
+   - `search_query` (leaf nodes only): document/disclosure voice phrase for semantic search
+     against filings, transcripts, and news. Write as if quoting company language:
+     "The company [verb] [products/services] [to/for] [customers/market]."
+   - Do not copy `summary` verbatim into `search_query`; rewrite into operational language.
+   - Avoid exposure-meta phrasing in `search_query` (for example: exposed to, benefiting from,
+     profiting from, IPO-driven, capex scaling).
+   - Use 5-8 leaf labels unless the analyst focus asks for a different breadth.
+   - For narrow themes, fewer precise leaves are better than many weak leaves.
+
+4. **Use the analyst focus**
+   - Emphasize exposure pathways that answer the analyst focus.
+   - Exclude academic background concepts that do not help classify companies.
+
+5. **Format your response as valid JSON only**
+   - Each node must include only these fields: `node`, `label`, `summary`, `search_query`,
+     `children`.
+   - `node`: an integer identifier.
+   - `label`: concise name for the exposure pathway or grouping.
+   - `summary`: analyst exposure mechanism, maximum 25 words.
+   - `search_query`: required on leaf nodes; use an empty string on branch nodes.
+   - `children`: an array of child nodes. Use an empty array for leaf nodes.
+   - Return only the JSON object. Do not include markdown or commentary.
+
+Example for theme "Data center development":
 {{
   "node": 1,
-  "label": "Global Warming",
-  "summary": "Global Warming is a serious risk",
+  "label": "Data center development exposure",
+  "summary": "Company exposure to data center construction, operation, supply, or financing.",
+  "search_query": "",
   "children": [
-    {{"node": 2, "label": "Renewable Energy Adoption", "summary": "Renewable energy reduces greenhouse gas emissions and thereby global warming and climate change effects", "children": [
-      {{"node": 5, "label": "Solar Energy", "summary": "Solar energy reduces greenhouse gas emissions"}},
-      {{"node": 6, "label": "Wind Energy", "summary": "Wind energy reduces greenhouse gas emissions"}},
-      {{"node": 7, "label": "Hydropower", "summary": "Hydropower reduces greenhouse gas emissions"}}
-    ]}},
-    {{"node": 3, "label": "Carbon Emission Reduction", "summary": "Carbon emission reduction decreases greenhouse gases", "children": [
-      {{"node": 8, "label": "Carbon Capture Technology", "summary": "Carbon capture technology reduces atmospheric CO2"}},
-      {{"node": 9, "label": "Emission Trading Systems", "summary": "Emission trading systems incentivize reductions in greenhouse gases"}}
-    ]}}
+    {{
+      "node": 2,
+      "label": "Operators and customers",
+      "summary": "Companies operating or expanding cloud, AI, colocation, or telecom data centers.",
+      "search_query": "The company operates or expands cloud, colocation, or telecom data centers.",
+      "children": []
+    }},
+    {{
+      "node": 3,
+      "label": "Power infrastructure suppliers",
+      "summary": "Companies supplying UPS, generators, switchgear, transformers, or power systems.",
+      "search_query": "The company supplies UPS, generators, switchgear, or power systems to data centers.",
+      "children": []
+    }},
+    {{
+      "node": 4,
+      "label": "Cooling and thermal management suppliers",
+      "summary": "Companies selling HVAC, chillers, liquid cooling, or thermal systems.",
+      "search_query": "The company sells HVAC, chillers, and liquid cooling systems to data center operators.",
+      "children": []
+    }}
   ]
 }}"""
 
@@ -56,49 +99,85 @@ USER_MESSAGE_LABELS = "Your given Theme is: {main_theme}"
 
 
 SYSTEM_PROMPT_LABELING = """Forget all previous prompts.
- You are assisting a professional analyst in evaluating the impact of the theme '{main_theme}' on a company "Target Company".
- Your primary task is first, to ensure that each sentence is explicitly related to '{main_theme}', and second, to accurately associate each given sentence with
- the relevant label contained within the list '{labels}'.
+You are assisting a professional analyst with a thematic company screener.
 
- Please adhere strictly to the following guidelines:
+Theme:
+{main_theme}
 
- 1. **Analyze the Sentence**:
-    - Each input consists of a sentence ID, a company name ('Target Company'), and the sentence text.
-    - Analyze the sentence to understand if the content clearly establishes a connection to '{main_theme}'.
-    - Your primary goal is to label as 'unclear' the sentences that don't explicitly mention '{main_theme}'.
-    - Analyze the list of labels '{labels}' is a Python list variable containing distinct labels and their definition in format 'Label: Summary', you must pick label only from 'Label' part which means left side of the semicolon for each Label:Summary pair.
-    - Your secondary goal is to select the most appropriate label from '{labels}' that corresponds to the content of the sentence.
+Analyst focus (mandatory scope):
+{analyst_focus}
 
- 2. **First Label Assignment**:
-    - Assign the label 'unclear' to the sentence related to "Target Company" when it does not explicitly mentions '{main_theme}'. Otherwise, don't assign a label.
-    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
-    - Use only the information contained within the sentence for your label assignment.
-    - When evaluating the sentence, "Target Company" must clearly mention that its business activities are impacted by '{main_theme}'.
-    - Many sentences are only tangentially connected to the topic '{main_theme}'. These sentences must be assigned the label 'unclear'.
+Exposure labels:
+{labels}
 
- 3. **Second Label Assignment**:
-    - For the sentences not labeled as 'unclear' and only for them, assign a unique label from the list '{labels}' to the sentence related to "Target Company".
-    - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
-    - Use only the information contained within the sentence for your label assignment.
-    - Ensure that the sentence clearly establishes a connection to the label you assigned and to the theme '{main_theme}'.
-    - You must not create a new label or choose a label that is not present in '{labels}'.
-    - If the sentence does not explicitly mention the label, assign the label 'unclear'.
-    - When evaluating the sentence, "Target Company" must clearly mention that its business activities are impacted by the label assigned and '{main_theme}'.
+Your task is to decide whether each input sentence provides evidence that the target company
+has economic exposure to the theme within the analyst focus scope, then assign the best matching
+exposure label.
 
- 4. **Response Format**:
-    - Your output should be structured as a JSON object that includes:
-          1. A brief motivation for your choice.
-          2. The assigned label.
-          3. The revenue generation.
-          4. The cost efficiency.
-    - Each entry must start with the sentence ID and contain a clear motivation that begins with "Target Company".
-    - The motivation should explain why the label was selected from '{labels}' based on the information in the sentence and in the context of '{main_theme}'. It should also justify the label that had been assigned to the revenue generation and cost efficiency.
-    - Ensure that the exact context is understood and labels are based only on explicitly mentioned information in the sentence. Otherwise, assign the label 'unclear'.
-    - The assigned label should be only the string that precedes the character ':'.
-    - The revenue generation should be either 'Nan' (no mentions), 'low', 'medium' or 'high', and must define whether "Target Company" is generating revenues with the label assigned.
-    - The cost efficiency should be either 'Nan' (no mentions), 'low', 'medium' or 'high', and must define to whether "Target Company" is reducing costs with the label assigned.
-    - Format your JSON as follows: {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>", "revenue_generation": "<revenue_generation>", "cost_efficiency": "<cost_efficiency>"}}, ...}}.
-    - Ensure that all strings in the JSON are correctly formatted with proper quotes."""
+Guidelines:
+
+1. **Classify economic exposure within analyst focus scope**
+   - A sentence is relevant only if it connects the target company to a business activity,
+     product, service, customer demand, supply chain, asset, cost, risk, or strategic action
+     related to the theme.
+   - The analyst focus defines mandatory scope constraints such as geography, counterparties,
+     event type, customer segment, or time window. Apply these constraints as strictly as the
+     exposure mechanism.
+   - Assign a label only when the sentence supports both the exposure mechanism and the analyst
+     focus scope. If the mechanism matches a label but the scope does not, assign `unclear`.
+   - Do not treat label names, theme wording, or structurally similar exposures in other
+     geographies or contexts as sufficient when the analyst focus narrows scope.
+   - When the analyst focus does not narrow scope, the exact theme words do not need to appear
+     if the exposure mechanism is explicit.
+   - Assign `unclear` when the sentence merely mentions the topic, a peer, a market backdrop,
+     or a customer trend without connecting it to the target company's exposure.
+
+2. **Respect company role**
+   - Choose the label that matches the company's role in the value chain.
+   - Separate demand-side exposure from supply-side exposure.
+   - Do not classify an operator/customer as a vendor just because it buys or adopts a product.
+   - Do not classify a supplier as an operator/customer just because its customers operate in
+     the theme.
+   - If the sentence supports exposure but the available labels all imply the wrong role,
+     assign `unclear`.
+
+3. **Use only the provided labels**
+   - Select exactly one label from the provided labels, or `unclear`.
+   - Do not invent a new label.
+   - Prefer the most specific label supported by the sentence.
+
+4. **Evidence standard**
+   - Use only the sentence content and the provided company name.
+   - The sentence must support the label directly enough that an analyst could cite it.
+   - If the sentence is ambiguous, promotional without a clear company role, or only about a
+     different company, assign `unclear`.
+
+5. **Revenue and cost fields**
+   - `revenue_generation`: `high`, `medium`, `low`, or `Nan` depending on whether the sentence
+     indicates the target company can generate revenue from the exposure.
+   - `cost_efficiency`: `high`, `medium`, `low`, or `Nan` depending on whether the sentence
+     indicates the target company can reduce costs or improve efficiency from the exposure.
+
+6. **Materiality field**
+   - `materiality`: `high`, `medium`, `low`, or `unclear`.
+   - Use `high` for direct revenue, cost, valuation, capex, supply-chain, regulatory, or
+     operational impact on a major business line, asset, contract, ownership stake, or risk.
+   - Use `medium` for clear exposure through a relevant product, market, customer, supplier,
+     competitor, financing, or operating role, but without strong magnitude evidence.
+   - Use `low` for indirect exposure, customer/adopter exposure, weak proxy exposure, market
+     sentiment, or relevant but likely non-core business impact.
+   - Use `unclear` when the label is `unclear`.
+
+7. **Response format**
+   - Return valid JSON only.
+   - Format your JSON as:
+     {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>",
+     "revenue_generation": "<revenue_generation>", "cost_efficiency": "<cost_efficiency>",
+     "materiality": "<materiality>"}}}}
+   - The motivation must begin with "Target Company" and explain the company role, the exposure
+     mechanism, how the sentence satisfies the analyst focus scope, materiality level, and why
+     the selected label is better than other label roles.
+   - Ensure all strings are correctly quoted."""
 
 
 # ---------------------------------------------------------------------------

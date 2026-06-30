@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 CONFIG_FILENAME = "config.json"
 THEMES_FILENAME = "themes.txt"
-TAXONOMY_FILENAME = "taxonomy.json"
+SEARCH_QUERIES_FILENAME = "search_queries.txt"
+TAXONOMY_TREE_FILENAME = "taxonomy_tree.json"
 PLANS_DIRNAME = "plans"
 RESULTS_DIRNAME = "results"
 RESULTS_FILENAME = "results.json"
@@ -28,7 +29,7 @@ REPORT_EXCEL_FILENAME = "report.xlsx"
 
 def default_run_name() -> str:
     """Return a UTC timestamp suitable as a unique run directory name."""
-    return datetime.now(timezone.utc).strftime("run_%Y%m%d_%H%M%S")
+    return datetime.now(UTC).strftime("run_%Y%m%d_%H%M%S")
 
 
 @dataclass(frozen=True)
@@ -65,8 +66,17 @@ class RunContext:
         return self.run_dir / THEMES_FILENAME
 
     @property
+    def search_queries_path(self) -> Path:
+        return self.run_dir / SEARCH_QUERIES_FILENAME
+
+    @property
+    def taxonomy_tree_path(self) -> Path:
+        return self.run_dir / TAXONOMY_TREE_FILENAME
+
+    @property
     def taxonomy_path(self) -> Path:
-        return self.run_dir / TAXONOMY_FILENAME
+        """Alias for ``taxonomy_tree_path`` (legacy name)."""
+        return self.taxonomy_tree_path
 
     @property
     def report_json_path(self) -> Path:
@@ -126,7 +136,7 @@ class RunContext:
             json.dump(merged, handle, indent=2, sort_keys=True)
 
     def read_themes(self) -> list[str]:
-        """Read one label per non-empty line from ``themes.txt``."""
+        """Read one exposure label per non-empty line from ``themes.txt``."""
         if not self.themes_path.exists():
             raise FileNotFoundError(
                 f"themes file not found at {self.themes_path}; run the 'generate-labels' step first"
@@ -135,21 +145,53 @@ class RunContext:
         return [line.strip() for line in lines if line.strip()]
 
     def write_themes(self, labels: list[str]) -> None:
-        """Write labels to ``themes.txt`` (one per line)."""
+        """Write exposure labels to ``themes.txt`` (one per line)."""
         self.ensure_run_dir()
         self.themes_path.write_text("\n".join(labels) + "\n", encoding="utf-8")
 
     def write_taxonomy(self, taxonomy: dict[str, Any]) -> None:
-        """Persist the full taxonomy tree to ``taxonomy.json``."""
+        """Persist the full taxonomy tree to ``taxonomy_tree.json``."""
         self.ensure_run_dir()
-        with self.taxonomy_path.open("w", encoding="utf-8") as handle:
+        with self.taxonomy_tree_path.open("w", encoding="utf-8") as handle:
             json.dump(taxonomy, handle, indent=2)
 
     def read_taxonomy(self) -> dict[str, Any]:
-        """Read the persisted taxonomy tree from ``taxonomy.json``."""
-        if not self.taxonomy_path.exists():
+        """Read the persisted taxonomy tree from ``taxonomy_tree.json``."""
+        if not self.taxonomy_tree_path.exists():
             raise FileNotFoundError(
-                f"taxonomy file not found at {self.taxonomy_path}; run the 'generate-labels' step first"
+                f"taxonomy file not found at {self.taxonomy_tree_path}; "
+                "run the 'generate-labels' step first"
             )
-        with self.taxonomy_path.open(encoding="utf-8") as handle:
+        with self.taxonomy_tree_path.open(encoding="utf-8") as handle:
             return json.load(handle)
+
+    def read_search_queries(self) -> list[str]:
+        """Read Bigdata search query text aligned with ``themes.txt``."""
+        labels = self.read_themes()
+        if self.search_queries_path.exists():
+            lines = self.search_queries_path.read_text(encoding="utf-8").splitlines()
+            queries = [line.strip() for line in lines if line.strip()]
+            if len(queries) != len(labels):
+                raise ValueError(
+                    "search_queries.txt line count "
+                    f"({len(queries)}) does not match themes.txt ({len(labels)})"
+                )
+            return queries
+
+        if self.taxonomy_tree_path.exists():
+            from src.helpers import get_leaf_search_queries
+            from src.screener import Node
+
+            root = Node.model_validate_json(self.taxonomy_tree_path.read_text(encoding="utf-8"))
+            queries = get_leaf_search_queries(root)
+            if len(queries) == len(labels):
+                return queries
+
+        from src.search_query import normalize_summary_to_search_query
+
+        return [normalize_summary_to_search_query(label) for label in labels]
+
+    def write_search_queries(self, search_queries: list[str]) -> None:
+        """Write retrieval queries to ``search_queries.txt`` (one per line)."""
+        self.ensure_run_dir()
+        self.search_queries_path.write_text("\n".join(search_queries) + "\n", encoding="utf-8")

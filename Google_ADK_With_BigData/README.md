@@ -17,7 +17,7 @@ Together, these pieces show how one ADK agent can use SQL, semantic retrieval ov
 | **Bigdata.com API key** | **Required** for MCP. Requests go to **`https://mcp.bigdata.com/`** with the **`x-api-key`** header. Obtain credentials from **[Bigdata.com](https://bigdata.com)**. |
 | **Google Gemini API key** | **Required** for the chat model and for embeddings used with local semantic search. See **[Google AI Studio](https://aistudio.google.com/apikey)** (or your organization’s Gemini setup). |
 | **Python 3.11+** | Matches current ADK and dependency stacks. |
-| **[uv](https://docs.astral.sh/uv/)** | Recommended for creating the virtual environment and running commands reproducibly. |
+| **[uv](https://docs.astral.sh/uv/)** | Recommended. A `requirements.txt` is also provided for use with pip. |
 
 ---
 
@@ -25,7 +25,13 @@ Together, these pieces show how one ADK agent can use SQL, semantic retrieval ov
 
 ```bash
 cd Google_ADK_With_BigData
+
+# with uv (recommended)
 uv sync
+
+# with pip
+pip install -r requirements.txt
+
 cp financial_agent/.env.example financial_agent/.env
 ```
 

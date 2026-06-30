@@ -118,13 +118,16 @@ Set `LANGSMITH_API_KEY` and optionally configure the project name in your enviro
 
 Follow these steps to run the notebooks locally. No sample code is required in this section—each notebook is self-contained.
 
-### 1. Environment setup with uv
+### 1. Environment setup
 
-From the project root, create a virtual environment and install dependencies using [uv](https://docs.astral.sh/uv/):
+From the project root, create a virtual environment and install dependencies:
 
 ```bash
-# Create venv and install dependencies (uses pyproject.toml and uv.lock)
+# with uv (recommended)
 uv sync
+
+# with pip
+pip install -r requirements.txt
 ```
 
 For the **MCP notebook** (`agent_to_bigdata_mcp.ipynb`), `langchain-mcp-adapters` is in `pyproject.toml` and will be installed by the above. Ensure your Python version matches the project (e.g. `>=3.13` per `pyproject.toml`; uv will use `.python-version` if present).

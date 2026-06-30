@@ -16,8 +16,17 @@
 # Virtual environments (uv / local tooling)
 .venv/
 
+# Python build artifacts
+*.egg-info/
+
 # Google ADK / adk web local session store (anywhere in the repo)
 **/.adk/
 
 # Agent_To_BigData ADK sample — regenerated SQLite (no local .gitignore there)
 Agent_To_BigData/my_agent/data/
+
+# Runs
+*/runs
+
+**/uv.lock
+*/internal 

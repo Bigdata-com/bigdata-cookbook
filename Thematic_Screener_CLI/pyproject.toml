@@ -1,0 +1,39 @@
+[project]
+name = "thematic-screener-cli"
+version = "0.1.0"
+description = "Thematic screener CLI and MCP server"
+requires-python = ">=3.11"
+dependencies = [
+    "bigdata-smart-batching>=1.3.1,<2.0.0",
+    "mcp>=1.28.0",
+    "openai>=2.0.0,<3.0.0",
+    "pandas>=2.0.0",
+    "pydantic>=2.0.0,<3.0.0",
+    "python-dotenv>=1.0.0",
+    "tqdm>=4.66.0,<5.0.0",
+]
+
+[project.scripts]
+screener = "src.cli:main"
+thematic-screener-mcp = "src.mcp_server:main"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+    "ty",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "W"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
