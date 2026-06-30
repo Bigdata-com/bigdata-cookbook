@@ -24,6 +24,7 @@ from src.search_query import has_exposure_meta_language
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RUNS_ROOT = PROJECT_ROOT / "runs"
 DEFAULT_GLOBAL_UNIVERSE = PROJECT_ROOT / "global_all_caps.csv"
+DEFAULT_EUROPE_ML_CAPS_UNIVERSE = PROJECT_ROOT / "europe_ml_caps.csv"
 SAMPLE_XNAS_UNIVERSE = PROJECT_ROOT / "XNAS_companies.csv"
 
 RETRIEVAL_CHUNKS_PER_COST_UNIT = 10
@@ -410,6 +411,8 @@ def _universe_path_for_mode(universe: dict[str, Any]) -> Path:
     mode = str(universe.get("mode", "default_global_all_caps"))
     if mode == "default_global_all_caps":
         return DEFAULT_GLOBAL_UNIVERSE
+    if mode == "default_europe_ml_caps":
+        return DEFAULT_EUROPE_ML_CAPS_UNIVERSE
     if mode == "sample_xnas":
         return SAMPLE_XNAS_UNIVERSE
     if mode in {"csv_path", "uploaded_csv"}:

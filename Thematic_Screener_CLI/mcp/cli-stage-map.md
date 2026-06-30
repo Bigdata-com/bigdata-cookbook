@@ -19,7 +19,7 @@ The CLI currently exposes:
 | MCP stage | MCP tool | Existing implementation anchor | Notes |
 | --- | --- | --- | --- |
 | Intent capture | `create_run` | `RunContext.create`, `config.json` | Add run brief fields without changing CLI behavior. MCP default should be `global_all_caps.csv`; CLI smoke-test default can remain `XNAS_companies.csv`. |
-| Universe validation | `validate_universe` | `screener.load_universe` plus new normalization layer | Accept `global_all_caps.csv`, `XNAS_companies.csv`, CSV paths/uploads, or inline `RP_ENTITY_ID` values. Normalize aliases before planning. |
+| Universe validation | `validate_universe` | `screener.load_universe` plus new normalization layer | Accept `global_all_caps.csv`, `europe_ml_caps.csv`, `XNAS_companies.csv`, CSV paths/uploads, or inline `RP_ENTITY_ID` values. Normalize aliases before planning. |
 | Mindmap creation | `generate_mindmap` | `screener.generate_labels` | Persists taxonomy tree, leaf labels (`themes.txt`), and search queries (`search_queries.txt`). |
 | Mindmap validation | `validate_mindmap` | New validation layer | Validation is product logic around the generated taxonomy. |
 | Mindmap revision | `update_mindmap` | New revision layer | Can update `taxonomy_tree.json` and regenerate `themes.txt` and `search_queries.txt`. |

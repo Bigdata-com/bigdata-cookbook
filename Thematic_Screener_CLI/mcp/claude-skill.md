@@ -28,6 +28,22 @@ Collect or infer:
 
 If important inputs are missing, propose reasonable defaults and ask only for the critical decision.
 
+## Universe Selection
+
+Built-in universe modes (use with `create_run` / `validate_universe`):
+
+| Mode | File | Use when |
+|------|------|----------|
+| `default_global_all_caps` | `global_all_caps.csv` | Default production screen (~10k companies) |
+| `default_europe_ml_caps` | `europe_ml_caps.csv` | European mid/large caps (~646 companies) |
+| `sample_xnas` | `XNAS_companies.csv` | Small smoke tests |
+
+Other modes: `csv_path` (custom CSV path), `uploaded_csv`, `inline_entity_ids`.
+
+After `create_run`, call `validate_universe` and report row count plus a short sample before planning.
+If the user asks for Europe-only or EU mid/large caps, prefer `default_europe_ml_caps` over filtering
+global all-caps manually.
+
 Call `create_run`, then confirm universe and dates if non-default.
 
 Example:
@@ -36,6 +52,14 @@ Example:
 I will screen for "AI disruption in product development" over the default global all-caps
 universe from 2025-06-01 to 2026-06-09. I will create a mindmap first and pause for your
 confirmation before planning or spending retrieval budget.
+```
+
+European mid/large-cap example:
+
+```text
+I will screen European mid/large caps using default_europe_ml_caps (646 companies from
+europe_ml_caps.csv) from 2025-06-01 to 2026-06-09. I will validate the universe, create a
+mindmap, and pause for your confirmation before planning or spending retrieval budget.
 ```
 
 ## Stage 2: Mindmap Creation — STOP FOR USER

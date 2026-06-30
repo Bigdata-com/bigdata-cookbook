@@ -28,6 +28,18 @@ The MCP should accept multiple universe input modes:
 
 ```json
 {
+  "mode": "default_europe_ml_caps"
+}
+```
+
+```json
+{
+  "mode": "sample_xnas"
+}
+```
+
+```json
+{
   "mode": "csv_path",
   "path": "/path/to/companies.csv"
 }
