@@ -19,6 +19,11 @@ logging.basicConfig(level=logging.WARNING, stream=sys.stderr, force=True)
 mcp = FastMCP(SERVER_NAME)
 
 
+def _normalize_tool_universe(universe: dict[str, Any] | str | None) -> dict[str, Any] | None:
+    """Coerce MCP client universe payloads before workflow handling."""
+    return mcp_workflow._coerce_universe_input(universe)
+
+
 def _run_workflow(func: Callable[..., dict[str, Any]], **kwargs: Any) -> dict[str, Any]:
     """Keep third-party progress prints off MCP stdout."""
     with redirect_stdout(sys.stderr):
@@ -30,7 +35,7 @@ def create_run(
     main_theme: str,
     analyst_focus: str,
     run_id: str | None = None,
-    universe: dict[str, Any] | None = None,
+    universe: dict[str, Any] | str | None = None,
     start_date: str = mcp_workflow.screener.DEFAULT_START_DATE,
     end_date: str = mcp_workflow.screener.DEFAULT_END_DATE,
     output_goal: str | None = None,
@@ -41,7 +46,7 @@ def create_run(
         main_theme=main_theme,
         analyst_focus=analyst_focus,
         run_id=run_id,
-        universe=universe,
+        universe=_normalize_tool_universe(universe),
         start_date=start_date,
         end_date=end_date,
         output_goal=output_goal,
@@ -51,10 +56,14 @@ def create_run(
 @mcp.tool()
 def validate_universe(
     run_id: str,
-    universe: dict[str, Any] | None = None,
+    universe: dict[str, Any] | str | None = None,
 ) -> dict[str, Any]:
     """Validate and normalize a universe CSV or inline RP entity ID list."""
-    return _run_workflow(mcp_workflow.validate_universe, run_id=run_id, universe=universe)
+    return _run_workflow(
+        mcp_workflow.validate_universe,
+        run_id=run_id,
+        universe=_normalize_tool_universe(universe),
+    )
 
 
 @mcp.tool()

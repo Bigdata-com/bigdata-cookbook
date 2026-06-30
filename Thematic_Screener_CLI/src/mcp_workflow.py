@@ -17,6 +17,8 @@ from openai import OpenAI
 
 from src import screener
 from src.prompts import SYSTEM_MESSAGE_LABELS, SYSTEM_PROMPT_LABELING, USER_MESSAGE_LABELS
+from src.modes import AnalysisMode, get_profile
+from src.retrieval_budget import DEFAULT_RETRIEVAL_PRESETS
 from src.run_context import RunContext
 from src.screener import _company_evidence_block, _company_summary_system_prompt
 from src.search_query import has_exposure_meta_language
@@ -70,10 +72,13 @@ SUMMARY_SECONDS_PER_1K_INPUT_CHARS = 0.15
 COST_PER_LABELING_REQUEST_USD = 0.001
 COST_PER_SUMMARY_REQUEST_USD = 0.002
 AVERAGE_OPENAI_REQUEST_SECONDS = AVERAGE_LABELING_REQUEST_SECONDS
-DEFAULT_PRESETS: tuple[dict[str, float | str], ...] = (
-    {"name": "quick_scan", "chunk_percentage": 0.005},
-    {"name": "balanced", "chunk_percentage": 0.02},
-    {"name": "deep_dive", "chunk_percentage": 0.05},
+DEFAULT_PRESETS = DEFAULT_RETRIEVAL_PRESETS
+BUILTIN_UNIVERSE_MODES: frozenset[str] = frozenset(
+    {
+        "default_global_all_caps",
+        "default_europe_ml_caps",
+        "sample_xnas",
+    }
 )
 
 UNIVERSE_FILENAME = "universe.csv"
@@ -88,7 +93,7 @@ EVIDENCE_DIGEST_FILENAME = "evidence_digest.json"
 EVIDENCE_PREVIEW_FILENAME = "evidence_preview.json"
 ARTIFACT_MANIFEST_FILENAME = "artifact_manifest.json"
 
-ENTITY_ID_ALIASES = ("RP_ENTITY_ID", screener.UNIVERSE_ID_COLUMN)
+ENTITY_ID_ALIASES = screener.UNIVERSE_ID_ALIASES
 OPTIONAL_NAME_ALIASES = (screener.UNIVERSE_NAME_COLUMN, "NAME", "COMPANY")
 DEFAULT_SEARCH_CATEGORY: dict[str, Any] = screener.DEFAULT_SEARCH_CATEGORY
 TEXT_PREVIEW_CHARS = 12_000
@@ -407,6 +412,87 @@ def _refresh_artifact_manifest(context: RunContext) -> list[dict[str, Any]]:
     return records
 
 
+def _resolve_universe_csv_path(path_value: str | Path) -> Path:
+    """Resolve a universe CSV path, checking the project root for relative paths."""
+    path = Path(path_value).expanduser()
+    if path.is_file():
+        return path
+    project_relative = PROJECT_ROOT / path
+    if project_relative.is_file():
+        return project_relative
+    return path
+
+
+def _coerce_universe_input(universe: Any) -> dict[str, Any] | None:
+    """Normalize MCP/CLI universe payloads into a canonical dict.
+
+    Claude and other MCP clients often send:
+    - a bare CSV path string instead of ``{"mode": "csv_path", "path": ...}``
+    - a JSON string instead of a nested object
+    - a dict with ``path`` or ``entity_ids`` but no ``mode`` (defaults wrongly fired)
+    """
+    if universe is None:
+        return None
+
+    if isinstance(universe, str):
+        stripped = universe.strip()
+        if not stripped:
+            return None
+        if stripped.startswith("{"):
+            try:
+                parsed = json.loads(stripped)
+            except json.JSONDecodeError as exc:
+                raise McpWorkflowError(f"universe JSON string is invalid: {exc}") from exc
+            if not isinstance(parsed, dict):
+                raise McpWorkflowError("universe JSON string must decode to an object")
+            return _coerce_universe_input(parsed)
+        if stripped in BUILTIN_UNIVERSE_MODES:
+            return {"mode": stripped}
+        return {"mode": "csv_path", "path": str(_resolve_universe_csv_path(stripped))}
+
+    if not isinstance(universe, dict):
+        raise McpWorkflowError(
+            f"universe must be an object, CSV path string, or null; got {type(universe).__name__}"
+        )
+
+    normalized: dict[str, Any] = dict(universe)
+    mode = normalized.get("mode")
+    if mode is not None:
+        normalized["mode"] = str(mode).strip()
+
+    if not normalized.get("mode"):
+        if normalized.get("entity_ids"):
+            normalized["mode"] = "inline_entity_ids"
+        elif normalized.get("upload_id"):
+            normalized["mode"] = "uploaded_csv"
+        elif normalized.get("path"):
+            normalized["mode"] = "csv_path"
+
+    if normalized.get("mode") in {"csv_path", "uploaded_csv"}:
+        path_value = normalized.get("path") or normalized.get("upload_id")
+        if path_value:
+            normalized["path"] = str(_resolve_universe_csv_path(str(path_value)))
+
+    return normalized
+
+
+def _selected_universe(
+    universe: Any,
+    config: dict[str, Any],
+    *,
+    default: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Pick the universe payload, coercing shapes and falling back to config/default."""
+    fallback = default or {"mode": "default_global_all_caps"}
+    coerced = _coerce_universe_input(universe)
+    if coerced is not None:
+        return coerced
+    stored = _coerce_universe_input(config.get("universe_input"))
+    if stored is not None:
+        return stored
+    return fallback
+
+
 def _universe_path_for_mode(universe: dict[str, Any]) -> Path:
     mode = str(universe.get("mode", "default_global_all_caps"))
     if mode == "default_global_all_caps":
@@ -419,7 +505,7 @@ def _universe_path_for_mode(universe: dict[str, Any]) -> Path:
         path_value = universe.get("path") or universe.get("upload_id")
         if not path_value:
             raise McpWorkflowError(f"Universe mode {mode} requires a path or upload_id")
-        return Path(str(path_value)).expanduser()
+        return _resolve_universe_csv_path(str(path_value))
     raise McpWorkflowError(f"Universe mode {mode} does not resolve to a CSV path")
 
 
@@ -506,9 +592,7 @@ def validate_universe(run_id: str, universe: dict[str, Any] | None = None) -> di
     """Validate and persist a normalized universe for a run."""
     context = _context(run_id)
     config = context.load_config()
-    selected_universe = (
-        universe or config.get("universe_input") or {"mode": "default_global_all_caps"}
-    )
+    selected_universe = _selected_universe(universe, config)
     universe_df, manifest = _normalize_universe_dataframe(selected_universe)
 
     universe_path = context.run_dir / UNIVERSE_FILENAME
@@ -550,7 +634,7 @@ def create_run(
 ) -> dict[str, Any]:
     """Create a run and validate its initial universe."""
     context = _context(run_id)
-    selected_universe = universe or {"mode": "default_global_all_caps"}
+    selected_universe = _selected_universe(universe, config={})
     context.save_config(
         {
             "main_theme": main_theme,
@@ -1304,12 +1388,30 @@ def _save_labeling_progress(context: RunContext, progress: dict[str, Any]) -> No
     _write_json(_labeling_progress_path(context), progress)
 
 
+def _rerank_threshold_from_config(config: dict[str, Any]) -> float:
+    """Read rerank threshold from run config, matching CLI search/label behavior."""
+    return float(config.get("rerank_threshold", screener.DEFAULT_RERANK_THRESHOLD))
+
+
+def _taxonomy_root_from_context(context: RunContext) -> screener.Node | None:
+    if not context.taxonomy_tree_path.exists():
+        return None
+    return screener.Node.model_validate_json(
+        context.taxonomy_tree_path.read_text(encoding="utf-8")
+    )
+
+
 def _extract_labeling_sentences(context: RunContext) -> list[dict[str, Any]]:
     config = context.load_config()
     results = _load_results(context)
     universe_path = Path(str(config.get("universe", context.run_dir / UNIVERSE_FILENAME)))
     universe_df = screener.load_universe(universe_path)
-    sentences = screener.extract_sentences(results, universe_df)
+    rerank_threshold = _rerank_threshold_from_config(config)
+    sentences = screener.extract_sentences(
+        results,
+        universe_df,
+        rerank_threshold=rerank_threshold,
+    )
     if not sentences:
         raise McpWorkflowError("No sentences found in retrieval results")
     return sentences
@@ -1430,7 +1532,12 @@ def _load_enrichment_inputs(context: RunContext) -> dict[str, Any]:
     results = _load_results(context)
     universe_path = Path(str(config.get("universe", context.run_dir / UNIVERSE_FILENAME)))
     universe_df = screener.load_universe(universe_path)
-    sentences = screener.extract_sentences(results, universe_df)
+    rerank_threshold = _rerank_threshold_from_config(config)
+    sentences = screener.extract_sentences(
+        results,
+        universe_df,
+        rerank_threshold=rerank_threshold,
+    )
     main_theme = str(config.get("main_theme", screener.DEFAULT_MAIN_THEME))
     analyst_focus = str(config.get("analyst_focus", screener.DEFAULT_ANALYST_FOCUS))
     labels = context.read_themes()
@@ -2119,12 +2226,16 @@ def _execute_labeling(
     batch = sentences[next_index : next_index + resolved_batch_size]
     batch_metrics: dict[str, float | int | None] = {}
     if batch:
+        mode = str(config.get("mode", AnalysisMode.THEMATIC_SCREENER.value))
+        profile = get_profile(mode)
         batch_responses = screener.label_sentences(
             sentences=batch,
             main_theme=str(config.get("main_theme", screener.DEFAULT_MAIN_THEME)),
             analyst_focus=str(config.get("analyst_focus", screener.DEFAULT_ANALYST_FOCUS)),
             labels=context.read_themes(),
             model=model,
+            profile=profile,
+            taxonomy_root=_taxonomy_root_from_context(context),
             requests_per_minute=requests_per_minute,
             max_concurrent_requests=max_concurrent_requests,
             metrics_out=batch_metrics,

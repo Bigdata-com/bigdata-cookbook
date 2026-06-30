@@ -90,6 +90,7 @@ uv run python -m src.cli summarize-plans --run-name demo
 | 5 | `export-json` | Export results as JSON (uploadable to the Risk Analyzer app) |
 | 6 | `export-excel` | Export results as a multi-sheet Excel workbook |
 | — | `summarize-plans` | Print per-plan chunk counts and total (no API calls) |
+| — | `bigdata-approx-cost` | Run labels + plans, then print chunk totals and dollar presets (no retrieval) |
 
 Use `run-all` to execute steps 1-6 in sequence within one isolated run.
 
@@ -105,7 +106,7 @@ Plans use `XNAS_companies.csv` by default. The file must contain:
 
 | Column | Description |
 |--------|-------------|
-| `RP_COMPANY_ID` | Company identifier passed to Bigdata search |
+| `RP_ENTITY_ID` | Company identifier passed to Bigdata search |
 | `COMPANY_NAME` | Used to resolve company names from search results |
 
 For production runs, pass a larger universe CSV with `--universe`. The cookbook repo includes `Batch_Search_API/global_all_caps.csv` (~10k companies) with the same required columns.
@@ -183,6 +184,35 @@ Prints per-plan chunk counts and a total to stdout. Does not call any APIs (no `
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--plans-dir` | `runs/<run_name>/plans` | Path to a plans folder |
+
+### `bigdata-approx-cost` — estimate Bigdata retrieval cost
+
+Runs `generate-labels` and `plans`, then prints expected chunk volume and retrieval cost presets. Does **not** retrieve documents.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--main-theme` | mode default | Main theme or risk |
+| `--analyst-focus` | mode default | Analyst focus for the taxonomy |
+| `--universe` | `XNAS_companies.csv` | Company universe CSV |
+| `--start-date` | `2025-06-01` | Search window start |
+| `--end-date` | `2026-06-09` | Search window end |
+| `--mode` | `thematic-screener` | `thematic-screener` or `risk-analyzer` |
+
+Pricing: **$0.015 per 10 chunks** retrieved (`estimated_cost_usd = selected_chunks / 10 × 0.015`).
+
+Presets printed: `quick_scan` (0.5%), `balanced` (2%), `deep_dive` (5%), `full` (100% — every planned chunk).
+
+```bash
+uv run python -m src.cli bigdata-approx-cost \
+  --run-name cost-preview-mag7 \
+  --main-theme "US Government Shutdown" \
+  --analyst-focus "How a prolonged federal funding lapse affects Mag7 operations and revenue" \
+  --universe mag7.csv \
+  --start-date 2025-06-01 \
+  --end-date 2026-06-09
+```
+
+Requires `OPENAI_API_KEY` and `BIGDATA_API_KEY`. Artifacts are saved under `runs/<run_name>/` for a later `search` step.
 
 ### `run-all` — full pipeline
 

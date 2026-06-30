@@ -8,6 +8,7 @@ into an isolated run directory (``runs/<run_name>/``):
     search           Execute the plans and store deduplicated results.
     label-sentences  Label sentences, summarize companies, export the screener CSV.
     summarize-plans  Summarize all search plans in a plans folder.
+    bigdata-approx-cost  Estimate Bigdata retrieval chunks and dollar presets.
     run-all          Run every stage in sequence within one isolated run.
 
 Run with, e.g.::
@@ -31,6 +32,7 @@ from dotenv import load_dotenv
 
 from src import screener
 from src.modes import AnalysisMode, get_profile
+from src.retrieval_budget import build_retrieval_preset_rows, format_retrieval_budget_report
 from src.run_context import RunContext
 
 logger = logging.getLogger("screener.cli")
@@ -225,6 +227,9 @@ def run_label(
         labels=labels,
         model=labeling_model,
         profile=profile,
+        taxonomy_root=screener.Node.model_validate(context.read_taxonomy())
+        if context.taxonomy_tree_path.exists()
+        else None,
     )
     merged_df = screener.build_labeled_dataframe(sentences, parsed_responses)
     merged_df.to_csv(context.labeled_sentences_path, index=False)
@@ -365,8 +370,46 @@ def run_summarize_plans(args: argparse.Namespace) -> None:
     logger.info("Summarized %d plans from %s", len(summary_df), plans_dir)
 
 
+def run_bigdata_approx_cost(context: RunContext, args: argparse.Namespace) -> None:
+    """Generate labels, build plans, and print retrieval chunk/cost estimates."""
+    labels = run_labels(context, args)
+    run_plans(context, args)
+
+    config = context.load_config()
+    summary_df = screener.summarize_plans(context.plans_dir)
+    presets = build_retrieval_preset_rows(int(summary_df["chunks"].sum()))
+
+    universe_path = Path(str(_from_config(config, "universe", DEFAULT_UNIVERSE)))
+    universe_df = screener.load_universe(universe_path)
+    mode = _from_config(config, "mode", DEFAULT_MODE)
+    profile = get_profile(mode)
+
+    report = format_retrieval_budget_report(
+        run_name=context.run_name,
+        main_theme=str(_from_config(config, "main_theme", profile.default_main_theme)),
+        universe=str(universe_path),
+        start_date=str(_from_config(config, "start_date", screener.DEFAULT_START_DATE)),
+        end_date=str(_from_config(config, "end_date", screener.DEFAULT_END_DATE)),
+        label_count=len(labels),
+        company_count=len(universe_df),
+        summary_df=summary_df,
+        presets=presets,
+    )
+    print(report)
+    logger.info(
+        "Approximate retrieval preview: %d expected chunks, %d labels, run dir %s",
+        int(summary_df["chunks"].sum()),
+        len(labels),
+        context.run_dir,
+    )
+
+
 def _cmd_summarize_plans(args: argparse.Namespace) -> None:
     run_summarize_plans(args)
+
+
+def _cmd_bigdata_approx_cost(args: argparse.Namespace) -> None:
+    run_bigdata_approx_cost(_make_context(args), args)
 
 
 def _add_common_args(parser: argparse.ArgumentParser) -> None:
@@ -521,6 +564,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to a plans folder (default: runs/<run_name>/plans).",
     )
     summarize_plans_parser.set_defaults(func=_cmd_summarize_plans, requires_api_keys=False)
+
+    approx_cost_parser = subparsers.add_parser(
+        "bigdata-approx-cost",
+        help="Estimate Bigdata retrieval chunks and dollar cost presets.",
+        description=(
+            "Run generate-labels and plans, then print expected chunk volume and "
+            "retrieval cost presets without fetching documents."
+        ),
+    )
+    _add_common_args(approx_cost_parser)
+    _add_labels_args(approx_cost_parser)
+    _add_plans_args(approx_cost_parser)
+    approx_cost_parser.set_defaults(func=_cmd_bigdata_approx_cost, requires_api_keys=True)
 
     return parser
 

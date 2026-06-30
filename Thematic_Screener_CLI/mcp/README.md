@@ -45,6 +45,7 @@ resumable analyst workflow exposed through MCP tools.
      - `quick_scan`: small sample for directional review.
      - `balanced`: default evidence coverage.
      - `deep_dive`: broader evidence coverage.
+     - `full`: retrieve every planned chunk (100%).
      - `custom`: explicit chunk count, percentage, or dollar cap.
 
 5. **Approved retrieval**
@@ -84,7 +85,7 @@ Supported universe modes:
 
 Validation rules:
 
-- Require an entity ID column. Accept `RP_ENTITY_ID` and `RP_COMPANY_ID` as aliases, then
+- Require an entity ID column. Accept ``RP_ENTITY_ID`` (preferred) and legacy ``RP_COMPANY_ID`` as aliases, then
   normalize internally to the field expected by the current pipeline.
 - Use `COMPANY_NAME` when available; otherwise keep company names blank until search results or
   downstream enrichment can resolve them.
@@ -114,9 +115,9 @@ Claude: Updated taxonomy has 9 leaves. I can now build plans and estimate retrie
 User: Continue.
 
 Claude: Planning found 184,000 expected chunks. Budget options:
-Quick scan: 0.5%, about 920 chunks, about $13.80
-Balanced: 2.0%, about 3,680 chunks, about $55.20
-Deep dive: 5.0%, about 9,200 chunks, about $138.00
+Quick scan: 0.5%, about 920 chunks, about $1.38
+Balanced: 2.0%, about 3,680 chunks, about $5.52
+Deep dive: 5.0%, about 9,200 chunks, about $13.80
 Which budget should I use?
 
 User: Balanced.

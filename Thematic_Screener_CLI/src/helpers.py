@@ -45,6 +45,20 @@ def get_leaf_search_queries(model: _TaxonomyNode, *, fallback: bool = True) -> l
     return queries
 
 
+def get_leaf_label_summary_options(model: _TaxonomyNode) -> list[str]:
+    """Return ``Label: Summary`` strings for risk labeling prompts."""
+    if not model.children:
+        label = str(model.label or "").strip()
+        summary = str(model.summary or "").strip()
+        if summary:
+            return [f"{label}: {summary}"]
+        return [label]
+    options: list[str] = []
+    for child in model.children:
+        options.extend(get_leaf_label_summary_options(child))  # type: ignore[arg-type]
+    return options
+
+
 def get_leaf_pairs(model: _TaxonomyNode, *, fallback: bool = True) -> list[tuple[str, str]]:
     """Return ``(label, search_query)`` pairs for each leaf."""
     if not model.children:

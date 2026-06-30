@@ -14,7 +14,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 import pandas as pd
 from bigdata_smart_batching import (
@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from src.helpers import (
     build_leaf_ancestry,
+    get_leaf_label_summary_options,
     get_leaf_labels,
     get_leaf_search_queries,
     get_leaf_summaries,
@@ -61,7 +62,8 @@ DEFAULT_SEARCH_CATEGORY: dict[str, Any] = {
     "values": ["news_premium", "transcripts", "filings"],
 }
 
-UNIVERSE_ID_COLUMN = "RP_COMPANY_ID"
+UNIVERSE_ID_COLUMN = "RP_ENTITY_ID"
+UNIVERSE_ID_ALIASES: tuple[str, ...] = ("RP_ENTITY_ID", "RP_COMPANY_ID")
 UNIVERSE_NAME_COLUMN = "COMPANY_NAME"
 
 # Optional universe columns used to enrich the risk-analyzer export. When absent
@@ -205,18 +207,42 @@ def plan_filename(label: str) -> str:
     return f"{safe_label}.json"
 
 
+def _find_universe_column(columns: Iterable[str], candidates: tuple[str, ...]) -> str | None:
+    """Return the first matching column name, case-insensitive."""
+    normalized = {str(column).upper(): str(column) for column in columns}
+    for candidate in candidates:
+        if candidate.upper() in normalized:
+            return normalized[candidate.upper()]
+    return None
+
+
 def load_universe(universe_path: str | Path) -> pd.DataFrame:
     """Load the company universe CSV.
 
-    The CSV is expected to expose ``RP_COMPANY_ID`` and ``COMPANY_NAME``
-    columns (as in ``XNAS_companies.csv``).
+    Accepts ``RP_ENTITY_ID`` (preferred) or legacy ``RP_COMPANY_ID``, plus
+    ``COMPANY_NAME`` (or ``NAME`` / ``COMPANY`` aliases).
     """
-    universe_df = pd.read_csv(universe_path)
-    missing = {UNIVERSE_ID_COLUMN, UNIVERSE_NAME_COLUMN} - set(universe_df.columns)
-    if missing:
+    raw_df = pd.read_csv(universe_path)
+    id_column = _find_universe_column(raw_df.columns, UNIVERSE_ID_ALIASES)
+    if id_column is None:
         raise ValueError(
-            f"universe file {universe_path} is missing required columns: {sorted(missing)}"
+            f"universe file {universe_path} is missing required ID column "
+            f"(expected one of: {', '.join(UNIVERSE_ID_ALIASES)})"
         )
+    name_column = _find_universe_column(
+        raw_df.columns, (UNIVERSE_NAME_COLUMN, "NAME", "COMPANY")
+    )
+    if name_column is None:
+        raise ValueError(
+            f"universe file {universe_path} is missing required name column "
+            f"(expected one of: {UNIVERSE_NAME_COLUMN}, NAME, COMPANY)"
+        )
+    universe_df = pd.DataFrame(
+        {
+            UNIVERSE_ID_COLUMN: raw_df[id_column].astype(str).str.strip(),
+            UNIVERSE_NAME_COLUMN: raw_df[name_column].astype(str).str.strip(),
+        }
+    )
     return universe_df.reset_index(drop=True)
 
 
@@ -425,15 +451,32 @@ def _labeling_system_prompt(
     main_theme: str,
     labels: list[str],
     analyst_focus: str,
+    *,
+    prompt_labels: list[str] | None = None,
 ) -> str:
     """Format the mode-specific labeling system prompt."""
+    labels_for_prompt = prompt_labels if prompt_labels is not None else labels
     if profile.mode is AnalysisMode.THEMATIC_SCREENER:
         return profile.labeling_system_prompt.format(
             main_theme=main_theme,
             analyst_focus=analyst_focus,
-            labels=str(labels),
+            labels=str(labels_for_prompt),
         )
-    return profile.labeling_system_prompt.format(main_theme=main_theme, labels=str(labels))
+    return profile.labeling_system_prompt.format(
+        main_theme=main_theme,
+        labels=str(labels_for_prompt),
+    )
+
+
+def _labeling_prompt_labels(
+    profile: ModeProfile,
+    labels: list[str],
+    taxonomy_root: Node | None,
+) -> list[str]:
+    """Build label strings injected into the labeling prompt."""
+    if profile.mode is AnalysisMode.RISK_ANALYZER and taxonomy_root is not None:
+        return get_leaf_label_summary_options(taxonomy_root)
+    return labels
 
 
 def label_sentences(
@@ -443,6 +486,7 @@ def label_sentences(
     analyst_focus: str = DEFAULT_ANALYST_FOCUS,
     model: str = DEFAULT_LABELING_MODEL,
     profile: ModeProfile | None = None,
+    taxonomy_root: Node | None = None,
     requests_per_minute: int = 10000,
     max_concurrent_requests: int = 40,
     metrics_out: dict[str, float | int | None] | None = None,
@@ -452,8 +496,13 @@ def label_sentences(
     Returns a flat mapping of ``sentence_id`` -> label fields.
     """
     active_profile = profile if profile is not None else _THEMATIC_PROFILE
+    prompt_labels = _labeling_prompt_labels(active_profile, labels, taxonomy_root)
     system_prompt = _labeling_system_prompt(
-        active_profile, main_theme, labels, analyst_focus
+        active_profile,
+        main_theme,
+        labels,
+        analyst_focus,
+        prompt_labels=prompt_labels,
     )
     requests = [
         ChatRequest(
