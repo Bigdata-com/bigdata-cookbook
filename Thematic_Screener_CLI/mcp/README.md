@@ -75,7 +75,8 @@ The MCP should treat the universe as a validated input artifact, not just a file
 
 Supported universe modes:
 
-- `default_global_all_caps`: use `global_all_caps.csv` from this project.
+- `default_global_all_caps`: use `global_all_caps.csv` from this project (~10k companies).
+- `default_europe_ml_caps`: use `europe_ml_caps.csv` for European mid/large caps (~646 companies).
 - `sample_xnas`: use `XNAS_companies.csv` for quick smoke tests.
 - `csv_path`: use a user-provided CSV path.
 - `uploaded_csv`: use a CSV uploaded through the host client, then persist a normalized copy.
@@ -96,6 +97,7 @@ Example Claude prompt:
 
 ```text
 I will use the default global all-caps universe: 10,001 companies from global_all_caps.csv.
+For European mid/large caps, use default_europe_ml_caps: 646 companies from europe_ml_caps.csv.
 You can also provide a CSV or paste a list of RP_ENTITY_ID values if you want a narrower screen.
 ```
 
