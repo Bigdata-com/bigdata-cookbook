@@ -581,7 +581,11 @@ def get_bigdata_tools() -> List[Callable]:
 
     Tools included:
     - bigdata_lookup_company: Resolve ticker/company name to entity ID (cached).
-    - bigdata_search_news: Search financial news with optional entity filter.
+    - bigdata_search: Search news, filings, transcripts, and research. Defaults to
+      smart mode (the API interprets the natural-language query, resolves entities,
+      temporal ranges, document types, and ranking automatically). Fast mode is
+      available for deterministic, filter-driven precision (entity/reporting-entity
+      filters, category, document type, tight time window, and a reranker floor).
 
     Both use _bigdata_request_with_retry for resilience. Used by agent_to_search
     and by hierarchical agent notebooks for entity lookup.
@@ -634,67 +638,168 @@ def get_bigdata_tools() -> List[Callable]:
             return json.dumps({"error": str(e)})
 
     @tool
-    def bigdata_search_news(
-        query: str, 
-        entity_id: Optional[str] = None, 
-        days_back: int = 90, 
-        max_results: int = 10
+    def bigdata_search(
+        query: str,
+        search_mode: str = "smart",
+        entity_ids: Optional[List[str]] = None,
+        reporting_entity_ids: Optional[List[str]] = None,
+        category: Optional[List[str]] = None,
+        document_type: Optional[List[str]] = None,
+        days_back: int = 90,
+        max_chunks: int = 20,
+        rerank_threshold: float = 0.5,
+        include_audit: bool = False,
     ) -> str:
-        """Search Bigdata.com for financial news and market intelligence.
-        
+        """Search Bigdata.com for news, filings, transcripts, and research.
+
+        Defaults to SMART mode: pass a clear natural-language question in `query`
+        (include entity names, time period, and any content hints such as "news" or
+        "earnings call") and the API interprets intent, resolves entities and temporal
+        ranges, applies document-type/ranking filters, and runs sub-queries for
+        broader coverage. Use smart mode for most agent questions, including macro or
+        FX topics like "market outlook on the Brazilian Real" that do not map to a
+        single company entity.
+
+        Use FAST mode (`search_mode="fast"`) for deterministic, precision-focused
+        retrieval where you control the filters. Resolve companies with
+        `bigdata_lookup_company` first, then pass:
+        - `entity_ids`: documents that MENTION the company (news, third-party commentary).
+        - `reporting_entity_ids`: documents AUTHORED/filed by the company (earnings
+          calls, transcripts, 10-K/10-Q/8-K, investor presentations). Do not combine
+          both for the same company unless there is a specific reason.
+
         Uses retry with exponential backoff on transient failures.
-        
+
         Args:
-            query: Natural language search query (e.g., 'AI chip demand', 'earnings guidance')
-            entity_id: Optional Bigdata entity ID to filter by company
-            days_back: Number of days to search back (default: 90)
-            max_results: Maximum number of results to return (default: 10)
-        
+            query: Natural-language search query (a question or sentence, not keywords).
+            search_mode: "smart" (default) or "fast".
+            entity_ids: Fast mode only. Entity IDs to match (company mentions).
+            reporting_entity_ids: Fast mode only. Entity IDs for company-authored docs.
+            category: Fast mode only. Source-type buckets, e.g. ["news"], ["transcripts"],
+                ["filings"], ["research_investment_research"].
+            document_type: Fast mode only. Document types, e.g. ["NEWS"], ["TRANSCRIPT"],
+                ["FILING"], ["INVESTMENT-RESEARCH"].
+            days_back: Rolling time window in days (default 90; use 30 for "recent/latest").
+            max_chunks: Max chunks to retrieve (10-30 for direct Q&A, higher for synthesis).
+            rerank_threshold: Fast mode only. Minimum reranker relevance (0-1) to filter
+                noise/boilerplate (default 0.5). Lower it to widen recall.
+            include_audit: If True, include the resolved queries the API executed
+                (useful to inspect how smart mode interpreted the request).
+
         Returns:
-            JSON string with search results including headlines, sources, and relevant text
+            JSON string with search results (headline, source, timestamp, sentiment,
+            url, relevance, relevant text), sorted by relevance.
         """
         try:
             url = f"{config.bigdata_base_url}/search"
             headers = {"X-API-KEY": config.bigdata_api_key, "Content-Type": "application/json"}
-            end_date = datetime.utcnow()
-            start_date = end_date - timedelta(days=days_back)
-            request_body = {
-                "query": {
-                    "text": query,
-                    "filters": {
-                        "timestamp": {
-                            "start": start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-                            "end": end_date.strftime("%Y-%m-%dT%H:%M:%S.999Z")
-                        },
-                        "category": {"mode": "INCLUDE", "values": ["news_public"]},
-                    },
-                    "max_chunks": max_results * 2,
+            mode = (search_mode or "smart").strip().lower()
+            if mode not in ("smart", "fast"):
+                mode = "smart"
+
+            query_payload: Dict[str, Any] = {"text": query, "max_chunks": max_chunks}
+
+            if mode == "smart":
+                # Smart mode understands the query itself. Only timestamp/source filters
+                # are permitted; entity/category/document_type/ranking are inferred.
+                ignored = [
+                    name
+                    for name, value in (
+                        ("entity_ids", entity_ids),
+                        ("reporting_entity_ids", reporting_entity_ids),
+                        ("category", category),
+                        ("document_type", document_type),
+                    )
+                    if value
+                ]
+                if ignored:
+                    logger.warning(
+                        "bigdata_search smart mode ignores fast-only filters: %s",
+                        ", ".join(ignored),
+                    )
+            else:
+                # Fast mode: build explicit filters plus a reranker floor for precision.
+                end_date = datetime.utcnow()
+                start_date = end_date - timedelta(days=days_back)
+                filters: Dict[str, Any] = {
+                    "timestamp": {
+                        "start": start_date.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+                        "end": end_date.strftime("%Y-%m-%dT%H:%M:%S.999Z"),
+                    }
                 }
+                if category:
+                    filters["category"] = {"mode": "INCLUDE", "values": category}
+                if entity_ids:
+                    filters["entity"] = {"any_of": entity_ids}
+                if reporting_entity_ids:
+                    filters["reporting_entities"] = reporting_entity_ids
+                if document_type:
+                    filters["document_type"] = {
+                        "mode": "INCLUDE",
+                        "values": [{"type": dt} for dt in document_type],
+                    }
+                query_payload["filters"] = filters
+                query_payload["ranking_params"] = {
+                    "reranker": {"enabled": True, "threshold": rerank_threshold}
+                }
+                # If the router resolved precise entity filters, avoid extra enrichment.
+                if entity_ids or reporting_entity_ids:
+                    query_payload["auto_enrich_filters"] = False
+
+            request_body: Dict[str, Any] = {
+                "search_mode": mode,
+                "query": query_payload,
             }
-            if entity_id:
-                request_body["query"]["filters"]["entity"] = {"any_of": [entity_id]}
+            if include_audit:
+                request_body["include_audit"] = True
+
             response = _bigdata_request_with_retry(
                 "POST", url, headers, json_body=request_body, timeout=60
             )
-            results = response.json().get("results", [])
+            payload = response.json()
+            results = payload.get("results", [])
+
             formatted = []
-            for doc in results[:max_results]:
-                chunks_text = " | ".join([c.get("text", "")[:300] for c in doc.get("chunks", [])[:2]])
+            for doc in results:
+                chunks = sorted(
+                    doc.get("chunks", []),
+                    key=lambda c: c.get("relevance", 0) or 0,
+                    reverse=True,
+                )
+                top_chunk = chunks[0] if chunks else {}
+                chunks_text = " | ".join(c.get("text", "")[:300] for c in chunks[:2])
                 formatted.append({
                     "headline": doc.get("headline"),
                     "source": doc.get("source", {}).get("name"),
                     "timestamp": doc.get("timestamp"),
-                    "sentiment": doc.get("chunks", [{}])[0].get("sentiment") if doc.get("chunks") else None,
+                    "document_type": doc.get("document_type"),
+                    "relevance": top_chunk.get("relevance"),
+                    "sentiment": top_chunk.get("sentiment"),
                     "url": doc.get("url"),
-                    "relevant_text": chunks_text[:500]
+                    "relevant_text": chunks_text[:500],
                 })
-            logger.info("bigdata_search_news query=%r entity_id=%s results_count=%s", query, entity_id, len(formatted))
-            return json.dumps({"query": query, "results_count": len(formatted), "results": formatted}, indent=2)
+            # Re-rank across documents by best-chunk relevance before synthesis.
+            formatted.sort(key=lambda d: d.get("relevance") or 0, reverse=True)
+            formatted = formatted[:max_chunks]
+
+            logger.info(
+                "bigdata_search mode=%s query=%r entities=%s reporting=%s results_count=%s",
+                mode, query, entity_ids, reporting_entity_ids, len(formatted),
+            )
+            output: Dict[str, Any] = {
+                "query": query,
+                "search_mode": mode,
+                "results_count": len(formatted),
+                "results": formatted,
+            }
+            if include_audit:
+                output["audit"] = payload.get("metadata", {}).get("audit")
+            return json.dumps(output, indent=2)
         except Exception as e:
-            logger.exception("bigdata_search_news failed query=%r", query)
+            logger.exception("bigdata_search failed query=%r mode=%s", query, search_mode)
             return json.dumps({"error": str(e)})
-    
-    return [bigdata_lookup_company, bigdata_search_news]
+
+    return [bigdata_lookup_company, bigdata_search]
 
 
 def get_research_agent_tool() -> List[Callable]:
@@ -724,7 +829,7 @@ def get_research_agent_tool() -> List[Callable]:
         - Comprehensive answers with inline citations (source-name hyperlinks).
         
         Always uses "lite" effort (10-20s) for faster responses. More powerful than
-        bigdata_search_news but takes longer than simple search.
+        bigdata_search but takes longer than simple search.
         
         Args:
             query: Research question or analysis request. Can include formatting instructions.

@@ -10,6 +10,10 @@
 .ipython/
 .cursor/
 
+# Local scratch / assistant notes (repo root)
+CLAUDE.md
+output.md
+
 # Output directory (single pattern covers repo root and subdirs)
 **/output/
 
