@@ -38,7 +38,7 @@ The demos use LangChain and LangSmith; the integration patterns apply to other a
 | Tool | API | Description |
 |------|-----|-------------|
 | `bigdata_lookup_company` | Knowledge Graph | Resolve ticker/company name to entity ID (cached) |
-| `bigdata_search_news` | Search | Search financial news and headlines (with retry) |
+| `bigdata_search` | Search | Search news, filings, transcripts, and research; smart mode by default (auto entity/temporal/doc-type/ranking), fast mode for explicit precision filters (with retry) |
 | `bigdata_research_agent` | Research Agent | Deep research with citations (20–60s); retry and full chat_id logging |
 
 ### Internal (Company Systems)
