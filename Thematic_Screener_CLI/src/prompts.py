@@ -208,7 +208,8 @@ Follow these steps strictly:
 3. **Format Your Response as a JSON Object**:
    - Each node in the JSON object must include:
      - `node`: an integer representing the unique identifier for the node.
-     - `label`: a string for the name of the risk channel, risk factor, or sub-scenario.
+     - `label`: a short human-readable name with spaces between words (Title Case).
+       Never use PascalCase, camelCase, or concatenated words without spaces.
      - `summary`: a string to explain briefly in maximum 15 words why the node is a risk related to {main_theme}.
        - For the node referring to the first node {main_theme}, just define briefly in maximum 15 words the risk {main_theme}.
      - `children`: an array of child nodes.
@@ -216,7 +217,8 @@ Follow these steps strictly:
 
 IMPORTANT: Your response MUST be a valid JSON object. Each node in the JSON object must include:
             - `node`: an integer representing the unique identifier for the node.
-            - `label`: a string for the name of the risk factor or sub-scenario.
+            - `label`: a short human-readable name with spaces between words (Title Case).
+              Never use PascalCase, camelCase, or concatenated words without spaces.
             - `summary`: a string to explain briefly in maximum 15 words why the node is a risk related to the main risk.
             - For the node referring to the main risk, just define briefly in maximum 15 words the risk.
             - `children`: an array of child nodes.

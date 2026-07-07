@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Protocol
 
 from src.search_query import normalize_summary_to_search_query
@@ -14,6 +15,26 @@ class _TaxonomyNode(Protocol):
     summary: str
     search_query: str
     children: list[object]
+
+
+def humanize_taxonomy_label(label: str) -> str:
+    """Convert PascalCase/camelCase taxonomy labels to space-separated words."""
+    stripped = label.strip()
+    if not stripped:
+        return stripped
+    if ": " in stripped:
+        stripped = stripped.split(": ", 1)[0].strip()
+    if " " in stripped:
+        return stripped
+
+    spaced = stripped
+    for acronym in ("LNG", "FX", "GDP", "G20", "WTI"):
+        spaced = re.sub(rf"({acronym})(?=[A-Za-z])", r"\1 ", spaced)
+    spaced = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", spaced)
+    spaced = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", " ", spaced)
+    spaced = re.sub(r"LNGAnd", "LNG And", spaced)
+    spaced = re.sub(r"Oiland", "Oil and", spaced, flags=re.IGNORECASE)
+    return re.sub(r"\s+", " ", spaced).strip()
 
 
 def get_leaf_labels(model: _TaxonomyNode) -> list[str]:

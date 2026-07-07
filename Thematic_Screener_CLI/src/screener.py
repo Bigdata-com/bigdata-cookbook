@@ -35,6 +35,7 @@ from src.helpers import (
     get_leaf_labels,
     get_leaf_search_queries,
     get_leaf_summaries,
+    humanize_taxonomy_label,
     print_tree,
 )
 from src.modes import AnalysisMode, LeafField, ModeProfile, get_profile
@@ -92,6 +93,17 @@ class Node(BaseModel):
 Node.model_rebuild()
 
 
+def normalize_taxonomy_labels(root: Node) -> Node:
+    """Return a taxonomy copy with human-readable, space-separated node labels."""
+    return Node(
+        node=root.node,
+        label=humanize_taxonomy_label(root.label),
+        summary=root.summary,
+        search_query=root.search_query,
+        children=[normalize_taxonomy_labels(child) for child in root.children],
+    )
+
+
 class CompanySummary(BaseModel):
     """Structured company-level summary returned by the LLM."""
 
@@ -144,7 +156,7 @@ def generate_taxonomy(
     )
 
     content = completion.choices[0].message.content
-    root = Node.model_validate_json(content)
+    root = normalize_taxonomy_labels(Node.model_validate_json(content))
 
     if print_taxonomy:
         print_tree(root)
@@ -838,7 +850,7 @@ def _entity_metadata_lookup(
 
 def build_risk_taxonomy(root: Node) -> dict[str, Any]:
     """Serialize the taxonomy tree to the app's ``risk_taxonomy`` shape."""
-    return root.model_dump()
+    return normalize_taxonomy_labels(root).model_dump()
 
 
 def _risk_factor_channel(label: str, ancestry: dict[str, list[str]]) -> tuple[str, str]:
@@ -860,12 +872,12 @@ def build_content_chunks(
     entity_type: EntityType | str | None = None,
 ) -> list[dict[str, Any]]:
     """Build the ``content`` array of labeled chunks for the app JSON."""
-    ancestry = build_leaf_ancestry(root)
+    ancestry = build_leaf_ancestry(normalize_taxonomy_labels(root))
     metadata = _entity_metadata_lookup(universe_df, entity_type)
 
     chunks: list[dict[str, Any]] = []
     for _, row in screener_df.iterrows():
-        label = _clean_scalar(row.get("label")) or ""
+        label = humanize_taxonomy_label(_clean_scalar(row.get("label")) or "")
         company = _clean_scalar(row.get("company_name")) or ""
         date, time_period = _split_timestamp(row.get("timestamp"))
         risk_factor, risk_channel = _risk_factor_channel(label, ancestry)
@@ -909,7 +921,10 @@ def build_risk_scoring(
 
     for company, group in screener_df.groupby("company_name", sort=True):
         counts = group["label"].value_counts()
-        risks = {str(label): int(count) for label, count in counts.items()}
+        risks: dict[str, int] = {}
+        for label, count in counts.items():
+            display_label = humanize_taxonomy_label(str(label))
+            risks[display_label] = risks.get(display_label, 0) + int(count)
         company_meta = metadata.get(company, {})
         scoring[str(company)] = {
             "ticker": company_meta.get("ticker"),
@@ -958,7 +973,13 @@ def build_theme_scoring(
     scoring: dict[str, Any] = {}
     for company, group in screener_df.groupby("company_name", sort=True):
         counts = group["label"].value_counts().to_dict()
-        themes = {str(label): int(counts.get(label, 0)) for label in all_labels}
+        themes: dict[str, int] = {}
+        for label in all_labels:
+            raw_count = int(counts.get(label, 0))
+            humanized = humanize_taxonomy_label(label)
+            if humanized != label:
+                raw_count = max(raw_count, int(counts.get(humanized, 0)))
+            themes[humanize_taxonomy_label(label)] = raw_count
         company_meta = metadata.get(company, {})
         scoring[str(company)] = {
             "ticker": company_meta.get("ticker"),
@@ -997,7 +1018,7 @@ def build_theme_content(
                 "headline": _clean_scalar(row.get("headline")) or "",
                 "quote": _clean_scalar(row.get("text")) or "",
                 "motivation": _clean_scalar(row.get("motivation")) or "",
-                "theme": _clean_scalar(row.get("label")) or "",
+                "theme": humanize_taxonomy_label(_clean_scalar(row.get("label")) or ""),
             }
         )
     return chunks
