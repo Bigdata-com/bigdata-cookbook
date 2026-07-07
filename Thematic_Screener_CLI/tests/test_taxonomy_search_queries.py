@@ -69,8 +69,8 @@ def test_search_query_fallback_from_summary() -> None:
             ],
         }
     )
-    queries = get_leaf_search_queries(root)
-    assert queries[0].startswith("The company")
+    queries = get_leaf_search_queries(root, entity_type="country")
+    assert queries[0].startswith("The country")
     assert not has_exposure_meta_language(queries[0])
 
 

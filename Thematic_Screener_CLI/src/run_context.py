@@ -179,17 +179,23 @@ class RunContext:
             return queries
 
         if self.taxonomy_tree_path.exists():
+            from src.entity_types import resolve_entity_type
             from src.helpers import get_leaf_search_queries
             from src.screener import Node
 
+            entity_type = resolve_entity_type(config=self.load_config())
             root = Node.model_validate_json(self.taxonomy_tree_path.read_text(encoding="utf-8"))
-            queries = get_leaf_search_queries(root)
+            queries = get_leaf_search_queries(root, entity_type=entity_type)
             if len(queries) == len(labels):
                 return queries
 
+        from src.entity_types import resolve_entity_type
         from src.search_query import normalize_summary_to_search_query
 
-        return [normalize_summary_to_search_query(label) for label in labels]
+        entity_type = resolve_entity_type(config=self.load_config())
+        return [
+            normalize_summary_to_search_query(label, entity_type=entity_type) for label in labels
+        ]
 
     def write_search_queries(self, search_queries: list[str]) -> None:
         """Write retrieval queries to ``search_queries.txt`` (one per line)."""

@@ -26,7 +26,12 @@ def get_leaf_labels(model: _TaxonomyNode) -> list[str]:
     return labels
 
 
-def get_leaf_search_queries(model: _TaxonomyNode, *, fallback: bool = True) -> list[str]:
+def get_leaf_search_queries(
+    model: _TaxonomyNode,
+    *,
+    fallback: bool = True,
+    entity_type: str | None = None,
+) -> list[str]:
     """Return leaf ``search_query`` values, optionally deriving missing queries."""
     if not model.children:
         query = str(model.search_query or "").strip()
@@ -35,13 +40,15 @@ def get_leaf_search_queries(model: _TaxonomyNode, *, fallback: bool = True) -> l
         if fallback:
             summary = str(model.summary or "").strip()
             if summary:
-                return [normalize_summary_to_search_query(summary)]
+                return [normalize_summary_to_search_query(summary, entity_type=entity_type)]
             return [str(model.label or "").strip()]
         return [""]
 
     queries: list[str] = []
     for child in model.children:
-        queries.extend(get_leaf_search_queries(child, fallback=fallback))  # type: ignore[arg-type]
+        queries.extend(
+            get_leaf_search_queries(child, fallback=fallback, entity_type=entity_type)
+        )  # type: ignore[arg-type]
     return queries
 
 

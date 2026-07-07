@@ -4,8 +4,8 @@
 
 SYSTEM_MESSAGE_LABELS = """
 Forget all previous prompts.
-You are assisting a professional analyst building a thematic company screener.
-The screener should identify companies that are economically exposed to the theme:
+You are assisting a professional analyst building a thematic screener for {taxonomy_subject}.
+The screener should identify {entity_noun_plural} that are economically exposed to the theme:
 {main_theme}
 
 Analyst focus:
@@ -42,8 +42,8 @@ Follow these rules strictly:
    - `summary`: analyst taxonomy phrase, maximum 25 words, describing company role and
      exposure mechanism. May use analyst framing such as "Companies that...".
    - `search_query` (leaf nodes only): document/disclosure voice phrase for semantic search
-     against filings, transcripts, and news. Write as if quoting company language:
-     "The company [verb] [products/services] [to/for] [customers/market]."
+     against filings, transcripts, and news. Write as if quoting {entity_noun} language:
+     "{search_query_prefix} [verb] [products/services] [to/for] [customers/market]."
    - Do not copy `summary` verbatim into `search_query`; rewrite into operational language.
    - Avoid exposure-meta phrasing in `search_query` (for example: exposed to, benefiting from,
      profiting from, IPO-driven, capex scaling).
@@ -99,7 +99,7 @@ USER_MESSAGE_LABELS = "Your given Theme is: {main_theme}"
 
 
 SYSTEM_PROMPT_LABELING = """Forget all previous prompts.
-You are assisting a professional analyst with a thematic company screener.
+You are assisting a professional analyst with a thematic screener for {entity_noun_plural}.
 
 Theme:
 {main_theme}
@@ -110,14 +110,14 @@ Analyst focus (mandatory scope):
 Exposure labels:
 {labels}
 
-Your task is to decide whether each input sentence provides evidence that the target company
+Your task is to decide whether each input sentence provides evidence that {target_entity}
 has economic exposure to the theme within the analyst focus scope, then assign the best matching
 exposure label.
 
 Guidelines:
 
 1. **Classify economic exposure within analyst focus scope**
-   - A sentence is relevant only if it connects the target company to a business activity,
+   - A sentence is relevant only if it connects {target_entity} to a business activity,
      product, service, customer demand, supply chain, asset, cost, risk, or strategic action
      related to the theme.
    - The analyst focus defines mandatory scope constraints such as geography, counterparties,
@@ -130,10 +130,10 @@ Guidelines:
    - When the analyst focus does not narrow scope, the exact theme words do not need to appear
      if the exposure mechanism is explicit.
    - Assign `unclear` when the sentence merely mentions the topic, a peer, a market backdrop,
-     or a customer trend without connecting it to the target company's exposure.
+     or a customer trend without connecting it to {target_entity}'s exposure.
 
-2. **Respect company role**
-   - Choose the label that matches the company's role in the value chain.
+2. **Respect {entity_noun} role**
+   - Choose the label that matches the {entity_noun}'s role in the value chain.
    - Separate demand-side exposure from supply-side exposure.
    - Do not classify an operator/customer as a vendor just because it buys or adopts a product.
    - Do not classify a supplier as an operator/customer just because its customers operate in
@@ -147,16 +147,16 @@ Guidelines:
    - Prefer the most specific label supported by the sentence.
 
 4. **Evidence standard**
-   - Use only the sentence content and the provided company name.
+   - Use only the sentence content and the provided {entity_noun} name.
    - The sentence must support the label directly enough that an analyst could cite it.
-   - If the sentence is ambiguous, promotional without a clear company role, or only about a
-     different company, assign `unclear`.
+   - If the sentence is ambiguous, promotional without a clear {entity_noun} role, or only about a
+     different {entity_noun}, assign `unclear`.
 
 5. **Revenue and cost fields**
    - `revenue_generation`: `high`, `medium`, `low`, or `Nan` depending on whether the sentence
-     indicates the target company can generate revenue from the exposure.
+     indicates {target_entity} can generate revenue from the exposure.
    - `cost_efficiency`: `high`, `medium`, `low`, or `Nan` depending on whether the sentence
-     indicates the target company can reduce costs or improve efficiency from the exposure.
+     indicates {target_entity} can reduce costs or improve efficiency from the exposure.
 
 6. **Materiality field**
    - `materiality`: `high`, `medium`, `low`, or `unclear`.
@@ -174,7 +174,7 @@ Guidelines:
      {{"<sentence_id>": {{"motivation": "<motivation>", "label": "<label>",
      "revenue_generation": "<revenue_generation>", "cost_efficiency": "<cost_efficiency>",
      "materiality": "<materiality>"}}}}
-   - The motivation must begin with "Target Company" and explain the company role, the exposure
+   - The motivation must begin with "{target_entity}" and explain the {entity_noun} role, the exposure
      mechanism, how the sentence satisfies the analyst focus scope, materiality level, and why
      the selected label is better than other label roles.
    - Ensure all strings are correctly quoted."""
@@ -191,17 +191,17 @@ Guidelines:
 
 SYSTEM_MESSAGE_RISK = """
 Forget all previous prompts.
-You are assisting a professional risk analyst tasked with creating a screener to measure the exposure of companies to the risk {main_theme}.
+You are assisting a professional risk analyst tasked with creating a screener to measure the exposure of {entity_noun_plural} to the risk {main_theme}.
 Your objective is to generate a comprehensive tree structure of distinct risk factors and sub-scenarios that will guide the analyst's research process.
 Follow these steps strictly:
 1. **Understand the Core Risk {main_theme}**:
-   - The risk {main_theme} is a central concept. All components are essential for a thorough understanding of how companies are exposed to it.
+   - The risk {main_theme} is a central concept. All components are essential for a thorough understanding of how {entity_noun_plural} are exposed to it.
 2. **Create a Taxonomy of Risk Factors for {main_theme}**:
    - Decompose the main risk {main_theme} into concise, focused, and self-contained risk channels, risk factors, and specific sub-scenarios.
    - Organize the tree so that the top-level children represent broad risk channels, their children represent specific risk factors, and the leaf nodes represent concrete, observable sub-scenarios.
    - Each node should represent a singular, concise, informative, and clear aspect of the main risk.
    - Expand each node to be relevant for the {main_theme}: a single word is not informative enough.
-   - Prioritize clarity and specificity. Leaf sub-scenarios should be specific enough to be detected in company news, filings, and transcripts.
+   - Prioritize clarity and specificity. Leaf sub-scenarios should be specific enough to be detected in {evidence_sources}.
    - Avoid repetition and strive for diverse, non-overlapping angles of exposure.
 3. **Iterate Based on the Analyst's Focus {analyst_focus}**:
    - If no specific {analyst_focus} is provided, transition directly to formatting the JSON response.
@@ -246,40 +246,40 @@ USER_MESSAGE_RISK = "Your given Risk is: {main_theme}"
 
 
 SYSTEM_PROMPT_RISK_LABELING = """Forget all previous prompts.
- You are assisting a professional risk analyst in evaluating the exposure of a company "Target Company" to the risk '{main_theme}'.
+ You are assisting a professional risk analyst in evaluating the exposure of a {entity_noun} "{target_entity}" to the risk '{main_theme}'.
  Your primary task is first, to ensure that each sentence is explicitly related to '{main_theme}', and second, to accurately associate each given sentence with
  the relevant risk sub-scenario contained within the list '{labels}'.
 
  Please adhere strictly to the following guidelines:
 
  1. **Analyze the Sentence**:
-    - Each input consists of a sentence ID, a company name ('Target Company'), and the sentence text.
-    - Analyze the sentence to understand if the content clearly establishes that "Target Company" is exposed to '{main_theme}'.
-    - Your primary goal is to label as 'unclear' the sentences that don't explicitly relate "Target Company" to '{main_theme}'.
+    - Each input consists of a sentence ID, a {entity_noun} name ('{target_entity}'), and the sentence text.
+    - Analyze the sentence to understand if the content clearly establishes that "{target_entity}" is exposed to '{main_theme}'.
+    - Your primary goal is to label as 'unclear' the sentences that don't explicitly relate "{target_entity}" to '{main_theme}'.
     - The list of labels '{labels}' is a Python list variable containing distinct sub-scenarios and their definition in format 'Label: Summary'. You must pick the label only from the 'Label' part, which means the left side of the colon for each Label:Summary pair.
     - Your secondary goal is to select the most appropriate sub-scenario from '{labels}' that corresponds to the content of the sentence.
 
  2. **First Label Assignment**:
-    - Assign the label 'unclear' to the sentence related to "Target Company" when it does not explicitly relate to '{main_theme}'. Otherwise, don't assign a label.
+    - Assign the label 'unclear' to the sentence related to "{target_entity}" when it does not explicitly relate to '{main_theme}'. Otherwise, don't assign a label.
     - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
     - Use only the information contained within the sentence for your label assignment.
-    - When evaluating the sentence, "Target Company" must clearly be exposed to or affected by '{main_theme}'.
+    - When evaluating the sentence, "{target_entity}" must clearly be exposed to or affected by '{main_theme}'.
     - Many sentences are only tangentially connected to the risk '{main_theme}'. These sentences must be assigned the label 'unclear'.
 
  3. **Second Label Assignment**:
-    - For the sentences not labeled as 'unclear' and only for them, assign a unique sub-scenario from the list '{labels}' to the sentence related to "Target Company".
+    - For the sentences not labeled as 'unclear' and only for them, assign a unique sub-scenario from the list '{labels}' to the sentence related to "{target_entity}".
     - Evaluate each sentence independently, focusing solely on the context provided within that specific sentence.
     - Use only the information contained within the sentence for your label assignment.
     - Ensure that the sentence clearly establishes a connection to the sub-scenario you assigned and to the risk '{main_theme}'.
     - You must not create a new label or choose a label that is not present in '{labels}'.
     - If the sentence does not explicitly relate to the sub-scenario, assign the label 'unclear'.
-    - When evaluating the sentence, "Target Company" must clearly be exposed to the sub-scenario assigned and '{main_theme}'.
+    - When evaluating the sentence, "{target_entity}" must clearly be exposed to the sub-scenario assigned and '{main_theme}'.
 
  4. **Response Format**:
     - Your output should be structured as a JSON object that includes:
           1. A brief motivation for your choice.
           2. The assigned label.
-    - Each entry must start with the sentence ID and contain a clear motivation that begins with "Target Company".
+    - Each entry must start with the sentence ID and contain a clear motivation that begins with "{target_entity}".
     - The motivation should explain why the sub-scenario was selected from '{labels}' based on the information in the sentence and in the context of '{main_theme}'.
     - Ensure that the exact context is understood and labels are based only on explicitly mentioned information in the sentence. Otherwise, assign the label 'unclear'.
     - The assigned label should be only the string that precedes the character ':'.
@@ -292,14 +292,14 @@ SYSTEM_PROMPT_RISK_LABELING = """Forget all previous prompts.
 # ---------------------------------------------------------------------------
 
 THEMATIC_SUMMARY_TEMPLATE = """You are assisting a professional analyst evaluating how the theme
-"{main_theme}" affects companies.
+"{main_theme}" affects {entity_noun_plural}.
 
-You will receive a company name and a list of analyst motivations. Each motivation explains why a
+You will receive a {entity_noun} name and a list of analyst motivations. Each motivation explains why a
 specific sentence was labeled in the context of the theme.
 
-Write one cohesive company-level summary that:
-- Synthesizes the main themes and business exposures implied by the motivations
-- Highlights the most important products, markets, and revenue/cost drivers when mentioned
+Write one cohesive {entity_level} summary that:
+- Synthesizes the main themes and exposures implied by the motivations
+- Highlights the most important conditions, markets, and drivers when mentioned
 - Avoids repeating the same point; merge overlapping motivations
 - Uses clear, professional prose (1 short paragraph)
 - Does not invent facts beyond what the motivations support
@@ -308,14 +308,14 @@ Return JSON only: {{"summary": "<your summary>"}}"""
 
 
 RISK_SUMMARY_TEMPLATE = """You are assisting a professional risk analyst evaluating how the risk
-"{main_theme}" affects companies.
+"{main_theme}" affects {entity_noun_plural}.
 
-You will receive a company name and a list of analyst motivations. Each motivation explains why a
-specific sentence was labeled as exposing the company to this risk.
+You will receive a {entity_noun} name and a list of analyst motivations. Each motivation explains why a
+specific sentence was labeled as exposing the {entity_noun} to this risk.
 
-Write one cohesive company-level risk summary that:
-- Synthesizes the company's main exposures and vulnerabilities implied by the motivations
-- Highlights the most material risk factors, affected operations, and financial impacts when mentioned
+Write one cohesive {entity_level} risk summary that:
+- Synthesizes the {entity_noun}'s main exposures and vulnerabilities implied by the motivations
+- Highlights the most material risk factors, affected conditions, and macro or policy impacts when mentioned
 - Avoids repeating the same point; merge overlapping motivations
 - Uses clear, professional prose (1 short paragraph)
 - Does not invent facts beyond what the motivations support

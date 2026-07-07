@@ -17,6 +17,37 @@ The pipeline runs in one of two modes, selected with `--mode` (persisted in `con
 
 Only the prompts, defaults, and label semantics change between modes; the search, batching, and export mechanics are shared.
 
+## Entity type (`--entity-type`)
+
+By default the pipeline assumes a **company** universe: prompts, labeling payloads, summaries, and search-query fallbacks all use company vocabulary (`Target Company`, *The company …*).
+
+For sovereign-country, currency, or organization universes, pass `--entity-type` on any step (it is persisted in `config.json`):
+
+| Value | Use when |
+|-------|----------|
+| `company` (default) | Standard equity / corporate universes |
+| `country` | Sovereign macro or geopolitical screening (e.g. G20 countries) |
+| `currency` | FX / monetary-area screening |
+| `organization` | Non-corporate entities (IGOs, agencies, etc.) |
+
+The universe CSV format is unchanged (`RP_ENTITY_ID` + `COMPANY_NAME` columns). For country runs, `COMPANY_NAME` holds the country name (e.g. `Germany`). Prompts refer to **Target Country**, summaries are country-level, search-query fallbacks use *The country …*, and `report.json` includes `"entity_type": "country"`. When no `COUNTRY` column is present, the entity name is used as the `country` field in exported content.
+
+**G20 country example:**
+
+```bash
+uv run python -m src.cli run-all \
+  --run-name g20_geopolitical_energy_shock_h1_2026 \
+  --mode risk-analyzer \
+  --entity-type country \
+  --universe g20_countries.csv \
+  --main-theme "Middle East energy shock spillovers to G20 economies (Jan–Jul 2026)" \
+  --analyst-focus "..." \
+  --start-date 2026-01-01 \
+  --end-date 2026-07-07
+```
+
+Re-run `label-sentences` and `export-json` after changing `--entity-type` so motivations and summaries use the updated vocabulary.
+
 ## Execution overview example
 
 ![Screener Example](assets/screener_flowchart.svg)
@@ -135,6 +166,7 @@ python -m src.cli <subcommand> [options]
 | `--run-name` | `run_YYYYMMDD_HHMMSS` | Unique name for this run directory |
 | `--runs-root` | `runs` | Parent directory that holds all runs |
 | `--mode` | `thematic-screener` | Analysis mode: `thematic-screener` or `risk-analyzer` (persisted in `config.json`) |
+| `--entity-type` | `company` | Universe entity kind: `company`, `country`, `currency`, or `organization` (persisted in `config.json`) |
 
 ### `generate-labels` — generate theme labels
 

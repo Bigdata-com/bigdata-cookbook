@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+from src.entity_types import format_prompt
 from src.prompts import SYSTEM_PROMPT_LABELING
 from src.screener import DEFAULT_ANALYST_FOCUS, DEFAULT_MAIN_THEME
 
 
 def test_labeling_prompt_includes_analyst_focus() -> None:
     analyst_focus = "Spanish government entities in Spain only"
-    prompt = SYSTEM_PROMPT_LABELING.format(
+    prompt = format_prompt(
+        SYSTEM_PROMPT_LABELING,
+        "company",
         main_theme="Commercial deals with the Spanish government",
         analyst_focus=analyst_focus,
-        labels=["Concession operators"],
+        labels="['Concession operators']",
     )
     assert "Analyst focus (mandatory scope):" in prompt
     assert analyst_focus in prompt
@@ -17,10 +20,24 @@ def test_labeling_prompt_includes_analyst_focus() -> None:
 
 
 def test_labeling_prompt_defaults_are_formattable() -> None:
-    prompt = SYSTEM_PROMPT_LABELING.format(
+    prompt = format_prompt(
+        SYSTEM_PROMPT_LABELING,
+        "company",
         main_theme=DEFAULT_MAIN_THEME,
         analyst_focus=DEFAULT_ANALYST_FOCUS,
-        labels=["Example label"],
+        labels="['Example label']",
     )
     assert DEFAULT_MAIN_THEME in prompt
     assert DEFAULT_ANALYST_FOCUS in prompt
+
+
+def test_labeling_prompt_country_vocabulary() -> None:
+    prompt = format_prompt(
+        SYSTEM_PROMPT_LABELING,
+        "country",
+        main_theme="Middle East energy shock",
+        analyst_focus="G20 economies only",
+        labels="['Oil import cost spike']",
+    )
+    assert "Target Country" in prompt
+    assert "countries" in prompt

@@ -31,6 +31,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from src import screener
+from src.entity_types import EntityType, resolve_entity_type
 from src.modes import AnalysisMode, get_profile
 from src.retrieval_budget import build_retrieval_preset_rows, format_retrieval_budget_report
 from src.run_context import RunContext
@@ -86,12 +87,23 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
     analyst_focus = _resolve(args, config, "analyst_focus", profile.default_analyst_focus)
     model = _resolve(args, config, "labels_model", screener.DEFAULT_LABELS_MODEL)
 
-    logger.info("Generating labels in %s mode for: %s", mode, main_theme)
+    entity_type = resolve_entity_type(
+        getattr(args, "entity_type", None),
+        config,
+    )
+
+    logger.info(
+        "Generating labels in %s mode for: %s (entity_type=%s)",
+        mode,
+        main_theme,
+        entity_type.value,
+    )
     root = screener.generate_taxonomy(
         main_theme=main_theme,
         analyst_focus=analyst_focus,
         model=model,
         profile=profile,
+        entity_type=entity_type,
     )
     labels, search_queries = screener.write_taxonomy_artifacts(
         root,
@@ -99,6 +111,7 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
         search_queries_path=context.search_queries_path,
         taxonomy_tree_path=context.taxonomy_tree_path,
         profile=profile,
+        entity_type=entity_type,
     )
     context.save_config(
         {
@@ -106,6 +119,7 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
             "main_theme": main_theme,
             "analyst_focus": analyst_focus,
             "labels_model": model,
+            "entity_type": entity_type.value,
         }
     )
     logger.info(
@@ -208,6 +222,10 @@ def run_label(
         args, config, "rerank_threshold", screener.DEFAULT_RERANK_THRESHOLD
     )
     universe_path = _from_config(config, "universe", DEFAULT_UNIVERSE)
+    entity_type = resolve_entity_type(
+        getattr(args, "entity_type", None),
+        config,
+    )
 
     labels = context.read_themes()
     if results is None:
@@ -230,6 +248,7 @@ def run_label(
         taxonomy_root=screener.Node.model_validate(context.read_taxonomy())
         if context.taxonomy_tree_path.exists()
         else None,
+        entity_type=entity_type,
     )
     merged_df = screener.build_labeled_dataframe(sentences, parsed_responses)
     merged_df.to_csv(context.labeled_sentences_path, index=False)
@@ -240,6 +259,7 @@ def run_label(
         main_theme=main_theme,
         model=summary_model,
         profile=profile,
+        entity_type=entity_type,
     )
     company_summaries_df.to_csv(context.company_summaries_path, index=False)
     logger.info(
@@ -256,6 +276,7 @@ def run_label(
             "labeling_model": labeling_model,
             "summary_model": summary_model,
             "rerank_threshold": rerank_threshold,
+            "entity_type": entity_type.value,
         }
     )
     logger.info(
@@ -284,11 +305,18 @@ def run_export_json(context: RunContext, args: argparse.Namespace) -> dict[str, 
     mode = _from_config(config, "mode", DEFAULT_MODE)
     universe_path = _from_config(config, "universe", DEFAULT_UNIVERSE)
 
+    entity_type = resolve_entity_type(
+        getattr(args, "entity_type", None),
+        config,
+    )
+
     universe_df = screener.load_universe(universe_path)
     root = _load_taxonomy_root(context)
     screener_df = _load_screener_df(context)
 
-    report = screener.build_report_json(screener_df, root, universe_df, mode)
+    report = screener.build_report_json(
+        screener_df, root, universe_df, mode, entity_type=entity_type
+    )
     with context.report_json_path.open("w", encoding="utf-8") as handle:
         json.dump(report, handle, indent=2, default=str)
 
@@ -429,6 +457,16 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
         choices=[mode.value for mode in AnalysisMode],
         default=argparse.SUPPRESS,
         help="Analysis mode (default: thematic-screener). Persisted in config.json.",
+    )
+    parser.add_argument(
+        "--entity-type",
+        action="store",
+        choices=[entity_type.value for entity_type in EntityType],
+        default=argparse.SUPPRESS,
+        help=(
+            "Universe entity kind: company (default), country, currency, or organization. "
+            "Controls prompt vocabulary and JSON export metadata. Persisted in config.json."
+        ),
     )
 
 

@@ -28,6 +28,7 @@ from bigdata_smart_batching import (
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
+from src.entity_types import EntityType, format_prompt, get_entity_config
 from src.helpers import (
     build_leaf_ancestry,
     get_leaf_label_summary_options,
@@ -104,6 +105,7 @@ def generate_taxonomy(
     profile: ModeProfile | None = None,
     client: OpenAI | None = None,
     print_taxonomy: bool = True,
+    entity_type: EntityType | str | None = None,
 ) -> Node:
     """Generate the sub-concept taxonomy tree for ``main_theme`` via the LLM.
 
@@ -123,13 +125,20 @@ def generate_taxonomy(
         messages=[
             {
                 "role": "system",
-                "content": active_profile.labels_system_prompt.format(
-                    main_theme=main_theme, analyst_focus=analyst_focus
+                "content": format_prompt(
+                    active_profile.labels_system_prompt,
+                    entity_type,
+                    main_theme=main_theme,
+                    analyst_focus=analyst_focus,
                 ),
             },
             {
                 "role": "user",
-                "content": active_profile.labels_user_prompt.format(main_theme=main_theme),
+                "content": format_prompt(
+                    active_profile.labels_user_prompt,
+                    entity_type,
+                    main_theme=main_theme,
+                ),
             },
         ],
     )
@@ -161,10 +170,11 @@ def write_taxonomy_artifacts(
     search_queries_path: Path,
     taxonomy_tree_path: Path | None = None,
     profile: ModeProfile | None = None,
+    entity_type: EntityType | str | None = None,
 ) -> tuple[list[str], list[str]]:
     """Persist taxonomy tree, leaf labels, and leaf search queries."""
     labels = leaf_labels(root, profile)
-    search_queries = get_leaf_search_queries(root)
+    search_queries = get_leaf_search_queries(root, entity_type=entity_type)
     if len(labels) != len(search_queries):
         raise ValueError("Leaf label and search_query counts must match")
 
@@ -183,6 +193,7 @@ def generate_labels(
     profile: ModeProfile | None = None,
     client: OpenAI | None = None,
     print_taxonomy: bool = True,
+    entity_type: EntityType | str | None = None,
 ) -> list[str]:
     """Generate the leaf-level working label set for ``main_theme``.
 
@@ -196,6 +207,7 @@ def generate_labels(
         profile=profile,
         client=client,
         print_taxonomy=print_taxonomy,
+        entity_type=entity_type,
     )
     return leaf_labels(root, profile)
 
@@ -412,12 +424,20 @@ def extract_sentences(
     return sentences
 
 
-_LABELING_PAYLOAD_FIELDS = ("sentence_id", "text", "company_name")
-
-
-def _labeling_payload(sentence: dict[str, Any]) -> dict[str, Any]:
+def _labeling_payload(
+    sentence: dict[str, Any],
+    entity_type: EntityType | str | None = None,
+) -> dict[str, Any]:
     """Project a sentence onto the fields shown to the labeling model."""
-    return {key: sentence[key] for key in _LABELING_PAYLOAD_FIELDS if key in sentence}
+    config = get_entity_config(entity_type)
+    payload = {
+        key: sentence[key]
+        for key in ("sentence_id", "text")
+        if key in sentence
+    }
+    if "company_name" in sentence:
+        payload[config.payload_name_field] = sentence["company_name"]
+    return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -453,16 +473,21 @@ def _labeling_system_prompt(
     analyst_focus: str,
     *,
     prompt_labels: list[str] | None = None,
+    entity_type: EntityType | str | None = None,
 ) -> str:
     """Format the mode-specific labeling system prompt."""
     labels_for_prompt = prompt_labels if prompt_labels is not None else labels
     if profile.mode is AnalysisMode.THEMATIC_SCREENER:
-        return profile.labeling_system_prompt.format(
+        return format_prompt(
+            profile.labeling_system_prompt,
+            entity_type,
             main_theme=main_theme,
             analyst_focus=analyst_focus,
             labels=str(labels_for_prompt),
         )
-    return profile.labeling_system_prompt.format(
+    return format_prompt(
+        profile.labeling_system_prompt,
+        entity_type,
         main_theme=main_theme,
         labels=str(labels_for_prompt),
     )
@@ -490,6 +515,7 @@ def label_sentences(
     requests_per_minute: int = 10000,
     max_concurrent_requests: int = 40,
     metrics_out: dict[str, float | int | None] | None = None,
+    entity_type: EntityType | str | None = None,
 ) -> dict[str, dict[str, str]]:
     """Label each sentence against the theme/risk and label set.
 
@@ -503,6 +529,7 @@ def label_sentences(
         labels,
         analyst_focus,
         prompt_labels=prompt_labels,
+        entity_type=entity_type,
     )
     requests = [
         ChatRequest(
@@ -512,7 +539,7 @@ def label_sentences(
                     "role": "system",
                     "content": system_prompt,
                 },
-                {"role": "user", "content": str(_labeling_payload(sentence))},
+                {"role": "user", "content": str(_labeling_payload(sentence, entity_type))},
             ],
             model=model,
             response_format={"type": "json_object"},
@@ -602,9 +629,22 @@ def build_labeled_dataframe(
     return merged_df.reset_index(drop=True)
 
 
-def _company_summary_system_prompt(main_theme: str, profile: ModeProfile | None = None) -> str:
+def _entity_summary_system_prompt(
+    main_theme: str,
+    profile: ModeProfile | None = None,
+    entity_type: EntityType | str | None = None,
+) -> str:
     active_profile = profile if profile is not None else _THEMATIC_PROFILE
-    return active_profile.company_summary_template.format(main_theme=main_theme)
+    return format_prompt(
+        active_profile.company_summary_template,
+        entity_type,
+        main_theme=main_theme,
+    )
+
+
+def _company_summary_system_prompt(main_theme: str, profile: ModeProfile | None = None) -> str:
+    """Backward-compatible alias for MCP callers that predate ``--entity-type``."""
+    return _entity_summary_system_prompt(main_theme, profile)
 
 
 def _company_evidence_block(rows: pd.DataFrame) -> str:
@@ -641,8 +681,9 @@ def summarize_companies(
     profile: ModeProfile | None = None,
     requests_per_minute: int = 10000,
     max_concurrent_requests: int = 20,
+    entity_type: EntityType | str | None = None,
 ) -> pd.DataFrame:
-    """Produce one cohesive summary per company."""
+    """Produce one cohesive summary per universe entity (company, country, etc.)."""
     if "motivation" not in merged_df.columns:
         return pd.DataFrame(columns=["company_name", "summary"])
 
@@ -655,7 +696,8 @@ def summarize_companies(
         company_motivations["motivations_text"].str.len() > 0
     ]
 
-    system_prompt = _company_summary_system_prompt(main_theme, profile)
+    entity_config = get_entity_config(entity_type)
+    system_prompt = _entity_summary_system_prompt(main_theme, profile, entity_type)
     summary_requests = [
         ChatRequest(
             request_id=row.company_name,
@@ -664,7 +706,7 @@ def summarize_companies(
                 {
                     "role": "user",
                     "content": (
-                        f"Company: {row.company_name}\n\n"
+                        f"{entity_config.summary_prompt_label}: {row.company_name}\n\n"
                         f"Motivations ({main_theme}):\n{row.motivations_text}"
                     ),
                 },
@@ -757,16 +799,28 @@ def _split_timestamp(timestamp: Any) -> tuple[str, str]:
     return date_part, parsed.strftime("%b %Y")
 
 
-def _company_metadata_lookup(universe_df: pd.DataFrame) -> dict[str, dict[str, Any]]:
-    """Map company name to ticker/sector/industry/country from the universe.
+def _entity_metadata_lookup(
+    universe_df: pd.DataFrame,
+    entity_type: EntityType | str | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Map universe entity name to ticker/sector/industry/country from the universe.
 
     Optional columns are used when present; otherwise sector/industry default to
-    ``"Unknown"`` and ticker/country to ``None``.
+    ``"Unknown"`` and ticker/country to ``None``. For country universes, the entity
+    name itself is used as ``country`` when no country column is present.
     """
+    config = get_entity_config(entity_type)
     columns = set(universe_df.columns)
     lookup: dict[str, dict[str, Any]] = {}
     for _, row in universe_df.iterrows():
         name = row[UNIVERSE_NAME_COLUMN]
+        country_value = (
+            _clean_scalar(row[UNIVERSE_COUNTRY_COLUMN])
+            if UNIVERSE_COUNTRY_COLUMN in columns
+            else None
+        )
+        if country_value is None and config.entity_type is EntityType.COUNTRY:
+            country_value = name
         lookup[name] = {
             "ticker": _clean_scalar(row[UNIVERSE_TICKER_COLUMN])
             if UNIVERSE_TICKER_COLUMN in columns
@@ -777,9 +831,7 @@ def _company_metadata_lookup(universe_df: pd.DataFrame) -> dict[str, dict[str, A
             "industry": _clean_scalar(row[UNIVERSE_INDUSTRY_COLUMN]) or UNKNOWN_VALUE
             if UNIVERSE_INDUSTRY_COLUMN in columns
             else UNKNOWN_VALUE,
-            "country": _clean_scalar(row[UNIVERSE_COUNTRY_COLUMN])
-            if UNIVERSE_COUNTRY_COLUMN in columns
-            else None,
+            "country": country_value,
         }
     return lookup
 
@@ -805,10 +857,11 @@ def build_content_chunks(
     screener_df: pd.DataFrame,
     root: Node,
     universe_df: pd.DataFrame,
+    entity_type: EntityType | str | None = None,
 ) -> list[dict[str, Any]]:
     """Build the ``content`` array of labeled chunks for the app JSON."""
     ancestry = build_leaf_ancestry(root)
-    metadata = _company_metadata_lookup(universe_df)
+    metadata = _entity_metadata_lookup(universe_df, entity_type)
 
     chunks: list[dict[str, Any]] = []
     for _, row in screener_df.iterrows():
@@ -843,9 +896,10 @@ def build_content_chunks(
 def build_risk_scoring(
     screener_df: pd.DataFrame,
     universe_df: pd.DataFrame,
+    entity_type: EntityType | str | None = None,
 ) -> dict[str, Any]:
-    """Aggregate per-company risk scoring (counts) for the app JSON."""
-    metadata = _company_metadata_lookup(universe_df)
+    """Aggregate per-entity risk scoring (counts) for the app JSON."""
+    metadata = _entity_metadata_lookup(universe_df, entity_type)
     scoring: dict[str, Any] = {}
 
     summaries: dict[str, Any] = {}
@@ -872,12 +926,13 @@ def build_risk_analysis_json(
     screener_df: pd.DataFrame,
     root: Node,
     universe_df: pd.DataFrame,
+    entity_type: EntityType | str | None = None,
 ) -> dict[str, Any]:
     """Assemble the full risk-format payload (``risk_scoring`` / ``risk_taxonomy`` / ``content``)."""
     return {
-        "risk_scoring": build_risk_scoring(screener_df, universe_df),
+        "risk_scoring": build_risk_scoring(screener_df, universe_df, entity_type),
         "risk_taxonomy": build_risk_taxonomy(root),
-        "content": build_content_chunks(screener_df, root, universe_df),
+        "content": build_content_chunks(screener_df, root, universe_df, entity_type),
     }
 
 
@@ -885,14 +940,15 @@ def build_theme_scoring(
     screener_df: pd.DataFrame,
     universe_df: pd.DataFrame,
     all_labels: list[str],
+    entity_type: EntityType | str | None = None,
 ) -> dict[str, Any]:
-    """Aggregate per-company theme scoring for the theme-format app JSON.
+    """Aggregate per-entity theme scoring for the theme-format app JSON.
 
     Every company's ``themes`` map lists the full leaf-label set (0 when a
     label is absent) and ``composite_score`` is the total count of relevant
     quotes.
     """
-    metadata = _company_metadata_lookup(universe_df)
+    metadata = _entity_metadata_lookup(universe_df, entity_type)
 
     summaries: dict[str, Any] = {}
     if "summary" in screener_df.columns:
@@ -917,9 +973,10 @@ def build_theme_scoring(
 def build_theme_content(
     screener_df: pd.DataFrame,
     universe_df: pd.DataFrame,
+    entity_type: EntityType | str | None = None,
 ) -> list[dict[str, Any]]:
     """Build the ``content`` array of labeled chunks for the theme-format JSON."""
-    metadata = _company_metadata_lookup(universe_df)
+    metadata = _entity_metadata_lookup(universe_df, entity_type)
 
     chunks: list[dict[str, Any]] = []
     for _, row in screener_df.iterrows():
@@ -950,13 +1007,16 @@ def build_theme_report(
     screener_df: pd.DataFrame,
     root: Node,
     universe_df: pd.DataFrame,
+    entity_type: EntityType | str | None = None,
 ) -> dict[str, Any]:
     """Assemble the full theme-format payload (``theme_scoring`` / ``theme_taxonomy`` / ``content``)."""
     all_labels = get_leaf_labels(root)
     return {
-        "theme_scoring": build_theme_scoring(screener_df, universe_df, all_labels),
+        "theme_scoring": build_theme_scoring(
+            screener_df, universe_df, all_labels, entity_type
+        ),
         "theme_taxonomy": build_risk_taxonomy(root),
-        "content": build_theme_content(screener_df, universe_df),
+        "content": build_theme_content(screener_df, universe_df, entity_type),
     }
 
 
@@ -965,6 +1025,7 @@ def build_report_json(
     root: Node,
     universe_df: pd.DataFrame,
     mode: AnalysisMode | str,
+    entity_type: EntityType | str | None = None,
 ) -> dict[str, Any]:
     """Build the app-uploadable report JSON in the shape matching ``mode``.
 
@@ -972,9 +1033,13 @@ def build_report_json(
     ``theme_scoring`` schema.
     """
     resolved = AnalysisMode(mode) if not isinstance(mode, AnalysisMode) else mode
+    config = get_entity_config(entity_type)
     if resolved is AnalysisMode.RISK_ANALYZER:
-        return build_risk_analysis_json(screener_df, root, universe_df)
-    return build_theme_report(screener_df, root, universe_df)
+        report = build_risk_analysis_json(screener_df, root, universe_df, entity_type)
+    else:
+        report = build_theme_report(screener_df, root, universe_df, entity_type)
+    report["entity_type"] = config.entity_type.value
+    return report
 
 
 def build_company_scoring_df(screener_df: pd.DataFrame) -> pd.DataFrame:
