@@ -175,6 +175,7 @@ python -m src.cli <subcommand> [options]
 | `--main-theme` | see defaults below | Main screening theme |
 | `--analyst-focus` | see defaults below | Analyst focus guiding the taxonomy |
 | `--labels-model` | `gpt-5.4-nano` | OpenAI model for label generation |
+| `--max-leaf-labels` | `15` | Cap on leaf sub-scenarios in the taxonomy (`0` = no limit) |
 
 ### `plans` — build search plans
 
