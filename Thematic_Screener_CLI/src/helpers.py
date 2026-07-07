@@ -45,6 +45,20 @@ def get_leaf_search_queries(model: _TaxonomyNode, *, fallback: bool = True) -> l
     return queries
 
 
+def get_leaf_label_summary_options(model: _TaxonomyNode) -> list[str]:
+    """Return ``Label: Summary`` strings for risk labeling prompts."""
+    if not model.children:
+        label = str(model.label or "").strip()
+        summary = str(model.summary or "").strip()
+        if summary:
+            return [f"{label}: {summary}"]
+        return [label]
+    options: list[str] = []
+    for child in model.children:
+        options.extend(get_leaf_label_summary_options(child))  # type: ignore[arg-type]
+    return options
+
+
 def get_leaf_pairs(model: _TaxonomyNode, *, fallback: bool = True) -> list[tuple[str, str]]:
     """Return ``(label, search_query)`` pairs for each leaf."""
     if not model.children:
@@ -65,6 +79,22 @@ def get_leaf_summaries(model: _TaxonomyNode) -> list[str]:
     for child in model.children:
         summaries.extend(get_leaf_summaries(child))  # type: ignore[arg-type]
     return summaries
+
+
+def build_leaf_ancestry(model: _TaxonomyNode, ancestors: list[str] | None = None) -> dict[str, list[str]]:
+    """Map each leaf ``label`` to ancestor labels (root first).
+
+    Used to derive risk_factor/risk_channel from a leaf sub-scenario.
+    """
+    chain = ancestors or []
+    if not model.children:
+        return {model.label: list(chain)}
+
+    mapping: dict[str, list[str]] = {}
+    child_ancestors = [*chain, model.label]
+    for child in model.children:
+        mapping.update(build_leaf_ancestry(child, child_ancestors))  # type: ignore[arg-type]
+    return mapping
 
 
 def print_tree(node: Node | _TaxonomyNode | None, level: int = 0) -> None:

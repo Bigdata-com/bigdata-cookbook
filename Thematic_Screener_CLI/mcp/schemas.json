@@ -212,7 +212,8 @@
           "default": [
             {"name": "quick_scan", "chunk_percentage": 0.005},
             {"name": "balanced", "chunk_percentage": 0.02},
-            {"name": "deep_dive", "chunk_percentage": 0.05}
+            {"name": "deep_dive", "chunk_percentage": 0.05},
+            {"name": "full", "chunk_percentage": 1.0}
           ]
         }
       },

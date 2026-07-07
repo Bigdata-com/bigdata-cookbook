@@ -87,7 +87,7 @@ Response:
   "universe_summary": {
     "mode": "default_global_all_caps",
     "row_count": 10001,
-    "id_column": "RP_COMPANY_ID",
+    "id_column": "RP_ENTITY_ID",
     "name_column": "COMPANY_NAME"
   },
   "artifacts": [
@@ -297,7 +297,8 @@ Request:
   "presets": [
     {"name": "quick_scan", "chunk_percentage": 0.005},
     {"name": "balanced", "chunk_percentage": 0.02},
-    {"name": "deep_dive", "chunk_percentage": 0.05}
+    {"name": "deep_dive", "chunk_percentage": 0.05},
+    {"name": "full", "chunk_percentage": 1.0}
   ]
 }
 ```
@@ -331,6 +332,12 @@ Response:
       "chunk_percentage": 0.05,
       "selected_chunks": 9200,
       "estimated_cost_usd": 13.8
+    },
+    {
+      "name": "full",
+      "chunk_percentage": 1.0,
+      "selected_chunks": 184000,
+      "estimated_cost_usd": 276.0
     }
   ],
   "next_actions": ["approve_budget"]

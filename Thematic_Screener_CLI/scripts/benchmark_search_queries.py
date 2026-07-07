@@ -890,7 +890,7 @@ def run_benchmark(
 ) -> dict[str, Any]:
     """Run all variants for one scenario and write a JSON report."""
     universe_df = pd.read_csv(universe_path)
-    company_ids = universe_df["RP_COMPANY_ID"].astype(str).head(company_limit).tolist()
+    company_ids = universe_df[screener.UNIVERSE_ID_COLUMN].astype(str).head(company_limit).tolist()
 
     results: list[VariantMetrics] = []
     for variant in config.variants:

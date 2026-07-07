@@ -40,6 +40,23 @@ Built-in universe modes (use with `create_run` / `validate_universe`):
 
 Other modes: `csv_path` (custom CSV path), `uploaded_csv`, `inline_entity_ids`.
 
+**Always include `"mode"`** when passing a custom universe object. Examples:
+
+```json
+{"mode": "csv_path", "path": "mag7.csv", "id_column": "RP_ENTITY_ID", "name_column": "COMPANY_NAME"}
+```
+
+```json
+{"mode": "sample_xnas"}
+```
+
+```json
+{"mode": "inline_entity_ids", "entity_ids": ["E09E2B", "D8442A"]}
+```
+
+Relative CSV paths resolve from the project root (`Thematic_Screener_CLI/`). A bare path
+string (`"mag7.csv"`) is also accepted and treated as `csv_path`.
+
 After `create_run`, call `validate_universe` and report row count plus a short sample before planning.
 If the user asks for Europe-only or EU mid/large caps, prefer `default_europe_ml_caps` over filtering
 global all-caps manually.

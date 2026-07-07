@@ -91,7 +91,13 @@ def test_format_enrichment_cost_never_rounds_to_zero() -> None:
 
 
 def test_estimate_enrichment_budget_for_smoke_run() -> None:
-    response = estimate_enrichment_budget("live_mcp_smoke_20260618_215813")
+    run_name = "live_mcp_smoke_20260618_215813"
+    context = _context(run_name)
+    if not context.results_path.exists():
+        import pytest
+
+        pytest.skip(f"fixture run missing results at {context.results_path}")
+    response = estimate_enrichment_budget(run_name)
     budget = response["enrichment_budget"]
     assert budget["sentence_count"] == 29
     assert budget["estimated_total_cost_usd"] >= MIN_ESTIMATED_COST_USD
@@ -101,6 +107,11 @@ def test_estimate_enrichment_budget_for_smoke_run() -> None:
 
 def test_fresh_summary_company_estimate_uses_retention_factor() -> None:
     run_name = "spacex_ipo_global_plan_20260618_223605"
+    context = _context(run_name)
+    if not context.results_path.exists():
+        import pytest
+
+        pytest.skip(f"fixture run missing results at {context.results_path}")
     labeled_path = Path("runs") / run_name / "labeled_sentences.csv"
     backup = labeled_path.read_text() if labeled_path.exists() else None
     try:

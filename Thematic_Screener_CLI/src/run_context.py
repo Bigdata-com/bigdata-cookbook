@@ -23,6 +23,8 @@ RESULTS_FILENAME = "results.json"
 LABELED_SENTENCES_FILENAME = "labeled_sentences.csv"
 COMPANY_SUMMARIES_FILENAME = "company_summaries.csv"
 SCREENER_RESULTS_FILENAME = "screener_results.csv"
+REPORT_JSON_FILENAME = "report.json"
+REPORT_EXCEL_FILENAME = "report.xlsx"
 
 
 def default_run_name() -> str:
@@ -70,6 +72,19 @@ class RunContext:
     @property
     def taxonomy_tree_path(self) -> Path:
         return self.run_dir / TAXONOMY_TREE_FILENAME
+
+    @property
+    def taxonomy_path(self) -> Path:
+        """Alias for ``taxonomy_tree_path`` (legacy name)."""
+        return self.taxonomy_tree_path
+
+    @property
+    def report_json_path(self) -> Path:
+        return self.run_dir / REPORT_JSON_FILENAME
+
+    @property
+    def report_excel_path(self) -> Path:
+        return self.run_dir / REPORT_EXCEL_FILENAME
 
     @property
     def plans_dir(self) -> Path:
@@ -133,6 +148,22 @@ class RunContext:
         """Write exposure labels to ``themes.txt`` (one per line)."""
         self.ensure_run_dir()
         self.themes_path.write_text("\n".join(labels) + "\n", encoding="utf-8")
+
+    def write_taxonomy(self, taxonomy: dict[str, Any]) -> None:
+        """Persist the full taxonomy tree to ``taxonomy_tree.json``."""
+        self.ensure_run_dir()
+        with self.taxonomy_tree_path.open("w", encoding="utf-8") as handle:
+            json.dump(taxonomy, handle, indent=2)
+
+    def read_taxonomy(self) -> dict[str, Any]:
+        """Read the persisted taxonomy tree from ``taxonomy_tree.json``."""
+        if not self.taxonomy_tree_path.exists():
+            raise FileNotFoundError(
+                f"taxonomy file not found at {self.taxonomy_tree_path}; "
+                "run the 'generate-labels' step first"
+            )
+        with self.taxonomy_tree_path.open(encoding="utf-8") as handle:
+            return json.load(handle)
 
     def read_search_queries(self) -> list[str]:
         """Read Bigdata search query text aligned with ``themes.txt``."""
