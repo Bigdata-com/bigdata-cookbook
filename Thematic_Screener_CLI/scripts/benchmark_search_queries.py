@@ -20,7 +20,12 @@ import pandas as pd
 from bigdata_smart_batching import deduplicate_documents, execute_search, plan_search
 from dotenv import load_dotenv
 
-from src.screener import DEFAULT_END_DATE, DEFAULT_SEARCH_CATEGORY, DEFAULT_START_DATE
+from src.screener import (
+    DEFAULT_END_DATE,
+    DEFAULT_SEARCH_CATEGORY,
+    DEFAULT_START_DATE,
+    UNIVERSE_ID_COLUMN,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_UNIVERSE = PROJECT_ROOT / "XNAS_companies.csv"
@@ -106,6 +111,50 @@ MEMORY_LEXICON = re.compile(
     r"\b(memory|dram|nand|storage|ssd|hdd|flash|data center storage)\b",
     re.IGNORECASE,
 )
+EV_BATTERY_LEXICON = re.compile(
+    r"\b(cathode|anode|battery cell|battery pack|cell manufactur|lithium|nickel|cobalt|"
+    r"gigafactory|ev supplier)\b",
+    re.IGNORECASE,
+)
+SOLAR_WIND_LEXICON = re.compile(
+    r"\b(solar panel|photovoltaic|inverter|wind turbine|turbine blade|renewable project|"
+    r"module manufactur)\b",
+    re.IGNORECASE,
+)
+AUTOMATION_LEXICON = re.compile(
+    r"\b(robot|automation system|plc|sensor|machine vision|conveyor|industrial control)\b",
+    re.IGNORECASE,
+)
+INSURANCE_LEXICON = re.compile(
+    r"\b(underwrit|premium|policy|claims|reinsur|actuarial|loss ratio)\b",
+    re.IGNORECASE,
+)
+CONSUMER_CREDIT_LEXICON = re.compile(
+    r"\b(loan origination|credit card|interest income|lend|borrower|default rate|receivable)\b",
+    re.IGNORECASE,
+)
+PAYMENTS_LEXICON = re.compile(
+    r"\b(transaction volume|merchant|payment processing|interchange|acquiring|"
+    r"payment network|gateway)\b",
+    re.IGNORECASE,
+)
+APPAREL_LEXICON = re.compile(
+    r"\b(apparel|footwear|sneaker|wholesale|direct-to-consumer|retail store|brand)\b",
+    re.IGNORECASE,
+)
+RESTAURANT_LEXICON = re.compile(
+    r"\b(franchise|same-store sales|royalty|restaurant unit|drive-thru|menu)\b",
+    re.IGNORECASE,
+)
+MEDICAL_DEVICE_LEXICON = re.compile(
+    r"\b(device|implant|surgical|fda clearance|diagnostic|catheter|monitor)\b",
+    re.IGNORECASE,
+)
+HEALTHCARE_SERVICES_LEXICON = re.compile(
+    r"\b(staffing|clinician|nurse|home health|patient visit|billable hour|"
+    r"healthcare provider)\b",
+    re.IGNORECASE,
+)
 
 SPACEX_THEME = re.compile(r"\bspace\s*x\b", re.IGNORECASE)
 DATA_CENTER_THEME = re.compile(r"\bdata\s*cent(?:er|re)s?\b", re.IGNORECASE)
@@ -127,6 +176,35 @@ STREAMING_THEME = re.compile(r"\b(streaming|video subscription|ott)\b", re.IGNOR
 BIOTECH_THEME = re.compile(r"\b(pharmaceutical|biotech|drug sales|therapeutic)\b", re.IGNORECASE)
 ECOMMERCE_THEME = re.compile(r"\b(e-?commerce|online marketplace|digital retail)\b", re.IGNORECASE)
 MEMORY_THEME = re.compile(r"\b(memory|dram|nand|ssd|storage demand)\b", re.IGNORECASE)
+EV_BATTERY_THEME = re.compile(
+    r"\b(electric vehicle|ev battery|battery pack|lithium-ion|gigafactory)\b", re.IGNORECASE
+)
+SOLAR_WIND_THEME = re.compile(
+    r"\b(solar|photovoltaic|wind turbine|renewable energy|clean energy)\b", re.IGNORECASE
+)
+AUTOMATION_THEME = re.compile(
+    r"\b(industrial automation|robotics|factory automation|robotic arm)\b", re.IGNORECASE
+)
+INSURANCE_THEME = re.compile(r"\b(insurance|underwrit|policyholder|premium)\b", re.IGNORECASE)
+CONSUMER_CREDIT_THEME = re.compile(
+    r"\b(consumer credit|consumer lending|personal loan|credit card)\b", re.IGNORECASE
+)
+PAYMENTS_THEME = re.compile(
+    r"\b(payment processing|payments network|merchant acquiring|digital payments)\b",
+    re.IGNORECASE,
+)
+APPAREL_THEME = re.compile(
+    r"\b(apparel|footwear|athletic wear|fashion brand|sportswear)\b", re.IGNORECASE
+)
+RESTAURANT_THEME = re.compile(
+    r"\b(restaurant|quick service|qsr|franchise|fast food)\b", re.IGNORECASE
+)
+MEDICAL_DEVICE_THEME = re.compile(
+    r"\b(medical device|surgical device|implant|diagnostic equipment)\b", re.IGNORECASE
+)
+HEALTHCARE_SERVICES_THEME = re.compile(
+    r"\b(healthcare services|medical staffing|home health|clinical staffing)\b", re.IGNORECASE
+)
 
 DEFAULT_XNAS_COMPANY_LIMIT = 200
 
@@ -719,10 +797,274 @@ XNAS_SCENARIOS: dict[str, ScenarioConfig] = {
     ),
 }
 
+NEW_VERTICALS_SCENARIOS: dict[str, ScenarioConfig] = {
+    "ev_battery_supply_chain": ScenarioConfig(
+        scenario_id="ev_battery_supply_chain",
+        description="EV and battery supply chain",
+        theme_pattern=EV_BATTERY_THEME,
+        role_lexicon=EV_BATTERY_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Battery and EV component suppliers benefiting from electric vehicle adoption "
+                "and gigafactory capacity expansion."
+            ),
+            document=(
+                "The company manufactures or supplies battery cells, cathodes, anodes, or "
+                "battery packs for electric vehicle makers."
+            ),
+            first_person=(
+                "We manufacture battery cells and battery packs supplied to electric vehicle "
+                "manufacturers."
+            ),
+            disclosure=(
+                "Revenue from battery cell and EV component shipments increased as gigafactory "
+                "capacity ramped."
+            ),
+            hybrid="Companies supplying battery cells, cathodes, anodes, or packs to electric vehicle manufacturers.",
+            keywords="EV battery cell cathode anode lithium gigafactory electric vehicle supplier",
+        ),
+    ),
+    "solar_wind_renewable_energy": ScenarioConfig(
+        scenario_id="solar_wind_renewable_energy",
+        description="Solar and wind renewable energy equipment",
+        theme_pattern=SOLAR_WIND_THEME,
+        role_lexicon=SOLAR_WIND_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Renewable energy equipment makers gaining from solar and wind capacity "
+                "buildout and clean energy tax incentives."
+            ),
+            document=(
+                "The company manufactures solar panels, inverters, or wind turbines for "
+                "utility and commercial renewable energy projects."
+            ),
+            first_person=(
+                "We manufacture solar panels, inverters, and wind turbine components sold to "
+                "renewable energy developers."
+            ),
+            disclosure=(
+                "Shipments and revenue from solar module and wind turbine products increased "
+                "with new project installations."
+            ),
+            hybrid="Companies manufacturing solar panels, inverters, or wind turbines for renewable energy projects.",
+            keywords="solar panel photovoltaic inverter wind turbine renewable energy module",
+        ),
+    ),
+    "industrial_automation_robotics": ScenarioConfig(
+        scenario_id="industrial_automation_robotics",
+        description="Industrial automation and robotics",
+        theme_pattern=AUTOMATION_THEME,
+        role_lexicon=AUTOMATION_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Automation vendors benefiting from factory robotics adoption and "
+                "manufacturing labor cost pressures."
+            ),
+            document=(
+                "The company manufactures industrial robots, automation systems, or machine "
+                "vision equipment for factory customers."
+            ),
+            first_person=(
+                "We manufacture industrial robots and automation systems sold to "
+                "manufacturing plant customers."
+            ),
+            disclosure=(
+                "Orders for industrial robots and automation systems increased as "
+                "manufacturers invested in factory automation."
+            ),
+            hybrid="Companies manufacturing industrial robots, automation systems, or machine vision equipment for factories.",
+            keywords="industrial robot automation factory machine vision sensor manufacturing",
+        ),
+    ),
+    "insurance_underwriting": ScenarioConfig(
+        scenario_id="insurance_underwriting",
+        description="Insurance underwriting (P&C and life)",
+        theme_pattern=INSURANCE_THEME,
+        role_lexicon=INSURANCE_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Insurers benefiting from premium growth and favorable underwriting cycles "
+                "across property, casualty, and life lines."
+            ),
+            document=(
+                "The company underwrites property, casualty, or life insurance policies and "
+                "earns premium revenue from policyholders."
+            ),
+            first_person=(
+                "We underwrite insurance policies and earn premium income from policyholders "
+                "across our product lines."
+            ),
+            disclosure=(
+                "Net premiums earned and underwriting income increased as policy renewals and "
+                "new business grew."
+            ),
+            hybrid="Companies underwriting property, casualty, or life insurance policies for premium revenue.",
+            keywords="insurance underwriting premium policyholder claims reinsurance actuarial",
+        ),
+    ),
+    "consumer_credit_lending": ScenarioConfig(
+        scenario_id="consumer_credit_lending",
+        description="Consumer credit and lending",
+        theme_pattern=CONSUMER_CREDIT_THEME,
+        role_lexicon=CONSUMER_CREDIT_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Consumer lenders benefiting from loan origination growth and credit card "
+                "receivable expansion."
+            ),
+            document=(
+                "The company originates consumer loans or credit card receivables and earns "
+                "interest income from borrowers."
+            ),
+            first_person=(
+                "We originate personal loans and credit card receivables and earn interest "
+                "income from our borrowers."
+            ),
+            disclosure=(
+                "Loan originations and interest income from consumer credit products "
+                "increased during the period."
+            ),
+            hybrid="Companies originating consumer loans or credit card receivables for interest income.",
+            keywords="consumer credit lending personal loan credit card interest income receivable",
+        ),
+    ),
+    "payments_processing": ScenarioConfig(
+        scenario_id="payments_processing",
+        description="Payments processing",
+        theme_pattern=PAYMENTS_THEME,
+        role_lexicon=PAYMENTS_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Payments processors benefiting from transaction volume growth and merchant "
+                "acquiring expansion."
+            ),
+            document=(
+                "The company processes electronic payments or provides merchant acquiring "
+                "services and earns transaction-based fees."
+            ),
+            first_person=(
+                "We process electronic payments and provide merchant acquiring services, "
+                "earning fees on transaction volume."
+            ),
+            disclosure=(
+                "Payment transaction volume and processing revenue increased as merchant "
+                "acceptance expanded."
+            ),
+            hybrid="Companies processing electronic payments or providing merchant acquiring services for transaction fees.",
+            keywords="payments processing merchant acquiring transaction volume interchange gateway",
+        ),
+    ),
+    "apparel_footwear_brands": ScenarioConfig(
+        scenario_id="apparel_footwear_brands",
+        description="Apparel and footwear brands",
+        theme_pattern=APPAREL_THEME,
+        role_lexicon=APPAREL_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Apparel and footwear brands benefiting from consumer spending trends and "
+                "direct-to-consumer channel growth."
+            ),
+            document=(
+                "The company designs and sells apparel or footwear products through wholesale "
+                "and direct-to-consumer channels."
+            ),
+            first_person=(
+                "We design and sell apparel and footwear products through wholesale and "
+                "direct-to-consumer channels."
+            ),
+            disclosure=(
+                "Net sales of apparel and footwear products increased across wholesale and "
+                "direct-to-consumer channels."
+            ),
+            hybrid="Companies designing and selling apparel or footwear through wholesale and direct-to-consumer channels.",
+            keywords="apparel footwear brand sneaker wholesale direct-to-consumer sportswear",
+        ),
+    ),
+    "restaurant_qsr_franchising": ScenarioConfig(
+        scenario_id="restaurant_qsr_franchising",
+        description="Restaurant and QSR franchising",
+        theme_pattern=RESTAURANT_THEME,
+        role_lexicon=RESTAURANT_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Restaurant franchisors benefiting from same-store sales growth and unit "
+                "expansion through franchisees."
+            ),
+            document=(
+                "The company franchises or operates quick-service restaurants and earns "
+                "royalty or restaurant sales revenue."
+            ),
+            first_person=(
+                "We franchise and operate quick-service restaurants and earn royalty income "
+                "from franchisees."
+            ),
+            disclosure=(
+                "Same-store sales and franchise royalty revenue increased as restaurant unit "
+                "count grew."
+            ),
+            hybrid="Companies franchising or operating quick-service restaurants for royalty and sales revenue.",
+            keywords="restaurant quick service franchise royalty same-store sales unit growth",
+        ),
+    ),
+    "medical_devices": ScenarioConfig(
+        scenario_id="medical_devices",
+        description="Medical devices",
+        theme_pattern=MEDICAL_DEVICE_THEME,
+        role_lexicon=MEDICAL_DEVICE_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Medical device makers benefiting from procedure volume growth and new "
+                "product clearances."
+            ),
+            document=(
+                "The company designs and manufactures medical devices, surgical instruments, "
+                "or diagnostic equipment sold to hospitals and clinicians."
+            ),
+            first_person=(
+                "We design and manufacture medical devices and surgical instruments sold to "
+                "hospitals and clinicians."
+            ),
+            disclosure=(
+                "Product revenue from medical device sales increased following new FDA "
+                "clearances and procedure volume growth."
+            ),
+            hybrid="Companies manufacturing medical devices, surgical instruments, or diagnostic equipment for hospitals.",
+            keywords="medical device surgical implant diagnostic equipment FDA clearance hospital",
+        ),
+    ),
+    "healthcare_services_staffing": ScenarioConfig(
+        scenario_id="healthcare_services_staffing",
+        description="Healthcare services and staffing",
+        theme_pattern=HEALTHCARE_SERVICES_THEME,
+        role_lexicon=HEALTHCARE_SERVICES_LEXICON,
+        variants=_core_variants(
+            taxonomy=(
+                "Healthcare services and staffing providers benefiting from clinician demand "
+                "and outsourced care delivery."
+            ),
+            document=(
+                "The company provides healthcare staffing, home health, or clinical services "
+                "to hospitals and patients."
+            ),
+            first_person=(
+                "We provide healthcare staffing and home health services to hospitals, "
+                "clinics, and patients."
+            ),
+            disclosure=(
+                "Revenue from healthcare staffing placements and home health visits increased "
+                "during the period."
+            ),
+            hybrid="Companies providing healthcare staffing, home health, or clinical services to hospitals and patients.",
+            keywords="healthcare staffing home health clinician nurse patient services",
+        ),
+    ),
+}
+
 SCENARIO_SUITES: dict[str, dict[str, ScenarioConfig]] = {
     "legacy": SCENARIOS,
     "xnas": XNAS_SCENARIOS,
-    "all": {**SCENARIOS, **XNAS_SCENARIOS},
+    "new_verticals": NEW_VERTICALS_SCENARIOS,
+    "all": {**SCENARIOS, **XNAS_SCENARIOS, **NEW_VERTICALS_SCENARIOS},
 }
 
 
@@ -890,7 +1232,7 @@ def run_benchmark(
 ) -> dict[str, Any]:
     """Run all variants for one scenario and write a JSON report."""
     universe_df = pd.read_csv(universe_path)
-    company_ids = universe_df[screener.UNIVERSE_ID_COLUMN].astype(str).head(company_limit).tolist()
+    company_ids = universe_df[UNIVERSE_ID_COLUMN].astype(str).head(company_limit).tolist()
 
     results: list[VariantMetrics] = []
     for variant in config.variants:

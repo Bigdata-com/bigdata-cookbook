@@ -27,6 +27,8 @@ Agent_To_BigData/my_agent/data/
 
 # Runs
 */runs
+*/output
+*/outputs
 
 **/uv.lock
 */internal 

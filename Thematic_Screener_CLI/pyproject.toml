@@ -20,6 +20,7 @@ thematic-screener-mcp = "src.mcp_server:main"
 
 [dependency-groups]
 dev = [
+    "matplotlib>=3.11.0",
     "pytest",
     "ruff",
     "ty",
