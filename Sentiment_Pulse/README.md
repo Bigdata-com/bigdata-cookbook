@@ -1,0 +1,96 @@
+# Sentiment Pulse
+
+## Company Sentiment Dashboard
+
+A self-contained Jupyter notebook that turns a **single company stock ticker** (e.g. `BAC`, `AAPL`, `TSLA`) into a complete sentiment dashboard, combining a qualitative research narrative with a quantitative daily sentiment feed.
+
+All data comes from [Bigdata.com](https://bigdata.com). The notebook has no dependency on any other project in this repository — it only needs a Bigdata.com API key and four Python packages.
+
+## What it produces
+
+From one ticker, the notebook renders three outputs:
+
+1. **Sentiment tearsheet** — a full qualitative research report (executive summary, bullish/risk drivers, outlook, and ranked evidence) parsed from markdown and rendered as a formatted dashboard card.
+2. **Current sentiment snapshot** — the latest daily sentiment score, its direction (Bullish / Neutral / Bearish), and how it compares to recent history, shown as a gauge.
+3. **Time series chart** — daily sentiment, sentiment pressure, and abnormal media attention over the lookback window (default 180 days).
+
+## Data sources
+
+The notebook uses three Bigdata.com services:
+
+| Service | Used for | Endpoint / tool |
+|---|---|---|
+| **Knowledge Graph** | Resolve ticker → stable `rp_entity_id` | `POST /v1/knowledge-graph/companies` (REST) |
+| **Sentiment Tearsheet** | Qualitative narrative report (Section 4) | `bigdata_sentiment_tearsheet` (MCP server) |
+| **Entity Sentiment API** | Daily sentiment time series (Sections 5–7) | `POST /v1/entity-sentiment/` (REST) |
+
+### Time series metrics
+
+| Field | Meaning |
+|---|---|
+| `daily_sentiment` | Mean sentiment score for the day (roughly −1 = very negative, +1 = very positive). |
+| `sentiment_pressure` | How abnormal that day's sentiment intensity is versus the entity's own recent baseline. |
+| `abnormal_media_attention` | How abnormal that day's media volume is versus the entity's own recent baseline. |
+
+## Setup
+
+### Prerequisites
+
+- Python 3.8 or higher
+- A Bigdata.com API key — sign up at [bigdata.com](https://bigdata.com)
+
+### Install dependencies
+
+```bash
+cd Sentiment_Pulse
+
+# with uv (recommended)
+uv pip install -r requirements.txt
+
+# or with pip
+pip install -r requirements.txt
+```
+
+Dependencies (`requirements.txt`): `requests`, `pandas`, `matplotlib`, `mcp`.
+
+### Set your API key
+
+The notebook reads the key from the `BIGDATA_API_KEY` environment variable. If it isn't set, you'll be prompted to paste it in (it is not echoed or stored on disk).
+
+```bash
+export BIGDATA_API_KEY=your_api_key_here
+```
+
+## Usage
+
+```bash
+cd Sentiment_Pulse
+jupyter notebook company_sentiment_dashboard.ipynb
+```
+
+Then:
+
+1. In **Section 2 (Configuration)**, set `TICKER` to the company you want (and optionally adjust `LOOKBACK_DAYS`).
+2. Run all cells top to bottom.
+
+To analyze a different company, change only the `TICKER` value in Section 2 and re-run — no other code needs to change.
+
+## Notebook structure
+
+| Section | Description |
+|---|---|
+| 1. Setup | Imports and dependencies |
+| 2. Configuration | The single input (`TICKER`) plus lookback window and API key |
+| 3. Resolve ticker | Map ticker → `rp_entity_id` via the Knowledge Graph |
+| 4. Sentiment tearsheet | Fetch, parse, and render the qualitative report card (MCP) |
+| 5. Fetch time series | Load the daily entity-sentiment feed into a DataFrame (REST) |
+| 6. Current snapshot | Latest score, direction, and gauge |
+| 7. Time series chart | Sentiment and abnormal media attention over the window |
+
+## Notes
+
+- **Tearsheet (MCP) vs. time series (REST).** The tearsheet is a point-in-time narrative report, regenerated on each call — best for "what's the story right now." The time series is a pure numeric feed — best for trend-spotting. They are different services and can differ slightly in wording/thresholds; treat the tearsheet as the qualitative read and the time series as the quantitative one.
+- **What "sentiment" means here.** `daily_sentiment` is a text-derived signal summarizing how positively or negatively a company is discussed in news, filings, and other sources — not a stock-price prediction. Treat it as one input among many.
+- **Data lag.** Sentiment is computed from published text, so very recent days may be incomplete until sources finish indexing.
+
+See the [Bigdata.com API docs](https://docs.bigdata.com) for full field definitions and rate limits.
