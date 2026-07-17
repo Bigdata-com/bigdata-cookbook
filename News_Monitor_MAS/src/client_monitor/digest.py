@@ -197,19 +197,40 @@ def build_run_summary(
     alerts_with_stories: list[dict[str, Any]] | None = None,
     timings: dict[str, float],
     mode_stats: dict[str, Any] | None = None,
+    skip_mas: bool = False,
 ) -> dict[str, Any]:
     """Build top-level run summary JSON."""
     primary_rows = [row for row in chunk_rows if row.get("is_primary_story", True)]
     syndicated_rows = len(chunk_rows) - len(primary_rows)
-    alerts = _compute_alerts(chunk_rows, mas_rows)
-    if alerts_with_stories is None:
-        alerts_with_stories = build_alerts_with_stories(
-            chunk_rows=chunk_rows,
-            mas_rows=mas_rows,
-        )
-    alert_keys_with_story = {
-        (str(row["entity_id"]), str(row["monitor_topic"])) for row in alerts_with_stories
-    }
+
+    if skip_mas:
+        alerts: list[dict[str, Any]] = []
+        alerts_with_stories = alerts_with_stories or []
+        mas_block: dict[str, Any] = {
+            "skipped": True,
+            "scored_pairs": 0,
+            "alert_count": 0,
+            "alerts_with_stories_count": 0,
+            "story_row_count": 0,
+            "primary_story_count": len(primary_rows),
+        }
+    else:
+        alerts = _compute_alerts(chunk_rows, mas_rows)
+        if alerts_with_stories is None:
+            alerts_with_stories = build_alerts_with_stories(
+                chunk_rows=chunk_rows,
+                mas_rows=mas_rows,
+            )
+        alert_keys_with_story = {
+            (str(row["entity_id"]), str(row["monitor_topic"])) for row in alerts_with_stories
+        }
+        mas_block = {
+            "skipped": False,
+            "scored_pairs": len(mas_rows),
+            "alert_count": len(alerts),
+            "alerts_with_stories_count": len(alert_keys_with_story),
+            "story_row_count": len(alerts_with_stories),
+        }
 
     estimated_chunks = len(chunk_rows)
     estimated_cost_usd = (estimated_chunks / 10.0) * 0.015
@@ -222,17 +243,13 @@ def build_run_summary(
             "chunk_rows": len(chunk_rows),
             "primary_stories": len(primary_rows),
             "syndicated_rows": syndicated_rows,
+            "chunk_percentage": config.get("chunk_percentage"),
         },
         "syndication_stats": {
             "primary_stories": len(primary_rows),
             "syndicated_rows": syndicated_rows,
         },
-        "mas": {
-            "scored_pairs": len(mas_rows),
-            "alert_count": len(alerts),
-            "alerts_with_stories_count": len(alert_keys_with_story),
-            "story_row_count": len(alerts_with_stories),
-        },
+        "mas": mas_block,
         "alerts": alerts[:100],
         "estimated_cost_usd": round(estimated_cost_usd, 4),
     }

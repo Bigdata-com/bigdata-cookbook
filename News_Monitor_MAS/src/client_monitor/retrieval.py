@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from bigdata_smart_batching import deduplicate_documents, execute_search
+from bigdata_smart_batching import deduplicate_documents, execute_search, plan_search
 
 from src.client_monitor.query import QuerySpec
+from src.client_monitor.window import TimeWindow
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,69 @@ def plan_entity_ids(plan: dict[str, Any]) -> set[str]:
     return entity_ids
 
 
+def patch_plan_window(
+    plan: dict[str, Any],
+    window: TimeWindow,
+    *,
+    entity_search_in: str = "ALL",
+) -> dict[str, Any]:
+    """Overwrite basket timestamps (and entity search_in) to the monitor window."""
+    for basket in plan.get("baskets") or []:
+        basket["period_start"] = window.start_iso
+        basket["period_end"] = window.end_iso
+        query = basket.get("query")
+        if not isinstance(query, dict):
+            continue
+        filters = query.setdefault("filters", {})
+        filters["timestamp"] = {"start": window.start_iso, "end": window.end_iso}
+        entity = filters.get("entity")
+        if isinstance(entity, dict):
+            entity["search_in"] = entity_search_in
+    return plan
+
+
+def plan_entity_only_search(
+    entity_ids: list[str],
+    *,
+    window: TimeWindow,
+    category: dict[str, Any],
+    requests_per_minute: int,
+) -> dict[str, Any]:
+    """Build a smart-batching plan for entity-only search over the full ID list.
+
+    Uses ``plan_search`` (volume densification + very_low packing). Planner dates are
+    day-granular; call ``patch_plan_window`` before execute for the exact ISO window.
+    """
+    if not entity_ids:
+        return {
+            "chunk_upper_bound_estimate": 0,
+            "baskets": [],
+            "planning_metadata": {"total_companies": 0, "skip_mas": True},
+        }
+
+    start_date = window.start.strftime("%Y-%m-%d")
+    end_date = window.end.strftime("%Y-%m-%d")
+    logger.info(
+        "Planning entity-only smart batch for %d entities (%s → %s)",
+        len(entity_ids),
+        start_date,
+        end_date,
+    )
+    plan = plan_search(
+        universe=entity_ids,
+        start_date=start_date,
+        end_date=end_date,
+        text=None,
+        category=category,
+        requests_per_minute=requests_per_minute,
+    )
+    metadata = plan.setdefault("planning_metadata", {})
+    if isinstance(metadata, dict):
+        metadata["skip_mas"] = True
+        metadata["entity_only"] = True
+    return patch_plan_window(plan, window, entity_search_in="ALL")
+
+
 def run_plan_search(
     plan: dict[str, Any],
     *,
@@ -30,6 +94,15 @@ def run_plan_search(
     """Execute one search plan and return deduplicated documents."""
     if not plan.get("baskets"):
         return []
+    expected = int(plan.get("chunk_upper_bound_estimate") or 0)
+    target = int(expected * chunk_percentage)
+    logger.info(
+        "Retrieving %.0f%% of planned chunks (expected=%s → target≈%s) across %s baskets",
+        chunk_percentage * 100.0,
+        f"{expected:,}",
+        f"{target:,}",
+        len(plan.get("baskets") or []),
+    )
     documents = execute_search(
         search_plan=plan,
         chunk_percentage=chunk_percentage,

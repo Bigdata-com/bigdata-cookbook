@@ -1,8 +1,39 @@
 # Client News Monitor
 
-Retrieval-only news monitor for ~3,000 US small/mid companies over a configurable Bigdata timestamp window. Scores abnormal news volume (MAS) across four fixed monitor topics — no LLM labeling, no MCP.
+Retrieval-only news monitor for ~3,000 US small/mid companies over a configurable Bigdata timestamp window. Two modes: **topic + MAS** (default production path) and **`--skip-mas`** (entity-only smart batch over the full universe). No LLM labeling, no MCP.
 
-Uses [Bigdata.com](https://bigdata.com) smart search and [bigdata-smart-batching](https://docs.bigdata.com/use-cases/search-service/smart-batching).
+Uses [Bigdata.com](https://bigdata.com) smart search and [bigdata-smart-batching](https://docs.bigdata.com/use-cases/search-service/smart-batching). Default document category is **`news`** (override with `--category-profile news_premium`).
+
+## Skip-MAS entity batch (full universe)
+
+`--skip-mas` skips themes and MAS scoring. It hands the full company list to `plan_search` (`text=None`); the library densifies baskets and packs zero-volume names into **`very_low`** groups. Then `execute_search` runs with an explicit **`--chunk-percentage`**.
+
+```bash
+# Full ~3k universe, retrieve 50% of the planned chunk budget
+uv run client-news-monitor \
+  --skip-mas \
+  --chunk-percentage 0.5 \
+  --output-dir runs/skip_mas_3k_50pct
+```
+
+### How planning vs retrieval works
+
+1. **`plan_search`** estimates co-mention volumes (day-granular dates) and builds baskets (volume buckets + dense `very_low` for zeros).
+2. We **patch** each basket’s timestamps to the exact monitor ISO window (often 15 minutes).
+3. **`--chunk-percentage`** sets the retrieval **cap**:  
+   `target ≈ chunk_upper_bound_estimate × chunk_percentage`  
+   Example: expected 76,441 × 0.5 → target ≈ **38,220** max chunks to *request*.
+4. The API only returns what exists in the window. Flattened output is much smaller — e.g. **758 rows / 500 primary** in a quiet 15‑min `news` run.
+
+| Metric | Meaning |
+|--------|---------|
+| Plan expected / target | Upper bound on chunks we are willing to request |
+| `chunk_rows` | Rows in `retrieval_chunks.jsonl` (chunk × matched company) |
+| `primary_stories` | Unique headlines after within-run syndication dedup |
+
+**50% does not mean “retrieve half the universe’s news.”** It means “use half of the planner’s expected-chunk budget as `max_chunks`.” Empty windows and short windows under-fill that budget.
+
+Logs spell this out: `chunk_percentage=50% (expected=4,765 → target≈2,382)`.
 
 ## Architecture
 
@@ -85,11 +116,18 @@ uv run client-news-monitor \
   --chunk-percentage 0.5 \
   --output-dir runs/client_poc
 
-# Broader news category (more recall, more noise)
-uv run client-news-monitor --category-profile news --limit-entities 50
+# Narrower premium category
+uv run client-news-monitor --category-profile news_premium --limit-entities 50
 
 # Compare text / topic / text+topic (~3× retrieval cost)
 uv run client-news-monitor ... --compare-modes
+
+# Skip MAS: entity-only smart batch over all names (library densifies zero-volume)
+uv run client-news-monitor \
+  --skip-mas \
+  --chunk-percentage 0.5 \
+  --limit-entities 50 \
+  --output-dir runs/skip_mas_50pct
 ```
 
 ## What it does
@@ -101,7 +139,7 @@ For each of **4 monitor topics** (`earnings`, `contracts`, `leadership`, `regula
 3. **MAS scoring** — Media Attention Score vs a cached 30-day baseline (same query spec)
 4. **Syndication dedup** — headline-hash collapse within the run
 
-**Document category:** controlled by `--category-profile` (default `news_premium`). Use `news` for broader wire coverage at the cost of more noise; `news_premium` excludes SEC filings and transcripts.
+**Document category:** controlled by `--category-profile` (default `news`). Use `news_premium` for narrower premium coverage; `news` includes broader wire coverage at the cost of more noise.
 
 ## MAS scoring
 
@@ -169,9 +207,10 @@ Curated topic filters from `taxonomy.csv` (`TOPIC=business`). Rules in `src/clie
 | `--window-end` | now (UTC) | Window end ISO timestamp |
 | `--window-minutes` | `15` | Window length in minutes |
 | `--search-mode` | `text+topic` | `text`, `topic`, `text+topic`, or `entity_only` |
-| `--category-profile` | `news_premium` | `news_premium` or `news` |
+| `--skip-mas` | off | Entity-only smart batch over all companies; no themes/MAS |
+| `--category-profile` | `news` | `news` or `news_premium` |
 | `--compare-modes` | off | Run all three search modes |
-| `--chunk-percentage` | `0.5` | Proportional chunk sampling per basket |
+| `--chunk-percentage` | `0.5` | Fraction of plan expected chunks to retrieve (0–1; **50%** default) |
 | `--limit-entities` | `0` (all) | Limit to first N companies |
 | `--max-chunks-per-basket` | none | Hard cap on `max_chunks` |
 | `--seen-headlines-db` | none | Optional SQLite for cross-run headline dedup |
@@ -188,6 +227,12 @@ Curated topic filters from `taxonomy.csv` (`TOPIC=business`). Rules in `src/clie
 | `entity_only` | omitted | omitted | `ALL` |
 
 `entity_only` runs **once per search mode** with `monitor_topic=entity_wide` — all news about the entity in the window, not scoped to the four monitor topics. See [Targeted backfill](#targeted-backfill-recommended-not-automated) below.
+
+### Skip MAS (entity-only smart batch)
+
+`--skip-mas` turns off themes and MAS scoring. It calls `bigdata_smart_batching.plan_search` on the full universe (`text=None`) so the library densifies baskets and packs zero-volume names into `very_low` groups, then `execute_search` with **`--chunk-percentage`** as the retrieval budget.
+
+Example: `--chunk-percentage 0.5` means retrieve **50%** of the plan’s `chunk_upper_bound_estimate`. Basket timestamps are patched to the exact monitor ISO window after planning.
 
 ### Targeted backfill (recommended, not automated)
 
