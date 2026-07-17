@@ -60,6 +60,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Narrative evolution and temporal analysis
 - Automated narrative scoring and ranking systems
 
+### 📈 [Sentiment Pulse](./Sentiment_Pulse/)
+**Single-Ticker Company Sentiment Dashboard**
+
+- Turns one company stock ticker into a complete sentiment dashboard
+- Qualitative sentiment tearsheet (executive summary, bullish/risk drivers, outlook, ranked evidence) via Bigdata.com MCP
+- Quantitative daily time series of sentiment, sentiment pressure, and abnormal media attention via the REST Entity Sentiment API
+- Current sentiment snapshot with direction gauge (Bullish / Neutral / Bearish)
+- Self-contained notebook — change only the `TICKER` and re-run
+
 ### 👥 [Board Management Monitoring](./Board_Management_Monitoring/)
 **Automated Analysis of Board Member and Management Activity Exposure**
 
@@ -334,6 +343,10 @@ bigdata-cookbook/
 ├── Narrative_Miners/                                 # Narrative analysis tool
 │   ├── NarrativeMiner.ipynb
 │   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── Sentiment_Pulse/                                  # Single-ticker sentiment dashboard
+│   ├── company_sentiment_dashboard.ipynb
 │   ├── requirements.txt
 │   └── README.md
 ├── Board_Management_Monitoring/                      # Board monitoring tool
