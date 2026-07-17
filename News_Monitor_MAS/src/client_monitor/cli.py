@@ -65,20 +65,32 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Run text, topic, and text+topic sequentially",
     )
     parser.add_argument(
+        "--skip-mas",
+        action="store_true",
+        help=(
+            "Skip themes and MAS; run entity-only smart batching over all companies "
+            "(library plan_search densifies including zero-volume names)"
+        ),
+    )
+    parser.add_argument(
         "--category-profile",
         type=str,
         default=DEFAULT_CATEGORY_PROFILE,
         choices=["news_premium", "news"],
         help=(
-            "Bigdata document category filter (default: news_premium; "
-            "news includes broader wire coverage, more noise)"
+            "Bigdata document category filter (default: news; "
+            "news_premium is narrower premium coverage)"
         ),
     )
     parser.add_argument(
         "--chunk-percentage",
         type=float,
         default=0.5,
-        help="Proportional chunk sampling per basket (default: 0.5)",
+        help=(
+            "Fraction of the smart-batching plan's expected chunks to retrieve "
+            "(0.0–1.0). Default 0.5 = 50%%. With --skip-mas this is the main "
+            "retrieval budget control."
+        ),
     )
     parser.add_argument(
         "--limit-entities",
@@ -131,32 +143,51 @@ def main(argv: list[str] | None = None) -> int:
     load_environment()
     output_dir = args.output_dir if args.output_dir is not None else default_output_dir()
 
-    config = build_config(
-        universe_path=args.universe,
-        taxonomy_path=args.taxonomy,
-        output_dir=output_dir,
-        window_end=args.window_end,
-        window_minutes=args.window_minutes,
-        search_mode=args.search_mode,
-        compare_modes=args.compare_modes,
-        category_profile=args.category_profile,
-        chunk_percentage=args.chunk_percentage,
-        limit_entities=args.limit_entities,
-        max_chunks_per_basket=args.max_chunks_per_basket,
-        seen_headlines_db=args.seen_headlines_db,
-        force_baseline_refresh=args.force_baseline_refresh,
-        requests_per_minute=args.requests_per_minute,
-    )
+    try:
+        config = build_config(
+            universe_path=args.universe,
+            taxonomy_path=args.taxonomy,
+            output_dir=output_dir,
+            window_end=args.window_end,
+            window_minutes=args.window_minutes,
+            search_mode=args.search_mode,
+            compare_modes=args.compare_modes,
+            category_profile=args.category_profile,
+            chunk_percentage=args.chunk_percentage,
+            limit_entities=args.limit_entities,
+            max_chunks_per_basket=args.max_chunks_per_basket,
+            seen_headlines_db=args.seen_headlines_db,
+            force_baseline_refresh=args.force_baseline_refresh,
+            requests_per_minute=args.requests_per_minute,
+            skip_mas=args.skip_mas,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
 
     logger.info("Output directory: %s", config.output_dir)
-    summary = run_monitor(config)
     logger.info(
-        "Done — %d chunk rows, %d alerts, %d with stories (est. cost $%.4f)",
-        summary["retrieval"]["chunk_rows"],
-        summary["mas"]["alert_count"],
-        summary["mas"]["alerts_with_stories_count"],
-        summary["estimated_cost_usd"],
+        "chunk_percentage=%.0f%% (%s, category=%s)",
+        config.chunk_percentage * 100.0,
+        "skip-mas entity batch" if config.skip_mas else "topic/MAS pipeline",
+        config.category_profile,
     )
+    summary = run_monitor(config)
+    if config.skip_mas:
+        logger.info(
+            "Done — %d chunk rows, %d primary stories, chunk_percentage=%.0f%%, est. cost $%.4f",
+            summary["retrieval"]["chunk_rows"],
+            summary["retrieval"]["primary_stories"],
+            config.chunk_percentage * 100.0,
+            summary["estimated_cost_usd"],
+        )
+    else:
+        logger.info(
+            "Done — %d chunk rows, %d alerts, %d with stories (est. cost $%.4f)",
+            summary["retrieval"]["chunk_rows"],
+            summary["mas"]["alert_count"],
+            summary["mas"]["alerts_with_stories_count"],
+            summary["estimated_cost_usd"],
+        )
     return 0
 
 

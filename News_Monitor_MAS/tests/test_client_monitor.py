@@ -8,11 +8,13 @@ from pathlib import Path
 import pytest
 
 from src.client_monitor.config import DEFAULT_SEARCH_CATEGORY, resolve_search_category
-from src.client_monitor.digest import build_alerts_with_stories
+from src.client_monitor.digest import build_alerts_with_stories, build_run_summary
 from src.client_monitor.mas import compute_mas, scale_lambda_from_total
 from src.client_monitor.novelty import headline_hash, mark_syndication, normalize_headline
+from src.client_monitor.pipeline import build_config
 from src.client_monitor.plans import basket_expected_chunks, build_search_plan
 from src.client_monitor.query import QuerySpec, build_entity_wide_spec, build_query_spec
+from src.client_monitor.retrieval import patch_plan_window
 from src.client_monitor.taxonomy import build_taxonomy_index, load_taxonomy
 from src.client_monitor.topics import MONITOR_TOPICS, SearchMode
 from src.client_monitor.volumes import batch_size_for_spec
@@ -113,8 +115,8 @@ def test_comention_payload_includes_topic(sample_window: TimeWindow) -> None:
     assert query["text"] == "Regulatory news"
 
 
-def test_default_search_category_is_news_premium_only() -> None:
-    assert DEFAULT_SEARCH_CATEGORY == {"mode": "INCLUDE", "values": ["news_premium"]}
+def test_default_search_category_is_news() -> None:
+    assert DEFAULT_SEARCH_CATEGORY == {"mode": "INCLUDE", "values": ["news"]}
 
 
 def test_resolve_search_category() -> None:
@@ -312,3 +314,97 @@ def test_build_time_window_from_range() -> None:
     assert window.start_iso == "2026-06-16T05:00:00Z"
     assert window.end_iso == "2026-06-17T04:59:59Z"
     assert window.minutes == 1439
+
+
+def test_patch_plan_window_sets_iso_and_search_in(sample_window: TimeWindow) -> None:
+    plan = {
+        "chunk_upper_bound_estimate": 10,
+        "baskets": [
+            {
+                "basket_id": "b0",
+                "companies": ["E1", "E2"],
+                "expected_chunks": 0,
+                "period_start": "2026-07-17T00:00:00Z",
+                "period_end": "2026-07-17T23:59:59Z",
+                "query": {
+                    "filters": {
+                        "timestamp": {
+                            "start": "2026-07-17T00:00:00Z",
+                            "end": "2026-07-17T23:59:59Z",
+                        },
+                        "entity": {"any_of": ["E1", "E2"], "search_in": "BODY"},
+                    }
+                },
+            }
+        ],
+    }
+    patched = patch_plan_window(plan, sample_window, entity_search_in="ALL")
+    basket = patched["baskets"][0]
+    assert basket["period_start"] == sample_window.start_iso
+    assert basket["period_end"] == sample_window.end_iso
+    assert basket["query"]["filters"]["timestamp"]["start"] == sample_window.start_iso
+    assert basket["query"]["filters"]["entity"]["search_in"] == "ALL"
+
+
+def test_build_run_summary_skip_mas() -> None:
+    summary = build_run_summary(
+        config={"chunk_percentage": 0.5, "skip_mas": True},
+        chunk_rows=[
+            {
+                "entity_id": "E1",
+                "monitor_topic": "entity_wide",
+                "is_primary_story": True,
+                "headline": "Story",
+            }
+        ],
+        mas_rows=[],
+        alerts_with_stories=[],
+        timings={"skip_mas_entity_batch": 1.0},
+        skip_mas=True,
+    )
+    assert summary["mas"]["skipped"] is True
+    assert summary["mas"]["alert_count"] == 0
+    assert summary["mas"]["primary_story_count"] == 1
+    assert summary["retrieval"]["chunk_percentage"] == 0.5
+
+
+def test_build_config_skip_mas_forces_entity_only(tmp_path: Path) -> None:
+    config = build_config(
+        universe_path=tmp_path / "u.csv",
+        taxonomy_path=tmp_path / "t.csv",
+        output_dir=tmp_path / "out",
+        window_end="2026-07-17T12:00:00Z",
+        window_minutes=15,
+        search_mode="topic",
+        compare_modes=False,
+        category_profile="news",
+        chunk_percentage=0.5,
+        limit_entities=10,
+        max_chunks_per_basket=None,
+        seen_headlines_db=None,
+        force_baseline_refresh=False,
+        requests_per_minute=350,
+        skip_mas=True,
+    )
+    assert config.skip_mas is True
+    assert config.search_modes == (SearchMode.ENTITY_ONLY,)
+    assert config.category_profile == "news"
+
+    with pytest.raises(ValueError, match="compare-modes"):
+        build_config(
+            universe_path=tmp_path / "u.csv",
+            taxonomy_path=tmp_path / "t.csv",
+            output_dir=tmp_path / "out",
+            window_end="2026-07-17T12:00:00Z",
+            window_minutes=15,
+            search_mode="topic",
+            compare_modes=True,
+            category_profile="news",
+            chunk_percentage=0.5,
+            limit_entities=0,
+            max_chunks_per_basket=None,
+            seen_headlines_db=None,
+            force_baseline_refresh=False,
+            requests_per_minute=350,
+            skip_mas=True,
+        )

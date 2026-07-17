@@ -19,8 +19,8 @@ SEARCH_CATEGORIES: dict[str, dict[str, Any]] = {
     "news": NEWS_CATEGORY,
 }
 
-DEFAULT_SEARCH_CATEGORY: dict[str, Any] = NEWS_PREMIUM_CATEGORY
-DEFAULT_CATEGORY_PROFILE = "news_premium"
+DEFAULT_SEARCH_CATEGORY: dict[str, Any] = NEWS_CATEGORY
+DEFAULT_CATEGORY_PROFILE = "news"
 
 
 def resolve_search_category(profile: str) -> tuple[str, dict[str, Any]]:

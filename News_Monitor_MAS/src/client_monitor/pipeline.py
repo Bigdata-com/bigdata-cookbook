@@ -30,6 +30,7 @@ from src.client_monitor.retrieval import (
     dedupe_rows_by_document,
     flatten_documents,
     plan_entity_ids,
+    plan_entity_only_search,
     run_plan_search,
 )
 from src.client_monitor.taxonomy import build_taxonomy_index, build_topic_filter, load_taxonomy
@@ -60,6 +61,7 @@ class MonitorConfig:
     seen_headlines_db: Path | None
     force_baseline_refresh: bool
     requests_per_minute: int
+    skip_mas: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -78,6 +80,7 @@ class MonitorConfig:
             "seen_headlines_db": str(self.seen_headlines_db) if self.seen_headlines_db else None,
             "force_baseline_refresh": self.force_baseline_refresh,
             "requests_per_minute": self.requests_per_minute,
+            "skip_mas": self.skip_mas,
         }
 
 
@@ -198,16 +201,70 @@ def run_topic_mode(
     return chunk_rows, mas_rows, topic_stats
 
 
+def run_skip_mas_entity_batch(
+    *,
+    config: MonitorConfig,
+    entity_ids: list[str],
+    id_to_name: dict[str, str],
+    seen_store: SeenHeadlineStore | None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Entity-only smart batch over all companies — no themes, no MAS scoring."""
+    start = time.perf_counter()
+    spec = build_entity_wide_spec(window=config.window, category=config.search_category)
+    plan = plan_entity_only_search(
+        entity_ids,
+        window=config.window,
+        category=config.search_category,
+        requests_per_minute=config.requests_per_minute,
+    )
+    expected = int(plan.get("chunk_upper_bound_estimate") or 0)
+    target = int(expected * config.chunk_percentage)
+    basket_count = len(plan.get("baskets") or [])
+    logger.info(
+        "skip-mas entity batch: %d entities, %d baskets, chunk_percentage=%.0f%% "
+        "(expected=%s → target≈%s)",
+        len(entity_ids),
+        basket_count,
+        config.chunk_percentage * 100.0,
+        f"{expected:,}",
+        f"{target:,}",
+    )
+    save_search_plan(plan, config.output_dir / "plans" / "entity_wide_skip_mas.json")
+
+    plan_entities = plan_entity_ids(plan)
+    documents = run_plan_search(
+        plan,
+        chunk_percentage=config.chunk_percentage,
+        requests_per_minute=config.requests_per_minute,
+    )
+    chunk_rows = flatten_documents(
+        documents,
+        spec=spec,
+        plan_entity_ids=plan_entities,
+        id_to_name=id_to_name,
+    )
+    chunk_rows = mark_syndication(chunk_rows)
+    if seen_store is not None:
+        chunk_rows = seen_store.mark_cross_run(chunk_rows)
+
+    stats = {
+        "entities": len(entity_ids),
+        "baskets": basket_count,
+        "expected_chunks": expected,
+        "chunk_percentage": config.chunk_percentage,
+        "target_chunks": target,
+        "retrieved_rows": len(chunk_rows),
+        "elapsed_seconds": round(time.perf_counter() - start, 2),
+    }
+    return chunk_rows, stats
+
+
 def run_monitor(config: MonitorConfig) -> dict[str, Any]:
     """Execute the full client monitor pipeline."""
     config.output_dir.mkdir(parents=True, exist_ok=True)
     write_json(config.output_dir / "config.json", config.to_dict())
 
     entity_ids, id_to_name = _load_entity_universe(config)
-    taxonomy = load_taxonomy(config.taxonomy_path)
-    taxonomy_index = build_taxonomy_index(taxonomy)
-
-    baseline_store = BaselineStore(config.output_dir / "mas_baselines.db")
     seen_store = (
         SeenHeadlineStore(config.seen_headlines_db)
         if config.seen_headlines_db is not None
@@ -219,26 +276,41 @@ def run_monitor(config: MonitorConfig) -> dict[str, Any]:
     mode_stats: dict[str, Any] = {}
     timings: dict[str, float] = {}
 
-    for search_mode in config.search_modes:
-        mode_start = time.perf_counter()
-        chunk_rows, mas_rows, topic_stats = run_topic_mode(
+    if config.skip_mas:
+        chunk_rows, batch_stats = run_skip_mas_entity_batch(
             config=config,
-            search_mode=search_mode,
             entity_ids=entity_ids,
             id_to_name=id_to_name,
-            taxonomy_index=taxonomy_index,
-            baseline_store=baseline_store,
             seen_store=seen_store,
         )
-        all_chunk_rows.extend(chunk_rows)
-        all_mas_rows.extend(mas_rows)
-        mode_stats[search_mode.value] = {
-            "topic_stats": topic_stats,
-            "chunk_rows": len(chunk_rows),
-            "mas_rows": len(mas_rows),
-            "elapsed_seconds": round(time.perf_counter() - mode_start, 2),
-        }
-        timings[f"mode_{search_mode.value}"] = round(time.perf_counter() - mode_start, 2)
+        all_chunk_rows = chunk_rows
+        mode_stats["entity_only_skip_mas"] = batch_stats
+        timings["skip_mas_entity_batch"] = batch_stats["elapsed_seconds"]
+    else:
+        taxonomy = load_taxonomy(config.taxonomy_path)
+        taxonomy_index = build_taxonomy_index(taxonomy)
+        baseline_store = BaselineStore(config.output_dir / "mas_baselines.db")
+
+        for search_mode in config.search_modes:
+            mode_start = time.perf_counter()
+            chunk_rows, mas_rows, topic_stats = run_topic_mode(
+                config=config,
+                search_mode=search_mode,
+                entity_ids=entity_ids,
+                id_to_name=id_to_name,
+                taxonomy_index=taxonomy_index,
+                baseline_store=baseline_store,
+                seen_store=seen_store,
+            )
+            all_chunk_rows.extend(chunk_rows)
+            all_mas_rows.extend(mas_rows)
+            mode_stats[search_mode.value] = {
+                "topic_stats": topic_stats,
+                "chunk_rows": len(chunk_rows),
+                "mas_rows": len(mas_rows),
+                "elapsed_seconds": round(time.perf_counter() - mode_start, 2),
+            }
+            timings[f"mode_{search_mode.value}"] = round(time.perf_counter() - mode_start, 2)
 
     all_chunk_rows = dedupe_rows_by_document(all_chunk_rows)
 
@@ -252,9 +324,13 @@ def run_monitor(config: MonitorConfig) -> dict[str, Any]:
     mas_path = config.output_dir / "mas_scores.csv"
     mas_df.to_csv(mas_path, index=False)
 
-    alerts_with_stories = build_alerts_with_stories(
-        chunk_rows=all_chunk_rows,
-        mas_rows=all_mas_rows,
+    alerts_with_stories = (
+        []
+        if config.skip_mas
+        else build_alerts_with_stories(
+            chunk_rows=all_chunk_rows,
+            mas_rows=all_mas_rows,
+        )
     )
     write_alerts_with_stories_csv(
         config.output_dir / "alerts_with_stories.csv",
@@ -267,7 +343,8 @@ def run_monitor(config: MonitorConfig) -> dict[str, Any]:
         mas_rows=all_mas_rows,
         alerts_with_stories=alerts_with_stories,
         timings=timings,
-        mode_stats=mode_stats if len(config.search_modes) > 1 else None,
+        mode_stats=mode_stats if (config.skip_mas or len(config.search_modes) > 1) else None,
+        skip_mas=config.skip_mas,
     )
     write_json(config.output_dir / "run_summary.json", summary)
     return summary
@@ -289,11 +366,17 @@ def build_config(
     seen_headlines_db: Path | None,
     force_baseline_refresh: bool,
     requests_per_minute: int,
+    skip_mas: bool = False,
 ) -> MonitorConfig:
     """Build ``MonitorConfig`` from CLI arguments."""
+    if skip_mas and compare_modes:
+        msg = "--skip-mas cannot be combined with --compare-modes"
+        raise ValueError(msg)
     end = parse_window_end(window_end)
     window = build_time_window(window_end=end, window_minutes=window_minutes)
-    if compare_modes:
+    if skip_mas:
+        modes = (SearchMode.ENTITY_ONLY,)
+    elif compare_modes:
         modes = SearchMode.all_modes()
     else:
         modes = (SearchMode.parse(search_mode),)
@@ -312,6 +395,7 @@ def build_config(
         seen_headlines_db=seen_headlines_db,
         force_baseline_refresh=force_baseline_refresh,
         requests_per_minute=requests_per_minute,
+        skip_mas=skip_mas,
     )
 
 
