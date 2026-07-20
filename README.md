@@ -224,6 +224,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Internal data integration with SQLite databases and FAISS vector stores
 - Citation support with inline markers and numbered references
 
+### 🧱 [Databricks Agent to Bigdata](./Databricks_Agent_To_Bigdata/)
+**Financial-intelligence agent on Databricks combining internal lakehouse data with Bigdata.com over MCP**
+
+- One Mosaic AI agent over three sources: internal structured (Unity Catalog SQL functions + AI/BI Genie), internal unstructured (Vector Search), and external real-time (Bigdata.com MCP)
+- Model Context Protocol integration with automatic tool discovery — governed via Unity AI Gateway MCP Services, or a direct connection
+- Built on the latest Databricks agent stack: Mosaic AI Agent Framework, MLflow `ChatAgent`, LangGraph, Databricks-hosted Claude
+- End-to-end: Unity Catalog setup → Vector Search → MCP → deploy to Model Serving with the AI Playground / Review App
+- Cited, cross-source answers separating proprietary signal from public market intelligence
+
 ### 🔍 [Large Scale Search](./Search_Large_Scale/)
 **High-Performance Portfolio Search Tool**
 
