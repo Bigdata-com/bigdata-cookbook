@@ -7,10 +7,8 @@ A single Mosaic AI agent that reasons over three data sources in one conversatio
   Internal — unstructured  : Mosaic AI Vector Search over proprietary research notes
   External — real-time      : Bigdata.com MCP (news, filings, transcripts, tearsheets, events)
 
-The agent is a LangGraph tool-calling graph driven by an LLM served through Databricks
-Model Serving (by default OpenAI gpt-5.4 via an AI Gateway external-model endpoint, or a
-Databricks-hosted foundation model — see LLM_PROVIDER/LLM_ENDPOINT below), wrapped in
-MLflow's `ChatAgent` interface so it can be logged, evaluated, and deployed to
+The agent is a LangGraph tool-calling graph driven by a Databricks-hosted Claude model,
+wrapped in MLflow's `ChatAgent` interface so it can be logged, evaluated, and deployed to
 Model Serving. This file is loaded via `mlflow.models.set_model(...)`. It follows the
 canonical Databricks LangGraph `ChatAgent` template (using `ChatAgentState` /
 `ChatAgentToolNode`, which handle message conversion for deployment).
@@ -20,7 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from typing import Any, Generator, Optional, Sequence
+from typing import Any, Generator, Optional, Sequence, Union
 
 import mlflow
 from databricks_langchain import ChatDatabricks, VectorSearchRetrieverTool
@@ -54,9 +52,8 @@ SCHEMA = "financial_intelligence"
 #       Simplest fallback; the key is read from env var OPENAI_API_KEY, or the Databricks
 #       secret bigdata/openai_api_key.
 LLM_PROVIDER = "databricks"
-# Default: an OpenAI-backed external-model endpoint governed by AI Gateway (created by
-# 00_setup.ipynb; see README.md's "Set up the agent's LLM" section for the full write-up).
-# Serves OpenAI gpt-5.4 while keeping the key in a Databricks secret.
+# Default: an OpenAI-backed external-model endpoint governed by AI Gateway (created in
+# openai.md). Serves OpenAI gpt-5.4 while keeping the key in a Databricks secret.
 # To use a Databricks-hosted model instead, set this to e.g. "databricks-claude-sonnet-4-5".
 LLM_ENDPOINT = "openai-chat"
 OPENAI_MODEL = "gpt-5.4"  # used only when LLM_PROVIDER == "openai" (direct path)
@@ -321,8 +318,53 @@ def _run_async(coro):
             return pool.submit(lambda: asyncio.run(coro)).result()
 
 
+def _wrap_async_tool(tool: BaseTool) -> BaseTool:
+    """Wrap async tools to make them synchronously invocable in LangGraph.
+    
+    MCP tools are async StructuredTools, but ChatAgentToolNode invokes them
+    synchronously. This wrapper runs async tools in a sync context.
+    """
+    if not tool.coroutine:
+        return tool  # Already sync
+    
+    from langchain_core.tools import StructuredTool
+    
+    def sync_func(*args, **kwargs):
+        # LangChain may pass tool_input as first positional arg or as kwargs
+        if args:
+            tool_input = args[0]
+        else:
+            # Extract tool input from kwargs based on args_schema
+            tool_input = kwargs
+        result = _run_async(tool.arun(tool_input))
+        
+        # MCP tools may return structured content; extract text if needed
+        if isinstance(result, list):
+            # Result is a list of content blocks (MCP format)
+            text_parts = []
+            for block in result:
+                if isinstance(block, dict):
+                    if block.get('type') == 'text':
+                        text_parts.append(block.get('text', ''))
+                    elif 'text' in block:
+                        text_parts.append(block['text'])
+                elif isinstance(block, str):
+                    text_parts.append(block)
+            return '\n'.join(text_parts) if text_parts else str(result)
+        return result
+    
+    return StructuredTool(
+        name=tool.name,
+        description=tool.description,
+        func=sync_func,
+        args_schema=tool.args_schema,
+    )
+
+
 def _all_tools() -> list[BaseTool]:
-    return _internal_tools() + _run_async(_bigdata_mcp_tools())
+    mcp_tools = _run_async(_bigdata_mcp_tools())
+    wrapped_mcp_tools = [_wrap_async_tool(t) for t in mcp_tools]
+    return _internal_tools() + wrapped_mcp_tools
 
 
 # =============================================================================
