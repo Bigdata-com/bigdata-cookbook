@@ -10,6 +10,9 @@
 .ipython/
 .cursor/
 
+# Local experiments 
+Thematic_Screener_CLI/experiments/
+
 # Local scratch / assistant notes (repo root)
 CLAUDE.md
 output.md
