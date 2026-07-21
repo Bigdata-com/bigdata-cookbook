@@ -1,3 +1,5 @@
+-- Updated test procedures to use bigdata_find_securities instead of bigdata_find_companies
+-- Co-authored with CoCo
 -- =============================================================================
 -- Snowflake + BigData MCP Demo
 -- Script 3: Test BigData MCP Procedures
@@ -21,22 +23,34 @@ USE SCHEMA   IDENTIFIER($schema_name);
 USE WAREHOUSE IDENTIFIER($wh_name);
 
 -- =============================================================================
--- Test 1: BIGDATA_FIND_COMPANIES — look up Apple by name
--- Expected: JSON array with company records including rp_entity_id
+-- Test 1: BIGDATA_FIND_SECURITIES — look up Apple by name
+-- Expected: JSON array with security records including id (entity ID)
 -- =============================================================================
-CALL bigdata_find_companies('Apple');
+CALL bigdata_find_securities('Apple');
 
 -- =============================================================================
--- Test 2: BIGDATA_FIND_COMPANIES — look up by ticker
+-- Test 2: BIGDATA_FIND_SECURITIES — look up by ticker
 -- Expected: JSON array with AAPL / Apple Inc.
 -- =============================================================================
-CALL bigdata_find_companies('AAPL');
+CALL bigdata_find_securities('AAPL');
 
 -- =============================================================================
--- Test 3: BIGDATA_SEARCH — search for recent financial news
--- Expected: JSON with "content" array containing search results
+-- Test 2b: BIGDATA_FIND_SECURITIES — ETF search with filters
+-- Expected: JSON array with US-listed ETF results
 -- =============================================================================
-CALL bigdata_search('Apple earnings Q4 2024', 5);
+CALL bigdata_find_securities('dividend ETF', ARRAY_CONSTRUCT('US'), NULL, NULL, ARRAY_CONSTRUCT('ETF'));
+
+-- =============================================================================
+-- Test 3: BIGDATA_SEARCH — search for recent financial news (fast mode)
+-- Expected: JSON with "results" array containing document chunks
+-- =============================================================================
+CALL bigdata_search('Apple earnings Q4 2024');
+
+-- =============================================================================
+-- Test 3b: BIGDATA_SEARCH — smart mode with max_chunks
+-- Expected: AI-interpreted search with limited results
+-- =============================================================================
+CALL bigdata_search('NVIDIA AI chip demand outlook', 'smart', 5);
 
 -- =============================================================================
 -- Test 4: BIGDATA_COMPANY_TEARSHEET — use Apple's entity ID (4A6F00)
@@ -48,7 +62,7 @@ CALL bigdata_company_tearsheet('4A6F00', 'Public', 'quarter');
 -- Test 5: BIGDATA_MCP_CALL — generic call, useful for debugging
 -- =============================================================================
 CALL bigdata_mcp_call(
-    'find_companies',
+    'find_securities',
     OBJECT_CONSTRUCT('query', 'Microsoft')
 );
 

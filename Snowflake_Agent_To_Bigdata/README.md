@@ -12,7 +12,7 @@ The demo shows how Snowflake customers can combine their own internal data with 
 | Search internal research docs (unstructured) | `INTERNAL_RESEARCH_SERVICE` (Cortex Search) | *"What is our investment thesis on NVIDIA?"* |
 | Generate charts from query results | `DATA_TO_CHART` | *"Show that as a bar chart"* |
 | Search financial news & filings | `BIGDATA_SEARCH` (BigData MCP) | *"Latest Apple earnings news"* |
-| Resolve company name/ticker | `BIGDATA_FIND_COMPANIES` (BigData MCP) | *"Find the entity ID for Tesla"* |
+| Resolve company/ETF/fund by name or ticker | `BIGDATA_FIND_SECURITIES` (BigData MCP) | *"Find the entity ID for Tesla"* |
 | Full company financial profile | `BIGDATA_COMPANY_TEARSHEET` (BigData MCP) | *"Financial tearsheet for Microsoft"* |
 
 ## Architecture
@@ -72,7 +72,7 @@ These names are the defaults used in all scripts. Edit the `SET` block at the to
 | Script | What it does |
 |--------|-------------|
 | `01_setup_infrastructure.sql` | Network rule, secret (API key), external access integration |
-| `02_create_mcp_procedures.sql` | BigData MCP stored procedures (`BIGDATA_SEARCH`, `BIGDATA_FIND_COMPANIES`, `BIGDATA_COMPANY_TEARSHEET`) |
+| `02_create_mcp_procedures.sql` | BigData MCP stored procedures (`BIGDATA_SEARCH`, `BIGDATA_FIND_SECURITIES`, `BIGDATA_COMPANY_TEARSHEET`) |
 | `03_test_procedures.sql` | Verify all BigData MCP procedures work |
 | `04_internal_data.sql` | Financial tables, semantic view, research documents, Cortex Search Service |
 | `05_bigdata_mcp.sql` | Cortex Agent with BigData MCP tools only (for testing) |
@@ -109,8 +109,8 @@ This creates four procedures:
 | Procedure | Purpose |
 |-----------|---------|
 | `bigdata_mcp_call(tool_name, arguments)` | Generic MCP caller — JSON-RPC 2.0 over SSE |
-| `bigdata_search(search_text, max_chunks)` | Search financial news, SEC filings, transcripts |
-| `bigdata_find_companies(query)` | Resolve company name/ticker to entity ID |
+| `bigdata_search(search_text, search_mode, max_chunks, filters)` | Search financial news, SEC filings, transcripts (`search_mode`: `fast` or `smart`) |
+| `bigdata_find_securities(query, countries, listing_type, sectors, security_types)` | Resolve companies, ETFs, and funds by name/ticker/ID |
 | `bigdata_company_tearsheet(rp_entity_id, company_type, interval)` | Get full company financial profile |
 
 All procedures are bound to the EAI and secret from script 01 and can securely reach `https://mcp.bigdata.com`.
@@ -121,8 +121,10 @@ Open `03_test_procedures.sql` and run each `CALL` statement one at a time.
 
 **Expected results:**
 
-- `CALL bigdata_find_companies('Apple')` → JSON array with company records including `id`, `name`, `type`
-- `CALL bigdata_search('Apple earnings Q4 2024', 5)` → JSON with search result chunks
+- `CALL bigdata_find_securities('Apple')` → JSON with security records including `id` (entity ID)
+- `CALL bigdata_find_securities('dividend ETF', ARRAY_CONSTRUCT('US'), NULL, NULL, ARRAY_CONSTRUCT('ETF'))` → US-listed ETF matches
+- `CALL bigdata_search('Apple earnings Q4 2024')` → JSON with search result chunks (fast mode)
+- `CALL bigdata_search('NVIDIA AI chip demand outlook', 'smart', 5)` → smart-mode search with limited chunks
 - `CALL bigdata_company_tearsheet('4A6F00', 'Public', 'quarter')` → Detailed financial markdown
 
 **If you get errors:**
@@ -153,8 +155,8 @@ This creates `SNOWFLAKE_BIGDATA_AGENT` with three BigData MCP tools only:
 
 | Tool | Purpose |
 |------|---------|
-| `BIGDATA_SEARCH` | Searches financial news, filings, transcripts |
-| `BIGDATA_FIND_COMPANIES` | Resolves company name/ticker to entity ID |
+| `BIGDATA_SEARCH` | Searches financial news, filings, transcripts (`fast` or `smart` mode) |
+| `BIGDATA_FIND_SECURITIES` | Resolves companies, ETFs, and funds by name/ticker/ID |
 | `BIGDATA_COMPANY_TEARSHEET` | Returns full company financial profile |
 
 Use this step to verify the BigData tools work inside the agent before adding internal data tools.
@@ -174,7 +176,7 @@ This replaces the BigData-only agent with the full combined agent. After running
 | *"What is our investment thesis on NVIDIA?"* | `INTERNAL_RESEARCH_SERVICE` (unstructured) |
 | *"Show that as a bar chart"* | `DATA_TO_CHART` |
 | *"What are analysts saying about Apple?"* | `BIGDATA_SEARCH` |
-| *"Give me Apple's tearsheet"* | `BIGDATA_FIND_COMPANIES` → `BIGDATA_COMPANY_TEARSHEET` |
+| *"Give me Apple's tearsheet"* | `BIGDATA_FIND_SECURITIES` → `BIGDATA_COMPANY_TEARSHEET` |
 
 ### Step-by-Step: Script 07 — Connect to Snowflake Intelligence
 
@@ -204,7 +206,7 @@ These queries work in Snowflake Intelligence once you have run scripts 01–07.
 | `INTERNAL_RESEARCH_SERVICE` | Internal research documents — theses, risk assessments, strategy memos (Cortex Search) |
 | `DATA_TO_CHART` | Output of any query |
 | `BIGDATA_SEARCH` | BigData.com MCP — news, filings, transcripts |
-| `BIGDATA_FIND_COMPANIES` | BigData.com MCP — entity resolution |
+| `BIGDATA_FIND_SECURITIES` | BigData.com MCP — company / ETF / fund resolution |
 | `BIGDATA_COMPANY_TEARSHEET` | BigData.com MCP — company profiles |
 
 ---
@@ -244,10 +246,11 @@ These queries work in Snowflake Intelligence once you have run scripts 01–07.
 ### BigData MCP Only
 
 - *"Search for the latest earnings news for Apple"*
-- *"Find the company record for Tesla"*
+- *"Find the security record for Tesla"*
 - *"Give me a financial tearsheet for Microsoft"*
 - *"Search for NVIDIA AI chip demand news from 2024"*
 - *"Find Amazon and show me their analyst coverage"*
+- *"Find US-listed dividend ETFs"*
 
 ---
 
@@ -376,7 +379,7 @@ If your account has MCP Server support, you can use `alternative_sf_mcp_server_p
    - Database: `BIGDATA_DB`
    - Schema: `MCP_TOOLS`
    - MCP Server: `BIGDATA_MCP_SERVER`
-3. The three tools (`bigdata_search`, `bigdata_find_companies`, `bigdata_company_tearsheet`) will be auto-discovered
+3. The three tools (`bigdata_search`, `bigdata_find_securities`, `bigdata_company_tearsheet`) will be auto-discovered
 
 External MCP clients can connect using:
 ```
@@ -400,7 +403,7 @@ Authentication: Snowflake OAuth 2.0 (see Snowflake docs for setup).
 - [BigData API Documentation](https://docs.bigdata.com/)
 - [MCP Reference — Introduction](https://docs.bigdata.com/mcp-reference/introduction)
 - [MCP Tool: bigdata_search](https://docs.bigdata.com/mcp-reference/tools/bigdata-search)
-- [MCP Tool: find_companies](https://docs.bigdata.com/mcp-reference/tools/find-companies)
+- [MCP Tool: find_securities](https://docs.bigdata.com/mcp-reference/tools/find-securities)
 - [MCP Tool: bigdata_company_tearsheet](https://docs.bigdata.com/mcp-reference/tools/bigdata-company-tearsheet)
 - [Developer Platform (API Keys)](https://platform.bigdata.com/api-keys)
 

@@ -12,10 +12,13 @@
 SET db_name     = 'BIGDATA_DB';
 SET schema_name = 'MCP_TOOLS';
 SET wh_name     = 'BIGDATA_WH';
-SET api_key     = '';   -- ** paste your key here **
+
+
+SET api_key     = '********************************';   -- paste your key here <YOUR_BIGDATA_API_KEY>
 
 -- check if the api_key is valid
 SELECT CASE WHEN $api_key IS NULL OR $api_key = '' THEN '** ERROR **: BIGDATA_API_KEY is not set' ELSE 'BIGDATA_API_KEY is set' END AS api_key_status;
+
 
 -- *** END CONFIGURATION ***
 

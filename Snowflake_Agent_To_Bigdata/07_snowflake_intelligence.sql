@@ -1,3 +1,5 @@
+-- Updated tool references from bigdata_find_companies to bigdata_find_securities
+-- Co-authored with CoCo
 -- =============================================================================
 -- Snowflake + BigData MCP Demo
 -- Script 07: Connect SNOWFLAKE_BIGDATA_AGENT to Snowflake Intelligence
@@ -22,7 +24,7 @@ USE WAREHOUSE IDENTIFIER($wh_name);
 -- =============================================================================
 -- The SNOWFLAKE_BIGDATA_AGENT is already configured with six tools:
 --   Internal:  INTERNAL_PORTFOLIO_ANALYST, INTERNAL_RESEARCH_SERVICE, DATA_TO_CHART
---   External:  BIGDATA_SEARCH, BIGDATA_FIND_COMPANIES, BIGDATA_COMPANY_TEARSHEET
+--   External:  BIGDATA_SEARCH, BIGDATA_FIND_SECURITIES, BIGDATA_COMPANY_TEARSHEET
 --
 -- To use it in Snowflake Intelligence:
 --
@@ -55,3 +57,6 @@ SHOW AGENTS IN SCHEMA BIGDATA_DB.MCP_TOOLS;
 -- ) AS response;
 
 SELECT '07_snowflake_intelligence complete — your agent is ready in Snowflake Intelligence' AS status;
+
+-- see the agents at: AI & ML > Agents 
+

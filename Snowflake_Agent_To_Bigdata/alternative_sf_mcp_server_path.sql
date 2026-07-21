@@ -34,11 +34,9 @@ CREATE OR REPLACE MCP SERVER BIGDATA_MCP_SERVER
         type: "GENERIC"
         identifier: "BIGDATA_DB.MCP_TOOLS.BIGDATA_SEARCH"
         description: >
-          Search for financial insights across news, SEC filings, earnings
-          transcripts, and research documents using BigData.com MCP protocol.
-          Returns relevant chunks with relevance scores. Use this tool when
-          the user asks about financial news, market events, earnings, or
-          any document-level research.
+          Search engine for financial documents, earnings call transcripts,
+          news articles, analyst reports, SEC filings, and business content.
+          Returns document chunks with timestamps, source attribution, and URLs.
         config:
           type: "procedure"
           warehouse: "BIGDATA_WH"
@@ -48,18 +46,21 @@ CREATE OR REPLACE MCP SERVER BIGDATA_MCP_SERVER
               search_text:
                 type: "string"
                 description: "Natural-language search query for financial and business content"
+              search_mode:
+                type: "string"
+                description: "Search mode: 'fast' for direct semantic/lexical search, 'smart' for AI-interpreted search. Default is 'fast'."
               max_chunks:
                 type: "number"
-                description: "Maximum number of result chunks to retrieve. Default is 10."
+                description: "Maximum number of result chunks to retrieve"
 
-      - title: "BigData Find Companies"
-        name: "bigdata_find_companies"
+      - title: "BigData Find Securities"
+        name: "bigdata_find_securities"
         type: "GENERIC"
-        identifier: "BIGDATA_DB.MCP_TOOLS.BIGDATA_FIND_COMPANIES"
+        identifier: "BIGDATA_DB.MCP_TOOLS.BIGDATA_FIND_SECURITIES"
         description: >
-          Identify a private or public company by name, ticker, ISIN, SEDOL,
-          CUSIP, or webpage URL and retrieve its Knowledge Graph entity ID.
-          Call this tool first to resolve a company identifier before using
+          Search for ETFs, funds, and securities using names, tickers, or
+          identifiers. Returns the Knowledge Graph ID and security metadata.
+          Call this tool first to resolve an entity identifier before using
           the company tearsheet tool.
         config:
           type: "procedure"
@@ -69,7 +70,7 @@ CREATE OR REPLACE MCP SERVER BIGDATA_MCP_SERVER
             properties:
               query:
                 type: "string"
-                description: "Partial or complete company name, webpage, ticker, ISIN, SEDOL, or CUSIP"
+                description: "One focused search token: ETF/fund/company name or ticker, ISIN/CUSIP/SEDOL, or short theme (e.g., 'dividend ETF')"
 
       - title: "BigData Company Tearsheet"
         name: "bigdata_company_tearsheet"
@@ -78,7 +79,7 @@ CREATE OR REPLACE MCP SERVER BIGDATA_MCP_SERVER
         description: >
           Get comprehensive financial data, market intelligence, and analyst
           coverage for both public and private companies. Requires the
-          rp_entity_id obtained from the bigdata_find_companies tool.
+          rp_entity_id obtained from the bigdata_find_securities tool.
         config:
           type: "procedure"
           warehouse: "BIGDATA_WH"
@@ -87,10 +88,10 @@ CREATE OR REPLACE MCP SERVER BIGDATA_MCP_SERVER
             properties:
               rp_entity_id:
                 type: "string"
-                description: "6-character RavenPack entity ID from find_companies (e.g., 4A6F00 for Alphabet)"
+                description: "6-character RavenPack entity ID from find_securities (e.g., 4A6F00 for Alphabet)"
               company_type:
                 type: "string"
-                description: "Must be 'Public' or 'Private' — use the exact type field from find_companies response"
+                description: "Must be 'Public' or 'Private' — use the listing type from find_securities response"
               interval:
                 type: "string"
                 description: "For public companies only: 'quarter' (default) or 'annual' for financial statement periods"
