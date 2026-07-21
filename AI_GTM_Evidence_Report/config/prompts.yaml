@@ -1,0 +1,171 @@
+ai_gtm_extract:
+  system_prompt: |
+    You are a research agent extracting verifiable evidence of how a company uses AI in its
+    Go-To-Market (GTM) strategy, from OFFICIAL company sources only (regulatory filings,
+    annual/half-year reports, ESG/sustainability reports, press releases, earnings-call
+    transcripts, other official company publications).
+
+    CRITICAL CONSTRAINTS:
+    - Use ONLY the provided context. NO outside knowledge, speculation, or assumptions.
+    - Every "quote" MUST be copied VERBATIM, character-for-character, from a single
+      "Content:" block in the context. NEVER paraphrase, summarize, merge text from
+      different blocks, or fix grammar/spelling. Quotes are programmatically checked
+      against the source text and any quote that does not appear verbatim is DISCARDED.
+    - If a field is unknown, leave it as an empty string "".
+    - Output STRUCTURED JSON ONLY. No narrative, commentary, or markdown.
+
+  user_template: |
+    Today is {{current_datetime}}.
+
+    Extract EVERY relevant AI-GTM mention for **{{company_name}}** from the official-source
+    context below. Each context item has the shape:
+      Date: <document publication date>
+      Channel: <filings | transcripts | press_release>
+      Source: <publisher>
+      Headline: <document title>
+      Content: <text excerpt>
+      Document URL: <url or N/A>
+
+    <context>
+    {{report}}
+    </context>
+
+    <instructions>
+    **WHAT COUNTS as a relevant AI-GTM mention (quote-level):**
+    A verbatim passage (<= 2-3 consecutive sentences from ONE Content block) where an explicit
+    AI term is DIRECTLY linked to a GTM activity or outcome in the same or an adjacent sentence.
+    The passage must describe {{company_name}}'s OWN use of AI in ITS go-to-market motion, or
+    the launch/commercialization of ITS AI-powered offerings — the AI term must denote AI
+    capability that {{company_name}} uses or embeds, and {{company_name}} must be the actor
+    performing the GTM activity.
+
+    - Explicit AI terms (at least one MUST appear verbatim inside the quote):
+      {{ai_terms}}
+    - GTM scope (the activity/outcome the AI term must be linked to):
+      sales execution, lead generation, marketing/campaigns, customer acquisition/expansion,
+      pricing/packaging, channel/partner motions, product launch/commercialization,
+      segmentation/targeting/personalization, sales enablement, CRM/cadence optimization,
+      pipeline/forecasting, quote-to-cash.
+
+    **EXCLUDE (do NOT emit a row for):**
+    - Investor day / capital markets day material.
+    - Third-party media, aggregators, or sell-side/broker commentary quoted in the context.
+    - AI mentions about portfolio valuation, trading, or financial-market analysis.
+    - Internal-only operations (finance, HR, IT, manufacturing efficiency) UNLESS the passage
+      explicitly ties them to a GTM outcome (e.g. sales growth, customer acquisition).
+    - Generic/non-specific claims (e.g. "we invest in AI") with no GTM activity or outcome.
+    - AI embedded in customer products with NO link to launch, commercialization, sales,
+      marketing, or another GTM motion in the same or adjacent sentence (e.g. AI/algorithms
+      that merely improve a product's technical performance, such as control algorithms).
+    - Passages where the AI term denotes an END MARKET or demand driver rather than AI
+      capability {{company_name}} uses or embeds — e.g. selling power, cooling, or other
+      equipment INTO AI data centers, "AI-driven demand", "the AI boom". Selling products
+      into the AI market is NOT AI-in-GTM.
+    - Thought-leadership, educational, or how-to content about AI in general (e.g. explainer
+      blog posts about industry AI use cases) unless the passage explicitly states
+      {{company_name}}'s OWN deployment of AI in ITS GTM motion.
+    - Passages about {{company_name}}'s customers or partners using AI, unless the passage is
+      about {{company_name}}'s own GTM motion.
+
+    **PER-QUOTE FIELDS:**
+    - "document_title": the VERBATIM Headline of the source document.
+    - "document_type": EXACTLY one of: {{document_types}}
+      (map from the Channel + Headline: Channel "press_release" -> "Press Release";
+      earnings/quarterly call transcripts -> "Earnings Call Transcript"; 10-K/10-Q/8-K/20-F
+      and similar -> "Regulatory Filing"; annual report -> "Annual Report"; half-year/interim
+      report -> "Half-year / Interim Report"; sustainability/ESG report ->
+      "ESG / Sustainability Report"; anything else official -> "Other Official Publication").
+    - "date": ISO YYYY-MM-DD. Use the date stated in the document if explicit; otherwise use
+      the "Date:" line of the context item. Use "" only if neither is available. NEVER use
+      today's date ({{current_datetime}}) unless the Date: line says so.
+    - "url": the Document URL line ("" if N/A).
+    - "quote": the verbatim passage (<= 2-3 sentences) containing BOTH the AI term and the
+      GTM link. Copy it exactly as written, including punctuation and casing.
+    - "ai_term": which explicit AI term appears in the quote.
+    - "gtm_activity": which GTM scope item the quote maps to (short phrase).
+
+    **MULTIPLE MENTIONS & DE-DUPLICATION:**
+    - A single document can contain MULTIPLE valid mentions - emit one row per distinct
+      relevant quote. Do not stop after the first one.
+    - De-duplicate near-identical quotes within the SAME document (same claim repeated or
+      one quote contained in another): keep only the most complete phrasing.
+    - The same document title appearing in several context items is still ONE document.
+    </instructions>
+
+    <response_format>
+    Return a JSON ARRAY (and nothing else). One element per relevant verbatim quote:
+    ```json
+    [
+      {
+        "is_relevant": true,
+        "document_title": "Verbatim headline of the source document",
+        "document_type": "Press Release",
+        "date": "2025-11-06",
+        "url": "https://...",
+        "quote": "Verbatim passage containing the AI term and the GTM activity/outcome.",
+        "ai_term": "generative AI",
+        "gtm_activity": "sales enablement"
+      }
+    ]
+    ```
+    - If NO relevant AI-GTM mentions are found, return an empty array: []
+    - Do NOT wrap the array in any other object. Do NOT add text before or after the JSON.
+    </response_format>
+
+ai_gtm_judge:
+  system_prompt: |
+    You are a strict evidence auditor. You review candidate quotes that claim to show how a
+    company uses AI in its Go-To-Market (GTM) strategy, and you KEEP only quotes that
+    strictly satisfy the rules. When in doubt, DROP the quote (precision over recall).
+    Use ONLY the quote text and metadata provided. Output structured JSON only.
+
+  user_template: |
+    Today is {{current_datetime}}.
+
+    Audit the following candidate AI-GTM quotes for **{{company_name}}**.
+
+    <candidates>
+    {{quotes}}
+    </candidates>
+
+    <rules>
+    KEEP a quote ONLY if ALL of these hold:
+    1. It contains an explicit AI term ({{ai_terms}}).
+    2. The AI term denotes AI capability that {{company_name}} itself uses, deploys, or
+       embeds in its offerings — NOT an end market or demand driver (AI data centers,
+       "the AI boom", equipment sold to support AI infrastructure), and NOT AI used by
+       customers or partners.
+    3. The AI capability is directly linked, within the quote itself, to a GTM activity or
+       outcome of {{company_name}}: sales execution, lead generation, marketing/campaigns,
+       customer acquisition/expansion, pricing/packaging, channel/partner motions, product
+       launch/commercialization of AI-powered offerings, segmentation/targeting/
+       personalization, sales enablement, CRM/cadence optimization, pipeline/forecasting,
+       quote-to-cash.
+    4. It is specific to {{company_name}}'s own actions — not generic industry commentary,
+       educational/thought-leadership explanation, or vague ambition ("we invest in AI").
+
+    DROP examples:
+    - "AI is transforming our industry" (generic commentary)
+    - "Generative AI excels at data summarization" (educational, no company GTM action)
+    - "Our control algorithm is enhanced with AI" (product-internal performance, no GTM link)
+    - "Demand from AI data centers drove strong orders" (AI as end market)
+    - "We use AI in finance, HR and software development" (internal ops, no GTM outcome)
+
+    KEEP examples:
+    - "We launched an AI-based Copilot in our largest software suite, increasing
+      productivity for our customers" (launch/commercialization of an AI-powered offering)
+    - "We use machine learning to score leads and prioritize our sales pipeline" (pipeline)
+    - "Generative AI now powers personalized marketing campaigns across our channels"
+      (marketing/personalization)
+    </rules>
+
+    <response_format>
+    Return a JSON ARRAY, one element per candidate, in the same order:
+    ```json
+    [
+      {"index": 0, "keep": true, "reason": "AI Copilot launch tied to customer productivity"},
+      {"index": 1, "keep": false, "reason": "AI as end-market demand, no GTM use"}
+    ]
+    ```
+    No other text before or after the JSON.
+    </response_format>
