@@ -1,3 +1,5 @@
+-- Replaced bigdata_find_companies with bigdata_find_securities supporting ETFs, funds, bonds, and additional filters
+-- Co-authored with CoCo
 -- =============================================================================
 -- Snowflake + BigData MCP Demo
 -- Script 2: Create BigData MCP Stored Procedures
@@ -9,7 +11,7 @@
 -- Procedures created:
 --   bigdata_mcp_call          — core generic caller (JSON-RPC 2.0 over SSE)
 --   bigdata_search            — search financial news, filings, transcripts
---   bigdata_find_companies    — resolve company name/ticker to entity ID
+--   bigdata_find_securities   — search ETFs, funds, and securities by name/ticker/ID
 --   bigdata_company_tearsheet — full financial profile for public/private companies
 -- =============================================================================
 
@@ -92,38 +94,57 @@ $$;
 -- =============================================================================
 CREATE OR REPLACE PROCEDURE bigdata_search(
     search_text STRING,
-    max_chunks INT DEFAULT 10
+    search_mode STRING DEFAULT 'fast',
+    max_chunks INT DEFAULT NULL,
+    filters VARIANT DEFAULT NULL
 )
 RETURNS STRING
 LANGUAGE SQL
 AS
-DECLARE
-    result STRING;
 BEGIN
-    CALL bigdata_mcp_call(
-        'bigdata_search',
-        OBJECT_CONSTRUCT('search_text', :search_text, 'max_chunks', :max_chunks)
-    ) INTO result;
-    RETURN result;
+    LET query_obj VARIANT := OBJECT_CONSTRUCT('text', :search_text);
+    IF (:max_chunks IS NOT NULL) THEN
+        query_obj := OBJECT_INSERT(:query_obj, 'max_chunks', :max_chunks);
+    END IF;
+    IF (:filters IS NOT NULL) THEN
+        query_obj := OBJECT_INSERT(:query_obj, 'filters', :filters);
+    END IF;
+    LET request_obj VARIANT := OBJECT_CONSTRUCT('search_mode', :search_mode, 'query', :query_obj);
+    LET result STRING;
+    CALL bigdata_mcp_call('bigdata_search', OBJECT_CONSTRUCT('request', :request_obj)) INTO :result;
+    RETURN :result;
 END;
 
 -- =============================================================================
--- BIGDATA_FIND_COMPANIES — resolve company name/ticker/ISIN to entity ID
+-- BIGDATA_FIND_SECURITIES — search ETFs, funds, and securities by name/ticker/ID
 -- =============================================================================
-CREATE OR REPLACE PROCEDURE bigdata_find_companies(
-    query STRING
+CREATE OR REPLACE PROCEDURE bigdata_find_securities(
+    query STRING,
+    countries ARRAY DEFAULT NULL,
+    listing_type STRING DEFAULT NULL,
+    sectors ARRAY DEFAULT NULL,
+    security_types ARRAY DEFAULT NULL
 )
 RETURNS STRING
 LANGUAGE SQL
 AS
-DECLARE
-    result STRING;
 BEGIN
-    CALL bigdata_mcp_call(
-        'find_companies',
-        OBJECT_CONSTRUCT('query', :query)
-    ) INTO result;
-    RETURN result;
+    LET args VARIANT := OBJECT_CONSTRUCT('query', :query);
+    IF (:countries IS NOT NULL) THEN
+        args := OBJECT_INSERT(:args, 'countries', :countries);
+    END IF;
+    IF (:listing_type IS NOT NULL) THEN
+        args := OBJECT_INSERT(:args, 'listing_type', :listing_type);
+    END IF;
+    IF (:sectors IS NOT NULL) THEN
+        args := OBJECT_INSERT(:args, 'sectors', :sectors);
+    END IF;
+    IF (:security_types IS NOT NULL) THEN
+        args := OBJECT_INSERT(:args, 'security_types', :security_types);
+    END IF;
+    LET result STRING;
+    CALL bigdata_mcp_call('find_securities', :args) INTO :result;
+    RETURN :result;
 END;
 
 -- =============================================================================
@@ -137,20 +158,19 @@ CREATE OR REPLACE PROCEDURE bigdata_company_tearsheet(
 RETURNS STRING
 LANGUAGE SQL
 AS
-DECLARE
-    result STRING;
 BEGIN
+    LET result STRING;
     CALL bigdata_mcp_call(
         'bigdata_company_tearsheet',
         OBJECT_CONSTRUCT('rp_entity_id', :rp_entity_id, 'company_type', :company_type, 'interval', :interval)
-    ) INTO result;
-    RETURN result;
+    ) INTO :result;
+    RETURN :result;
 END;
 
 -- Grant usage so non-admin roles can call these procedures
 GRANT USAGE ON PROCEDURE bigdata_mcp_call(STRING, VARIANT)                    TO ROLE PUBLIC;
-GRANT USAGE ON PROCEDURE bigdata_search(STRING, INT)                           TO ROLE PUBLIC;
-GRANT USAGE ON PROCEDURE bigdata_find_companies(STRING)                        TO ROLE PUBLIC;
+GRANT USAGE ON PROCEDURE bigdata_search(STRING, STRING, INT, VARIANT)           TO ROLE PUBLIC;
+GRANT USAGE ON PROCEDURE bigdata_find_securities(STRING, ARRAY, STRING, ARRAY, ARRAY) TO ROLE PUBLIC;
 GRANT USAGE ON PROCEDURE bigdata_company_tearsheet(STRING, STRING, STRING)     TO ROLE PUBLIC;
 
 SELECT '02_create_mcp_procedures complete — proceed to 03_test_procedures.sql' AS status;
