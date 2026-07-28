@@ -1,9 +1,8 @@
 """Central-bank sentiment feed for the rate-differential driver.
 
-Adapted from the `Daily_Digest_Central_Banks` pattern, but parameterized on the two
-central banks of the pair and generating the monetary-policy lexicon dynamically
-(instead of a hardcoded Fed/ECB term set). The evidence gathered here feeds the
-rate-differential driver in `scoring.py`.
+Parameterized on the two central banks of the pair, generating the monetary-policy
+lexicon dynamically. The evidence gathered here feeds the rate-differential driver
+in `scoring.py`.
 """
 
 from __future__ import annotations

@@ -5,9 +5,7 @@
 A repeatable, parameterized notebook that produces a **five-day-horizon FX forecast
 report** for any currency pair — covering a directional view, the key drivers, and the
 key risks. It combines **Bigdata.com** data pulls (country tearsheets + news search)
-with an **OpenAI** synthesis layer, following the pattern proven in
-`Rising_Bond_Spread_Risks` (driver taxonomy + per-category scoring) and
-`Daily_Digest_Central_Banks` (central-bank sentiment feed).
+with an **OpenAI** synthesis layer.
 
 > All Bigdata.com data is retrieved via the **remote MCP server** at
 > `https://mcp.bigdata.com/` (streamable HTTP, authenticated with an API key).

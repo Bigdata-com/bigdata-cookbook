@@ -1,8 +1,8 @@
 """Assemble the FX forecast markdown report.
 
-Mirrors the `Rising_Bond_Spread_Risks` output pattern: executive summary, driver table
-(lean / confidence / rationale / sources), risk flags (intervention, event risk landing
-inside the horizon, geopolitical tail), and a source appendix for auditability.
+Produces an executive summary, driver table (lean / confidence / rationale / sources),
+risk flags (intervention, event risk landing inside the horizon, geopolitical tail),
+and a source appendix for auditability.
 """
 
 from __future__ import annotations

@@ -1,8 +1,7 @@
 """Per-driver LLM scoring and weighted aggregation into an overall directional call.
 
-Adapted from the `Rising_Bond_Spread_Risks` sub-scenario scoring pattern: each driver
-gets a directional lean, a confidence score, a one-line rationale, and attributed
-sources; the drivers are then combined with configurable weights.
+Each driver gets a directional lean, a confidence score, a one-line rationale, and
+attributed sources; the drivers are then combined with configurable weights.
 """
 
 from __future__ import annotations
