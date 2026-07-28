@@ -7,7 +7,7 @@ Responsibilities:
       forecast horizon (deterministic, for auditable event-risk flags).
     - Build the parameterized `bigdata_search` query set (per driver) from the inputs.
 
-No Bigdata SDK is used here; all data comes through `BigdataMCPClient`.
+All data comes through `BigdataMCPClient` (Bigdata.com MCP).
 """
 
 from __future__ import annotations

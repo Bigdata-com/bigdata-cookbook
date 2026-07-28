@@ -1,9 +1,7 @@
 """Thin async client for the Bigdata.com remote MCP server.
 
-Deliberately avoids the Bigdata Python SDKs (`bigdata-client` /
-`bigdata-research-tools`). It speaks the Model Context Protocol directly against
-`https://mcp.bigdata.com/` over streamable HTTP, authenticated with the `x-api-key`
-header, using only the standard `mcp` client library.
+Connects to `https://mcp.bigdata.com/` over streamable HTTP with an `x-api-key`
+header, using the standard `mcp` client library.
 
 Exposes just what the FX Forecast Report needs:
     - country_tearsheet(country)  -> markdown string, or None if unsupported

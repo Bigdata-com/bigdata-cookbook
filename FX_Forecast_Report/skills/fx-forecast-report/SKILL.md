@@ -13,9 +13,9 @@ description: >-
 # FX Forecast Report (Bigdata.com MCP)
 
 Generate a repeatable, parameterized short-horizon FX forecast for any currency pair using
-only [Bigdata.com](https://bigdata.com) MCP tools for data and your own synthesis for
-scoring. No Python or SDK is required; a companion automated notebook lives in the
-`FX_Forecast_Report/` cookbook if the user wants a coded pipeline.
+[Bigdata.com](https://bigdata.com) MCP tools for data and your own synthesis for scoring.
+A companion automated notebook lives in the `FX_Forecast_Report/` cookbook if the user
+wants a coded pipeline.
 
 ## Inputs (confirm or infer, then state them back)
 

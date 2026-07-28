@@ -9,10 +9,8 @@ with an **OpenAI** synthesis layer, following the pattern proven in
 `Rising_Bond_Spread_Risks` (driver taxonomy + per-category scoring) and
 `Daily_Digest_Central_Banks` (central-bank sentiment feed).
 
-> **No Bigdata Python SDK.** This project does **not** use `bigdata-client` or
-> `bigdata-research-tools` (both deprecating). All Bigdata.com data comes from the
-> **remote MCP server** at `https://mcp.bigdata.com/`, called with the standard `mcp`
-> client over streamable HTTP (`x-api-key` header).
+> All Bigdata.com data is retrieved via the **remote MCP server** at
+> `https://mcp.bigdata.com/` (streamable HTTP, authenticated with an API key).
 
 ## Client-level workflow
 
@@ -91,7 +89,7 @@ different pair, edit the parameters block near the top of the notebook.
 ```
 FX_Forecast_Report/
 ├── README.md                     # This file
-├── requirements.txt              # Dependencies (no bigdata SDK)
+├── requirements.txt              # Dependencies
 ├── .env.example                  # Example credentials
 ├── FX_Forecast_Report.ipynb      # Main notebook
 ├── assets/
@@ -113,8 +111,8 @@ FX_Forecast_Report/
 ## Claude / Cursor Agent Skill
 
 `skills/fx-forecast-report/SKILL.md` packages the same workflow as an **Agent Skill** that
-runs **entirely through the Bigdata.com MCP tools** (`bigdata_country_tearsheet` +
-`bigdata_search`) — no Python. Point Claude Desktop, Claude Code, or Cursor at the
+runs entirely through the Bigdata.com MCP tools (`bigdata_country_tearsheet` +
+`bigdata_search`). Point Claude Desktop, Claude Code, or Cursor at the
 Bigdata.com MCP server and ask for an FX forecast (e.g. "5-day USD/JPY forecast"); the skill
 drives the data pulls, driver scoring, and report format. Use the notebook when you want a
 coded, automatable pipeline; use the skill for on-demand conversational forecasts.
