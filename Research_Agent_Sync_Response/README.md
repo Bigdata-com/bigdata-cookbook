@@ -219,11 +219,40 @@ for chart in result.charts:
     render(chart.vega_lite_spec)  # any Vega-Lite renderer
 ```
 
+### Rendering in a notebook
+
 In JupyterLab, display the spec directly as a MIME bundle — no plotting dependency required:
 
 ```python
 display({"application/vnd.vegalite.v5+json": chart.vega_lite_spec}, raw=True)
 ```
+
+**GitHub will not render that.** It strips the JavaScript a Vega-Lite renderer needs, so a JSON-only chart output appears blank when the notebook is browsed on GitHub. Add a rasterised copy to the same bundle and each front-end picks the best type it understands:
+
+```bash
+uv add vl-convert-python   # optional; renders Vega-Lite without a browser
+```
+
+```python
+import base64
+import vl_convert
+
+png = vl_convert.vegalite_to_png(chart.vega_lite_spec, scale=1.5)
+
+display(
+    {
+        # JupyterLab: interactive, with tooltips
+        "application/vnd.vegalite.v6+json": chart.vega_lite_spec,
+        "application/vnd.vegalite.v5+json": chart.vega_lite_spec,
+        # GitHub, nbviewer, VS Code, PDF export: static but always visible
+        "image/png": base64.b64encode(png).decode("ascii"),
+        "text/plain": f"<Vega-Lite {chart.chart_type} chart: {chart.title}>",
+    },
+    raw=True,
+)
+```
+
+`scale=1.5` keeps the embedded image sharp without bloating the committed `.ipynb`. `research_client_usage.ipynb` wraps this in a `render_chart()` helper that degrades gracefully when `vl-convert-python` is not installed.
 
 See [Code execution and charts](https://docs.bigdata.com/how-to-guides/agents/concepts/code-execution-and-charts).
 
