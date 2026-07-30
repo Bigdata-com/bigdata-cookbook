@@ -1,5 +1,8 @@
 # Snowflake + BigData MCP Demo — End-to-End Guide
 
+> **Snowflake MCP Connector is now available.**
+> Snowflake has opened up native [MCP connector](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-mcp-connectors) functionality. For OAuth2 connection details to access the [Bigdata.com](https://bigdata.com) MCP connector, reach out to [support@bigdata.com](mailto:support@bigdata.com).
+
 Demonstrate [BigData.com](https://bigdata.com) financial intelligence alongside **live Snowflake data** inside **Snowflake Intelligence** — all powered by the BigData MCP protocol and a single Cortex Agent (`SNOWFLAKE_BIGDATA_AGENT`).
 
 The demo shows how Snowflake customers can combine their own internal data with real-time external financial intelligence (news, filings, earnings, company profiles) in one natural-language chat experience.
