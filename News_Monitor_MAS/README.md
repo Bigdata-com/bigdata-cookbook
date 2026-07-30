@@ -43,6 +43,50 @@ uv run python scripts/edge_mrvr_stories.py pull \
 
 ---
 
+## Real-time streaming
+
+Historical `pull` uses the analytics JSON API. Edge also supports a **live NDJSON stream** on a different host:
+
+```text
+GET https://feed-edge.ravenpack.com/1.0/json/{dataset_id}?keep_alive=t
+```
+
+- Response is **HTTP 200** and stays open; records are JSON objects separated by `\n`.
+- ``keep_alive=t`` emits a bare newline after ~30s of silence (reset the connection if silent >60s).
+- Streaming uses the **dataset’s baked-in filters only**. Create the dataset with `rp_provider_id=MRVR` and your `rp_entity_id` universe (the sample script does this). Filters passed only on historical query calls are **not** applied to the feed.
+
+### Sample script
+
+```bash
+# Stream AAPL + MSFT for 60 seconds → runs/edge_stream_smoke/stream_records.jsonl
+uv run python scripts/edge_mrvr_stream.py \
+  --tickers AAPL,MSFT \
+  --duration-seconds 60 \
+  --output-dir runs/edge_stream_smoke
+
+# Larger universe, relevance floor baked into the dataset, stop after 100 records
+uv run python scripts/edge_mrvr_stream.py \
+  --universe us_sml.csv \
+  --limit-entities 50 \
+  --min-entity-relevance 90 \
+  --max-records 100 \
+  --duration-seconds 0 \
+  --output-dir runs/edge_stream_us50
+```
+
+Equivalent raw curl (after you have a filtered `dataset_id`):
+
+```bash
+curl -N -X GET \
+  "https://feed-edge.ravenpack.com/1.0/json/${DATASET_ID}?keep_alive=t" \
+  -H "api_key: $RAVENPACK_API_KEY" \
+  --no-buffer
+```
+
+Outputs under `--output-dir`: `dataset_id.txt`, `entity_mapping.csv`, `stream_records.jsonl`, `run_summary.json`.
+
+---
+
 ## Universe (CLI)
 
 Pick **one** way to define the company set:
@@ -52,7 +96,6 @@ Pick **one** way to define the company set:
 | `--universe PATH` | CSV with **`RP_ENTITY_ID`** (optional `COMPANY_NAME`, `ticker`) | Preferred for `us_sml.csv` — no ticker mapping calls |
 | `--tickers AAPL,MSFT,...` | Comma-separated tickers | Mapped to RP ids via Edge entity-mapping (+ `us_sml.csv` disambiguation when present) |
 | `--entity-ids 0157B1,4A6F00,...` | Comma-separated RP ids | Skip mapping entirely |
-| `--missed-csv PATH` | CSV with a **`Ticker`** column | Used by `recover`; also a fallback universe for `pull`/`feed` |
 | `--limit-entities N` | Integer | Cap size after load (`0` = all) |
 
 Examples:
@@ -134,7 +177,6 @@ uv run python scripts/edge_mrvr_stories.py pull \
 |------|---------|
 | `pull` / `last15` | One-shot pull for a universe + time window |
 | `feed` | Poll successive buckets (`--interval-minutes`, `--max-buckets`) |
-| `recover` | Historical pull + match against `--missed-csv` (MissedStories-shaped) |
 
 ```bash
 # Continuous feed: one bucket then exit
@@ -145,12 +187,6 @@ uv run python scripts/edge_mrvr_stories.py feed \
   --max-buckets 1 \
   --skip-urls \
   --output-dir runs/edge_feed
-
-# MissedStories recovery (uses datafile for long ranges)
-uv run python scripts/edge_mrvr_stories.py recover \
-  --missed-csv MissedStories.csv \
-  --skip-urls \
-  --output-dir runs/edge_missed_recovery
 ```
 
 ---
@@ -199,11 +235,10 @@ Typical follow-ons: URL scrape, or fetch a full annotated document by id in a do
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `mode` | required | `pull` \| `last15` \| `feed` \| `recover` |
+| `mode` | required | `pull` \| `last15` \| `feed` |
 | `--universe` | — | CSV with `RP_ENTITY_ID` |
 | `--tickers` | — | Comma-separated tickers |
 | `--entity-ids` | — | Comma-separated RP ids |
-| `--missed-csv` | `MissedStories.csv` | Tickers file / recover input |
 | `--limit-entities` | `0` | Cap universe size |
 | `--start` / `--end` | — | Explicit UTC window |
 | `--window-end` | now | End of rolling window |
@@ -336,8 +371,8 @@ uv run ruff check src/client_monitor tests
 ## Project layout
 
 ```
-scripts/edge_mrvr_stories.py   # Edge MRVR runner (pull / feed / recover)
-scripts/edge_match_offline.py  # Offline MissedStories rematch helper (if present)
+scripts/edge_mrvr_stories.py   # Edge MRVR runner (pull / feed)
+scripts/edge_mrvr_stream.py    # Real-time Edge feed sample (feed-edge NDJSON)
 src/client_monitor/            # Bigdata monitor package → client-news-monitor CLI
 taxonomy.csv                   # Bigdata topic taxonomy (business rows)
 us_sml.csv                     # Default universe (~3k US names, RP_ENTITY_ID)
