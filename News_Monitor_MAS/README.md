@@ -96,7 +96,6 @@ Pick **one** way to define the company set:
 | `--universe PATH` | CSV with **`RP_ENTITY_ID`** (optional `COMPANY_NAME`, `ticker`) | Preferred for `us_sml.csv` — no ticker mapping calls |
 | `--tickers AAPL,MSFT,...` | Comma-separated tickers | Mapped to RP ids via Edge entity-mapping (+ `us_sml.csv` disambiguation when present) |
 | `--entity-ids 0157B1,4A6F00,...` | Comma-separated RP ids | Skip mapping entirely |
-| `--missed-csv PATH` | CSV with a **`Ticker`** column | Used by `recover`; also a fallback universe for `pull`/`feed` |
 | `--limit-entities N` | Integer | Cap size after load (`0` = all) |
 
 Examples:
@@ -178,7 +177,6 @@ uv run python scripts/edge_mrvr_stories.py pull \
 |------|---------|
 | `pull` / `last15` | One-shot pull for a universe + time window |
 | `feed` | Poll successive buckets (`--interval-minutes`, `--max-buckets`) |
-| `recover` | Historical pull + match against `--missed-csv` (MissedStories-shaped) |
 
 ```bash
 # Continuous feed: one bucket then exit
@@ -189,12 +187,6 @@ uv run python scripts/edge_mrvr_stories.py feed \
   --max-buckets 1 \
   --skip-urls \
   --output-dir runs/edge_feed
-
-# MissedStories recovery (uses datafile for long ranges)
-uv run python scripts/edge_mrvr_stories.py recover \
-  --missed-csv MissedStories.csv \
-  --skip-urls \
-  --output-dir runs/edge_missed_recovery
 ```
 
 ---
@@ -243,11 +235,10 @@ Typical follow-ons: URL scrape, or fetch a full annotated document by id in a do
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `mode` | required | `pull` \| `last15` \| `feed` \| `recover` |
+| `mode` | required | `pull` \| `last15` \| `feed` |
 | `--universe` | — | CSV with `RP_ENTITY_ID` |
 | `--tickers` | — | Comma-separated tickers |
 | `--entity-ids` | — | Comma-separated RP ids |
-| `--missed-csv` | `MissedStories.csv` | Tickers file / recover input |
 | `--limit-entities` | `0` | Cap universe size |
 | `--start` / `--end` | — | Explicit UTC window |
 | `--window-end` | now | End of rolling window |
@@ -380,9 +371,8 @@ uv run ruff check src/client_monitor tests
 ## Project layout
 
 ```
-scripts/edge_mrvr_stories.py   # Edge MRVR runner (pull / feed / recover)
+scripts/edge_mrvr_stories.py   # Edge MRVR runner (pull / feed)
 scripts/edge_mrvr_stream.py    # Real-time Edge feed sample (feed-edge NDJSON)
-scripts/edge_match_offline.py  # Offline MissedStories rematch helper (if present)
 src/client_monitor/            # Bigdata monitor package → client-news-monitor CLI
 taxonomy.csv                   # Bigdata topic taxonomy (business rows)
 us_sml.csv                     # Default universe (~3k US names, RP_ENTITY_ID)

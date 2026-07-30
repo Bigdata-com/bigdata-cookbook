@@ -191,7 +191,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--universe", type=Path, default=None)
     parser.add_argument("--tickers", type=str, default=None)
     parser.add_argument("--entity-ids", type=str, default=None)
-    parser.add_argument("--missed-csv", type=Path, default=None)
     parser.add_argument("--limit-entities", type=int, default=0)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument(
@@ -248,7 +247,6 @@ def main(argv: list[str] | None = None) -> int:
         universe=args.universe,
         tickers=args.tickers,
         entity_ids=args.entity_ids,
-        missed_csv=args.missed_csv if args.missed_csv and args.missed_csv.exists() else None,
         limit_entities=args.limit_entities,
         reuse_mapping=True,
     )
