@@ -1,114 +1,235 @@
-# Client News Monitor
+# News Monitor (Edge MRVR)
 
-Retrieval-only news monitor for ~3,000 US small/mid companies over a configurable Bigdata timestamp window. Two modes: **topic + MAS** (default production path) and **`--skip-mas`** (entity-only smart batch over the full universe). No LLM labeling, no MCP.
+Entity-scoped **web/public news** pull from RavenPack **Edge**, provider **`MRVR`**.  
+Deterministic analytics per company–document row, including relevance, sentiment, novelty, **`rp_document_id`**, and optional **`url`**.
 
-Uses [Bigdata.com](https://bigdata.com) smart search and [bigdata-smart-batching](https://docs.bigdata.com/use-cases/search-service/smart-batching). Default document category is **`news`** (override with `--category-profile news_premium`).
+Optional post-processing can use the extracted `rp_document_id` / `url` (URL scrape or Bigdata document fetch) — that step is outside this runner.
 
-## Skip-MAS entity batch (full universe)
-
-`--skip-mas` skips themes and MAS scoring. It hands the full company list to `plan_search` (`text=None`); the library densifies baskets and packs zero-volume names into **`very_low`** groups. Then `execute_search` runs with an explicit **`--chunk-percentage`**.
-
-```bash
-# Full ~3k universe, retrieve 50% of the planned chunk budget
-uv run client-news-monitor \
-  --skip-mas \
-  --chunk-percentage 0.5 \
-  --output-dir runs/skip_mas_3k_50pct
-```
-
-### How planning vs retrieval works
-
-1. **`plan_search`** estimates co-mention volumes (day-granular dates) and builds baskets (volume buckets + dense `very_low` for zeros).
-2. We **patch** each basket’s timestamps to the exact monitor ISO window (often 15 minutes).
-3. **`--chunk-percentage`** sets the retrieval **cap**:  
-   `target ≈ chunk_upper_bound_estimate × chunk_percentage`  
-   Example: expected 76,441 × 0.5 → target ≈ **38,220** max chunks to *request*.
-4. The API only returns what exists in the window. Flattened output is much smaller — e.g. **758 rows / 500 primary** in a quiet 15‑min `news` run.
-
-| Metric | Meaning |
-|--------|---------|
-| Plan expected / target | Upper bound on chunks we are willing to request |
-| `chunk_rows` | Rows in `retrieval_chunks.jsonl` (chunk × matched company) |
-| `primary_stories` | Unique headlines after within-run syndication dedup |
-
-**50% does not mean “retrieve half the universe’s news.”** It means “use half of the planner’s expected-chunk budget as `max_chunks`.” Empty windows and short windows under-fill that budget.
-
-Logs spell this out: `chunk_percentage=50% (expected=4,765 → target≈2,382)`.
-
-## Architecture
-
-```mermaid
-flowchart TB
-  subgraph inputs [Inputs]
-    Universe["us_sml.csv\n~3k RP_ENTITY_ID"]
-    Taxonomy["taxonomy.csv\ncurated topic IDs"]
-    Window["15-min UTC window"]
-    Mode["search mode\ntext | topic | text+topic | entity_only"]
-  end
-
-  subgraph perTopic [Per monitor topic × search mode]
-    QuerySpec["QuerySpec\nshared filters + text/topic"]
-    Vnow["Co-mention volumes\nV_now per entity"]
-    Baseline["MAS baselines\n30d lagged, SQLite cache"]
-    MAS["MAS + PCT_RANK\nper entity × topic"]
-    Plan["Search plan\nfixed baskets, expected_chunks from V_now"]
-    Search["execute_search\nchunk_percentage=0.5"]
-  end
-
-  subgraph novelty [Dedup]
-    HeadlineHash["Headline hash\nprimary vs syndicated"]
-  end
-
-  subgraph outputs [Outputs]
-    Chunks["retrieval_chunks.jsonl"]
-    MAScsv["mas_scores.csv"]
-    Digest["retrieval_digest.json"]
-    Stories["alerts_with_stories.csv"]
-    Summary["run_summary.json\nalerts"]
-  end
-
-  Universe --> QuerySpec
-  Taxonomy --> QuerySpec
-  Window --> QuerySpec
-  Mode --> QuerySpec
-
-  QuerySpec --> Vnow
-  QuerySpec --> Baseline
-  Vnow --> MAS
-  Baseline --> MAS
-  Vnow --> Plan
-  QuerySpec --> Plan
-  Plan --> Search
-  Search --> Chunks
-
-  Chunks --> HeadlineHash
-  HeadlineHash --> Digest
-  MAS --> MAScsv
-  HeadlineHash --> Stories
-  MAS --> Stories
-  HeadlineHash --> Summary
-  MAS --> Summary
-  Digest --> Summary
-```
-
-Each run loops over **4 monitor topics** (`earnings`, `contracts`, `leadership`, `regulatory`) unless `--search-mode entity_only` is set (one entity-wide pass, no taxonomy filter). With `--compare-modes`, the full pipeline runs three times (one per taxonomy search mode).
+---
 
 ## Setup
 
 ```bash
 uv sync
-cp .env.example .env   # set BIGDATA_API_KEY
+cp .env.example .env
+# RAVENPACK_API_KEY  — required for Edge MRVR (scripts/edge_mrvr_stories.py)
+# BIGDATA_API_KEY    — required for client-news-monitor (src/client_monitor)
 ```
 
-Only `BIGDATA_API_KEY` is required. Run commands from this directory so `.env` is loaded automatically.
+Run commands from this directory so `.env` loads automatically.
+
+---
 
 ## Quick start
 
 ```bash
-# Smoke test (50 companies, 15-min window ending now UTC)
+# Last 15 minutes, first 50 names from us_sml.csv
+uv run python scripts/edge_mrvr_stories.py pull \
+  --universe us_sml.csv \
+  --limit-entities 50 \
+  --window-minutes 15 \
+  --output-dir runs/edge_pull_smoke
+
+# Skip URL lookups (saves document-URL quota)
+uv run python scripts/edge_mrvr_stories.py pull \
+  --universe us_sml.csv \
+  --limit-entities 50 \
+  --window-minutes 15 \
+  --skip-urls \
+  --output-dir runs/edge_pull_smoke
+```
+
+`last15` is an alias for `pull`.
+
+---
+
+## Universe (CLI)
+
+Pick **one** way to define the company set:
+
+| Flag | Input | Notes |
+|------|--------|------|
+| `--universe PATH` | CSV with **`RP_ENTITY_ID`** (optional `COMPANY_NAME`, `ticker`) | Preferred for `us_sml.csv` — no ticker mapping calls |
+| `--tickers AAPL,MSFT,...` | Comma-separated tickers | Mapped to RP ids via Edge entity-mapping (+ `us_sml.csv` disambiguation when present) |
+| `--entity-ids 0157B1,4A6F00,...` | Comma-separated RP ids | Skip mapping entirely |
+| `--missed-csv PATH` | CSV with a **`Ticker`** column | Used by `recover`; also a fallback universe for `pull`/`feed` |
+| `--limit-entities N` | Integer | Cap size after load (`0` = all) |
+
+Examples:
+
+```bash
+# Full US small/mid file
+uv run python scripts/edge_mrvr_stories.py pull \
+  --universe us_sml.csv \
+  --window-minutes 15 \
+  --skip-urls \
+  --output-dir runs/edge_us_sml_15m
+
+# Explicit tickers
+uv run python scripts/edge_mrvr_stories.py pull \
+  --tickers AAPL,MSFT,NVDA,GOOG \
+  --window-minutes 15 \
+  --output-dir runs/edge_mega
+
+# Raw RP entity ids
+uv run python scripts/edge_mrvr_stories.py pull \
+  --entity-ids 0157B1,4A6F00,D6489C \
+  --window-minutes 15 \
+  --output-dir runs/edge_ids
+```
+
+Resolved mappings are written to `{output-dir}/entity_mapping.csv` and **reused** on later runs in the same output directory (avoids remapping rate limits).
+
+---
+
+## Time range (CLI)
+
+All times are **UTC**. Two styles:
+
+### A) Rolling window ending at `--window-end` (default: now)
+
+```bash
+# Last 15 minutes ending now
+--window-minutes 15
+
+# Last 60 minutes ending at a fixed instant
+--window-end 2026-07-29T15:00:00Z --window-minutes 60
+```
+
+### B) Explicit interval
+
+```bash
+--start 2026-07-28T12:00:00Z --end 2026-07-28T12:15:00Z
+```
+
+ISO forms with `Z` or `+00:00` are accepted. `--start` / `--end` must be used together; when set, they override `--window-minutes` / `--window-end`.
+
+Examples:
+
+```bash
+# Fixed 15-minute bucket
+uv run python scripts/edge_mrvr_stories.py pull \
+  --universe us_sml.csv \
+  --limit-entities 100 \
+  --start 2026-07-29T07:13:00Z \
+  --end 2026-07-29T07:28:00Z \
+  --skip-urls \
+  --output-dir runs/edge_fixed_window
+
+# One hour ending at noon UTC
+uv run python scripts/edge_mrvr_stories.py pull \
+  --tickers AAPL,AMZN \
+  --window-end 2026-07-29T12:00:00Z \
+  --window-minutes 60 \
+  --output-dir runs/edge_hour
+```
+
+`feed` mode always uses rolling buckets of `--interval-minutes` (default 15) ending at “now” for each bucket.
+
+---
+
+## Modes
+
+| Mode | Purpose |
+|------|---------|
+| `pull` / `last15` | One-shot pull for a universe + time window |
+| `feed` | Poll successive buckets (`--interval-minutes`, `--max-buckets`) |
+| `recover` | Historical pull + match against `--missed-csv` (MissedStories-shaped) |
+
+```bash
+# Continuous feed: one bucket then exit
+uv run python scripts/edge_mrvr_stories.py feed \
+  --universe us_sml.csv \
+  --limit-entities 50 \
+  --interval-minutes 15 \
+  --max-buckets 1 \
+  --skip-urls \
+  --output-dir runs/edge_feed
+
+# MissedStories recovery (uses datafile for long ranges)
+uv run python scripts/edge_mrvr_stories.py recover \
+  --missed-csv MissedStories.csv \
+  --skip-urls \
+  --output-dir runs/edge_missed_recovery
+```
+
+---
+
+## Output columns
+
+`stories_unique.csv`:
+
+| Column | Description |
+|--------|-------------|
+| `timestamp_utc` | Story timestamp |
+| `company_name` | Entity name |
+| `title` | Headline |
+| `source_name` | Publisher |
+| `url` | Article URL (from `get_document_url(rp_document_id)`; empty with `--skip-urls`) |
+| `entity_relevance` | How central the company is (≥ 90 ≈ headline / lead) |
+| `entity_sentiment` | Sentiment on entity-related text/events |
+| `title_similarity_days` | Novelty — days since a similar title (≥ 90 ≈ quarterly-new; &lt; 1 ≈ same-day reprint) |
+| `rp_document_id` | Stable document id (dedup + enrichment key) |
+
+Also written: `raw_records.csv`, `entity_mapping.csv`, `dataset_id.txt`, `run_summary.json`.
+
+### Optional filters (post-pull or via `--min-entity-relevance`)
+
+```text
+entity_relevance       >= 90
+title_similarity_days  >= 90
+```
+
+`--min-entity-relevance 90` applies the relevance floor in the Edge query itself.
+
+---
+
+## Post-processing hooks
+
+Every kept row carries:
+
+- **`rp_document_id`** — deterministic key for document-level enrichment  
+- **`url`** — optional open/scrape target (when not using `--skip-urls`)
+
+Typical follow-ons: URL scrape, or fetch a full annotated document by id in a downstream system.
+
+---
+
+## CLI reference
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `mode` | required | `pull` \| `last15` \| `feed` \| `recover` |
+| `--universe` | — | CSV with `RP_ENTITY_ID` |
+| `--tickers` | — | Comma-separated tickers |
+| `--entity-ids` | — | Comma-separated RP ids |
+| `--missed-csv` | `MissedStories.csv` | Tickers file / recover input |
+| `--limit-entities` | `0` | Cap universe size |
+| `--start` / `--end` | — | Explicit UTC window |
+| `--window-end` | now | End of rolling window |
+| `--window-minutes` | `15` | Rolling window length |
+| `--interval-minutes` | `15` | Feed bucket length |
+| `--max-buckets` | `1` | Feed iterations (`0` = forever) |
+| `--min-entity-relevance` | none | Query-time relevance floor |
+| `--skip-urls` | off | Skip URL resolution |
+| `--output-dir` | `runs/edge_<mode>_<ts>` | Output directory |
+| `-v` | off | Verbose logging |
+
+---
+
+## Bigdata.com monitor (`client-news-monitor`)
+
+Also in this repo: a retrieval-only Bigdata.com news monitor over ~3k US names (`us_sml.csv`), with optional topic filters + MAS, or entity-only smart batching (`--skip-mas`). Package: `src/client_monitor/`. Entry point: `uv run client-news-monitor`.
+
+Requires `BIGDATA_API_KEY` in `.env`. Uses [Bigdata.com](https://bigdata.com) smart search and [bigdata-smart-batching](https://docs.bigdata.com/use-cases/search-service/smart-batching). Default document category is **`news`**.
+
+### Quick start
+
+```bash
+# Smoke (50 companies, last 15 minutes ending now UTC)
 uv run client-news-monitor --limit-entities 50
 
-# Full PoC (~3k names from us_sml.csv)
+# Full universe, topic + text search
 uv run client-news-monitor \
   --universe us_sml.csv \
   --taxonomy taxonomy.csv \
@@ -116,147 +237,78 @@ uv run client-news-monitor \
   --chunk-percentage 0.5 \
   --output-dir runs/client_poc
 
-# Narrower premium category
-uv run client-news-monitor --category-profile news_premium --limit-entities 50
-
-# Compare text / topic / text+topic (~3× retrieval cost)
-uv run client-news-monitor ... --compare-modes
-
-# Skip MAS: entity-only smart batch over all names (library densifies zero-volume)
+# Entity-only smart batch (no themes / no MAS)
 uv run client-news-monitor \
   --skip-mas \
   --chunk-percentage 0.5 \
   --limit-entities 50 \
   --output-dir runs/skip_mas_50pct
+
+# Fixed window end
+uv run client-news-monitor \
+  --universe us_sml.csv \
+  --window-end 2026-07-29T15:00:00Z \
+  --window-minutes 15 \
+  --skip-mas \
+  --chunk-percentage 0.5 \
+  --output-dir runs/skip_mas_fixed
 ```
 
-## What it does
+### Universe & time
 
-For each of **4 monitor topics** (`earnings`, `contracts`, `leadership`, `regulatory`):
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--universe` | `us_sml.csv` | CSV with `RP_ENTITY_ID`, `COMPANY_NAME` |
+| `--limit-entities` | `0` (all) | First N rows of the universe |
+| `--window-end` | now (UTC) | ISO end of the monitor window |
+| `--window-minutes` | `15` | Window length ending at `--window-end` |
 
-1. **Co-mention volume** — per-entity chunk counts (`V_now`) in the window
-2. **Retrieval** — smart-batched search at `--chunk-percentage 0.5`; skips zero-volume baskets
-3. **MAS scoring** — Media Attention Score vs a cached 30-day baseline (same query spec)
-4. **Syndication dedup** — headline-hash collapse within the run
+### Search modes & skip-MAS
 
-**Document category:** controlled by `--category-profile` (default `news`). Use `news_premium` for narrower premium coverage; `news` includes broader wire coverage at the cost of more noise.
+| Mode / flag | Behavior |
+|-------------|----------|
+| `--search-mode text` | Document-voice text query; entity in `BODY` |
+| `--search-mode topic` | Curated taxonomy topic IDs only |
+| `--search-mode text+topic` | Text + topic (default) |
+| `--search-mode entity_only` | No taxonomy filter; entity `search_in=ALL` (one `entity_wide` pass) |
+| `--compare-modes` | Run `text`, `topic`, and `text+topic` sequentially |
+| `--skip-mas` | Skip themes and MAS; `plan_search` + `execute_search` over all companies (including zero-volume densified baskets). `--chunk-percentage` is the retrieval budget |
 
-## MAS scoring
+`--chunk-percentage` is a fraction of the planner’s expected-chunk upper bound (e.g. `0.5` = 50% of that budget), not “half the universe’s news.”
 
-**Media Attention Score (MAS)** flags entities whose news volume in the current window is unusually high relative to their own recent history. It uses the **same `QuerySpec`** as retrieval (monitor topic, search mode, category, text/topic filters) so volume, baselines, and search stay aligned.
+### Monitor topics
 
-### Step 1 — Current volume (`V_now`)
+When not using `--skip-mas` / `entity_only`, the pipeline loops four topics from `taxonomy.csv` (`TOPIC=business`), defined in `src/client_monitor/topics.py`:
 
-For each entity, call Bigdata **co-mention volume** over the run window. `V_now` is the chunk count returned for that entity under the active query spec.
+| Topic | Focus |
+|-------|--------|
+| `earnings` | Earnings, results, analyst ratings |
+| `contracts` | Contracts, partnerships, awards |
+| `leadership` | Executive / board changes |
+| `regulatory` | Regulatory / legal / government |
 
-### Step 2 — Baseline (`λ`, stored as `LAMBDA_BUCKET`)
-
-On first run (or with `--force-baseline-refresh`), fetch co-mention volumes over a **lagged 30-day window** ending **1 day before** the current window end. Results are cached in `mas_baselines.db`, keyed by `(query_hash, entity_id)`.
-
-The baseline is scaled to the current bucket length:
-
-```
-λ = (volume_30d / minutes_in_30d) × window_minutes
-```
-
-For a 15-minute run, `λ` is the expected chunk count in 15 minutes given the prior 30 days.
-
-### Step 3 — Score (0–100)
-
-For each entity with `V_now > 0`:
-
-| Metric | Formula | Meaning |
-|--------|---------|---------|
-| **MAR** | `(V_now + 1) / (λ + 1)` | Raw volume ratio vs baseline |
-| **Z** | `(V_now − λ) / √(λ + 1)` | Poisson-style surprise |
-| **MAS** | `min(100, 100 × sigmoid(Z / 5) × log1p(V_now) / log1p(λ + 10))` | Combined surprise × magnitude |
-
-If `V_now = 0`, **MAS = 0**.
-
-Implementation: `src/client_monitor/mas.py`.
-
-### Step 4 — Rank and alert
-
-Within each monitor topic, entities are assigned **PCT_RANK** (0–100, ascending by `V_now` then `Z`).
-
-An **alert** fires when either:
-
-1. **High MAS** — entity is in the **top ~1%** `PCT_RANK` for that topic *and* `MAS > 0`, or
-2. **Primary chunk** — entity has at least one **primary** retrieved story in that topic (after syndication dedup).
-
-`alerts_with_stories.csv` keeps only alerts that also have a primary chunk (inner join). MAS-only alerts appear in `run_summary.json` and `mas_scores.csv` but not in the story feed.
-
-## Monitor topics
-
-Curated topic filters from `taxonomy.csv` (`TOPIC=business`). Rules in `src/client_monitor/topics.py`.
-
-| Topic | Document-voice text | Taxonomy rule | ~topic IDs |
-|-------|---------------------|---------------|------------|
-| `earnings` | Earnings, financial results, analyst ratings | GROUPs: `earnings`, `revenues`, `dividends`, `analyst-ratings` | ~211 |
-| `contracts` | Contracts, partnerships, strategic developments | All `partnerships` + `products-services` types: `business-contract`, `government-contract`, `award` | ~19 |
-| `leadership` | Executive/leadership changes | `labor-issues` types: `executive-*`, `board-member-*`, `board-diversity` | ~37 |
-| `regulatory` | Regulatory/legal/government news | All `regulatory` GROUP | ~22 |
-
-## CLI reference
+### CLI reference (`client-news-monitor`)
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--universe` | `us_sml.csv` | CSV with `RP_ENTITY_ID`, `COMPANY_NAME` |
+| `--universe` | `us_sml.csv` | Universe CSV |
 | `--taxonomy` | `taxonomy.csv` | Bigdata taxonomy CSV |
-| `--output-dir` | `runs/client_poc_<timestamp>` | Run output directory |
-| `--window-end` | now (UTC) | Window end ISO timestamp |
-| `--window-minutes` | `15` | Window length in minutes |
-| `--search-mode` | `text+topic` | `text`, `topic`, `text+topic`, or `entity_only` |
-| `--skip-mas` | off | Entity-only smart batch over all companies; no themes/MAS |
-| `--category-profile` | `news` | `news` or `news_premium` |
-| `--compare-modes` | off | Run all three search modes |
-| `--chunk-percentage` | `0.5` | Fraction of plan expected chunks to retrieve (0–1; **50%** default) |
-| `--limit-entities` | `0` (all) | Limit to first N companies |
+| `--output-dir` | `runs/client_poc_<timestamp>` | Output directory |
+| `--window-end` | now (UTC) | Window end ISO |
+| `--window-minutes` | `15` | Window length |
+| `--search-mode` | `text+topic` | `text` \| `topic` \| `text+topic` \| `entity_only` |
+| `--compare-modes` | off | Run three taxonomy modes |
+| `--skip-mas` | off | Entity-only smart batch; no themes/MAS |
+| `--category-profile` | `news` | `news` \| `news_premium` |
+| `--chunk-percentage` | `0.5` | Fraction of plan expected chunks to retrieve |
+| `--limit-entities` | `0` | Cap universe size |
 | `--max-chunks-per-basket` | none | Hard cap on `max_chunks` |
-| `--seen-headlines-db` | none | Optional SQLite for cross-run headline dedup |
-| `--force-baseline-refresh` | off | Re-fetch 30-day MAS baselines |
+| `--seen-headlines-db` | none | SQLite for cross-run headline dedup |
+| `--force-baseline-refresh` | off | Refresh 30-day MAS baselines |
 | `--requests-per-minute` | `350` | Bigdata search rate limit |
+| `-v` | off | Debug logging |
 
-### Search modes
-
-| Mode | `query.text` | `filters.topic` | Entity `search_in` |
-|------|--------------|-----------------|-------------------|
-| `text` | document-voice string | omitted | `BODY` |
-| `topic` | omitted | curated taxonomy IDs | `BODY` |
-| `text+topic` | document-voice string | curated taxonomy IDs | `BODY` |
-| `entity_only` | omitted | omitted | `ALL` |
-
-`entity_only` runs **once per search mode** with `monitor_topic=entity_wide` — all news about the entity in the window, not scoped to the four monitor topics. See [Targeted backfill](#targeted-backfill-recommended-not-automated) below.
-
-### Skip MAS (entity-only smart batch)
-
-`--skip-mas` turns off themes and MAS scoring. It calls `bigdata_smart_batching.plan_search` on the full universe (`text=None`) so the library densifies baskets and packs zero-volume names into `very_low` groups, then `execute_search` with **`--chunk-percentage`** as the retrieval budget.
-
-Example: `--chunk-percentage 0.5` means retrieve **50%** of the plan’s `chunk_upper_bound_estimate`. Basket timestamps are patched to the exact monitor ISO window after planning.
-
-### Targeted backfill (recommended, not automated)
-
-**Targeted backfill** is a second retrieval pass for a **small set of names that already look interesting**, not entity-wide search on the full ~3k universe every 15 minutes.
-
-**Primary pass (production default):** topic-scoped retrieval + MAS on the full universe. Alerts fire when a company is in the top 1% MAS for a topic or has a primary retrieved chunk. Many alerts are **MAS-only** — volume spiked, but no story passed the topic filter — and those are omitted from `alerts_with_stories.csv`.
-
-**Backfill pass (proposed):** for entities with a MAS alert and **no** primary chunk in that topic, run `entity_only` search for **that entity only** in the same window. This can recover stories outside the four taxonomy lanes (e.g. a partnership wire tagged outside `contracts`) without paying the cost of brute entity search on every name.
-
-| | Full-universe `entity_only` every 15 min | Targeted backfill |
-|---|------------------------------------------|-------------------|
-| Scope | All ~3k entities | MAS-fired entities with no story (typically tens, not thousands) |
-| Query | `entity_only` | Same |
-| Cost | Prohibitive at scale | Bounded by alert count |
-
-**Status:** `entity_only` is implemented as a CLI search mode. The **automatic** MAS-triggered second pass is **not** wired into `pipeline.py` yet.
-
-**Manual approximation today:**
-
-1. Run the primary pass with default `--search-mode text+topic` (or `topic`).
-2. From `run_summary.json` or `mas_scores.csv`, identify `(entity_id, monitor_topic)` pairs that alerted but have no row in `alerts_with_stories.csv`.
-3. Run `entity_only` on a trimmed universe containing only those entities (custom CSV or `--limit-entities` on a filtered list).
-
-## Output artifacts
+### Outputs (`client-news-monitor`)
 
 ```
 {output_dir}/
@@ -270,29 +322,26 @@ Example: `--chunk-percentage 0.5` means retrieve **50%** of the plan’s `chunk_
   run_summary.json
 ```
 
-Alerts in `run_summary.json` fire when a company is in the **top 1% MAS** for a topic or has a **primary retrieved chunk** in that topic.
+Alerts fire when a company is in the top 1% MAS for a topic or has a primary retrieved chunk. `alerts_with_stories.csv` is the inner join of alerts with primary stories.
 
-`alerts_with_stories.csv` is the **inner join** of those alerts with primary chunks: MAS-only alerts are omitted. One row per `(entity_id, monitor_topic, document_id)` story, sorted by MAS then relevance.
-
-## Tests
+### Tests
 
 ```bash
 uv run python -m pytest tests/test_client_monitor.py -v
 uv run ruff check src/client_monitor tests
 ```
 
-## Cost notes
-
-- **Volume pass:** ~60–80 co-mention calls per monitor topic for ~3k entities
-- **Baselines:** cached in `mas_baselines.db` after first run per `(topic, search_mode)`
-- **Retrieval:** only baskets with `V_now > 0`; default 50% chunk sampling
-- **Pricing:** $0.015 per 10 chunks retrieved
+---
 
 ## Project layout
 
 ```
-src/client_monitor/   # pipeline modules
-taxonomy.csv          # Bigdata topic taxonomy (business rows)
-us_sml.csv            # default universe (~3k US small/mid names)
-runs/                 # run outputs (gitignored recommended)
+scripts/edge_mrvr_stories.py   # Edge MRVR runner (pull / feed / recover)
+scripts/edge_match_offline.py  # Offline MissedStories rematch helper (if present)
+src/client_monitor/            # Bigdata monitor package → client-news-monitor CLI
+taxonomy.csv                   # Bigdata topic taxonomy (business rows)
+us_sml.csv                     # Default universe (~3k US names, RP_ENTITY_ID)
+tests/                         # client_monitor unit tests
+runs/                          # Run outputs
+.env.example                   # RAVENPACK_API_KEY, BIGDATA_API_KEY
 ```
