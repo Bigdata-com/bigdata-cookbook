@@ -54,6 +54,7 @@ DEFAULT_END_DATE = "2026-06-09"
 DEFAULT_LABELS_MODEL = "gpt-5.4-nano"
 DEFAULT_LABELING_MODEL = "gpt-5.4-nano"
 DEFAULT_SUMMARY_MODEL = "gpt-5.4-nano"
+DEFAULT_MAX_LEAF_LABELS = 15
 DEFAULT_CHUNK_PERCENTAGE = 0.02
 DEFAULT_REQUESTS_PER_MINUTE = 350
 DEFAULT_RERANK_THRESHOLD = 0.0
@@ -97,6 +98,23 @@ class CompanySummary(BaseModel):
     summary: str
 
 
+def normalize_max_leaf_labels(max_leaf_labels: int | None) -> int | None:
+    """Return ``None`` when ``max_leaf_labels`` is unset or ``0`` (no cap)."""
+    if max_leaf_labels is None or max_leaf_labels == 0:
+        return None
+    if max_leaf_labels < 0:
+        raise ValueError("max_leaf_labels must be zero or positive")
+    return max_leaf_labels
+
+
+def analyst_focus_with_leaf_cap(analyst_focus: str, max_leaf_labels: int | None) -> str:
+    """Append a leaf-count instruction for taxonomy generation when capped."""
+    cap = normalize_max_leaf_labels(max_leaf_labels)
+    if cap is None:
+        return analyst_focus
+    return f"{analyst_focus}\nLimit the final tree to at most {cap} leaf nodes."
+
+
 def generate_taxonomy(
     main_theme: str,
     analyst_focus: str,
@@ -104,6 +122,7 @@ def generate_taxonomy(
     profile: ModeProfile | None = None,
     client: OpenAI | None = None,
     print_taxonomy: bool = True,
+    max_leaf_labels: int | None = DEFAULT_MAX_LEAF_LABELS,
 ) -> Node:
     """Generate the sub-concept taxonomy tree for ``main_theme`` via the LLM.
 
@@ -112,6 +131,7 @@ def generate_taxonomy(
     """
     active_profile = profile if profile is not None else _THEMATIC_PROFILE
     openai_client = client if client is not None else OpenAI()
+    focus_for_prompt = analyst_focus_with_leaf_cap(analyst_focus, max_leaf_labels)
     completion = openai_client.chat.completions.parse(
         model=model,
         temperature=0.0,
@@ -124,7 +144,7 @@ def generate_taxonomy(
             {
                 "role": "system",
                 "content": active_profile.labels_system_prompt.format(
-                    main_theme=main_theme, analyst_focus=analyst_focus
+                    main_theme=main_theme, analyst_focus=focus_for_prompt
                 ),
             },
             {
@@ -183,6 +203,7 @@ def generate_labels(
     profile: ModeProfile | None = None,
     client: OpenAI | None = None,
     print_taxonomy: bool = True,
+    max_leaf_labels: int | None = DEFAULT_MAX_LEAF_LABELS,
 ) -> list[str]:
     """Generate the leaf-level working label set for ``main_theme``.
 
@@ -196,6 +217,7 @@ def generate_labels(
         profile=profile,
         client=client,
         print_taxonomy=print_taxonomy,
+        max_leaf_labels=max_leaf_labels,
     )
     return leaf_labels(root, profile)
 

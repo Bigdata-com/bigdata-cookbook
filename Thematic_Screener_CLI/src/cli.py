@@ -85,13 +85,22 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
     main_theme = _resolve(args, config, "main_theme", profile.default_main_theme)
     analyst_focus = _resolve(args, config, "analyst_focus", profile.default_analyst_focus)
     model = _resolve(args, config, "labels_model", screener.DEFAULT_LABELS_MODEL)
+    max_leaf_labels = screener.normalize_max_leaf_labels(
+        _resolve(args, config, "max_leaf_labels", screener.DEFAULT_MAX_LEAF_LABELS)
+    )
 
-    logger.info("Generating labels in %s mode for: %s", mode, main_theme)
+    logger.info(
+        "Generating labels in %s mode for: %s (max_leaf_labels=%s)",
+        mode,
+        main_theme,
+        max_leaf_labels if max_leaf_labels is not None else "none",
+    )
     root = screener.generate_taxonomy(
         main_theme=main_theme,
         analyst_focus=analyst_focus,
         model=model,
         profile=profile,
+        max_leaf_labels=max_leaf_labels,
     )
     labels, search_queries = screener.write_taxonomy_artifacts(
         root,
@@ -106,6 +115,7 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
             "main_theme": main_theme,
             "analyst_focus": analyst_focus,
             "labels_model": model,
+            "max_leaf_labels": max_leaf_labels if max_leaf_labels is not None else 0,
         }
     )
     logger.info(
@@ -439,6 +449,16 @@ def _add_labels_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--labels-model", action="store", default=argparse.SUPPRESS, help="Model used to generate labels."
+    )
+    parser.add_argument(
+        "--max-leaf-labels",
+        type=int,
+        action="store",
+        default=argparse.SUPPRESS,
+        help=(
+            "Maximum leaf sub-scenarios in the taxonomy (default: 15). "
+            "Use 0 for no limit."
+        ),
     )
 
 

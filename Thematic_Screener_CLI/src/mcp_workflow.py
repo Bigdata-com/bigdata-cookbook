@@ -740,9 +740,7 @@ def generate_mindmap(
     analyst_focus = str(config.get("analyst_focus", screener.DEFAULT_ANALYST_FOCUS))
 
     client = OpenAI()
-    extra_instruction = ""
-    if max_leaf_labels is not None:
-        extra_instruction = f"\nLimit the final tree to at most {max_leaf_labels} leaf nodes."
+    focus_for_prompt = screener.analyst_focus_with_leaf_cap(analyst_focus, max_leaf_labels)
     completion = client.chat.completions.create(
         model=model,
         temperature=0.0,
@@ -754,7 +752,7 @@ def generate_mindmap(
                 "role": "system",
                 "content": SYSTEM_MESSAGE_LABELS.format(
                     main_theme=main_theme,
-                    analyst_focus=f"{analyst_focus}{extra_instruction}",
+                    analyst_focus=focus_for_prompt,
                 ),
             },
             {"role": "user", "content": USER_MESSAGE_LABELS.format(main_theme=main_theme)},
