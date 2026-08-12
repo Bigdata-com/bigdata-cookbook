@@ -143,6 +143,7 @@ python -m src.cli <subcommand> [options]
 | `--main-theme` | see defaults below | Main screening theme |
 | `--analyst-focus` | see defaults below | Analyst focus guiding the taxonomy |
 | `--labels-model` | `gpt-5.4-nano` | OpenAI model for label generation |
+| `--max-leaf-labels` | `15` | Cap on leaf sub-scenarios in the taxonomy (`0` = no limit) |
 
 ### `plans` — build search plans
 
@@ -193,6 +194,7 @@ Runs `generate-labels` and `plans`, then prints expected chunk volume and retrie
 |--------|---------|-------------|
 | `--main-theme` | mode default | Main theme or risk |
 | `--analyst-focus` | mode default | Analyst focus for the taxonomy |
+| `--max-leaf-labels` | `15` | Cap on leaf sub-scenarios (`0` = no limit) |
 | `--universe` | `XNAS_companies.csv` | Company universe CSV |
 | `--start-date` | `2025-06-01` | Search window start |
 | `--end-date` | `2026-06-09` | Search window end |
@@ -229,6 +231,7 @@ Runs `generate-labels` → `plans` → `search` → `label-sentences` → `expor
 | Start date | `2025-06-01` |
 | End date | `2026-06-09` |
 | Labels model | `gpt-5.4-nano` |
+| Max leaf labels | `15` (`0` = no limit) |
 | Labeling model | `gpt-5.4-nano` |
 | Summary model | `gpt-5.4-nano` |
 | Chunk percentage | `0.02` (2%) |
