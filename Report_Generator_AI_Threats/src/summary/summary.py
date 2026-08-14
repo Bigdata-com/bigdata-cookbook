@@ -116,7 +116,7 @@ class SummarizerCompany:
         list_text_to_summarize = self.token_manager.split_text_by_chunks(df_text_to_summarize)
         if len(list_text_to_summarize) > 1:
             tasks = [
-                asyncio.create_task(self.run_summaries(chunk, n_reports, topic, entity.name))
+                asyncio.create_task(self.run_summaries(chunk, n_reports, topic, entity.name, focus))
                 for chunk in list_text_to_summarize
             ]
             self.logger.debug("Processing %d text chunks for entity '%s' and topic '%s'",
