@@ -9,10 +9,9 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from contextlib import contextmanager
 
-# Bigdata client imports - only what's needed
-from bigdata_client.query import Keyword, Entity, Similarity, Source, Any as QueryAny
-from bigdata_client.daterange import AbsoluteDateRange
-from bigdata_client.models.search import DocumentType, SortBy
+# SDK query building removed — use search_helper.run_universe_search instead.
+# Functions that built SDK query objects (build_source_filter, build_queries_for_monitoring)
+# raise NotImplementedError with migration guidance.
 
 
 # =============================================================================
@@ -57,106 +56,21 @@ def parse_date(date_input):
 # PRE-PROCESSING FUNCTIONS (Query Preparation)
 # =============================================================================
 
-def create_source_filter(source_ids: List[str]):
-    """
-    Create a query filtering component for a list of source IDs.
-
-    Parameters:
-        source_ids (list): A list of source ID strings.
-
-    Returns:
-        A query component that filters documents by these source IDs.
-    """
-    return QueryAny([Source(source_id) for source_id in source_ids])
+def create_source_filter(*args, **kwargs):
+    """SDK query builder removed — use search_helper or plain dict payloads."""
+    raise NotImplementedError(
+        "create_source_filter removed with SDK. "
+        "Use `src.search_helper.run_universe_search` or build plain dict search payloads for /v1/search."
+    )
 
 
-def build_queries_for_monitoring(
-    date_periods: List[Tuple],
-    persons: Dict[str, Dict[str, Any]],
-    company: Dict[str, str],
-    management_themes: List[str],
-    board_themes: List[str],
-    search_mode: str = "strict",
-    sources: Optional[Dict[str, str]] = None,
-    use_source_filter: bool = True
-) -> Tuple[List, List, List]:
-    """
-    Build base queries for board/management monitoring (without date multiplication).
-
-    Parameters:
-        date_periods: List of (start_date, end_date) tuples
-        persons: Dictionary of persons with their name variations
-        company: Dictionary containing company info with 'id' field
-        management_themes: List of management themes
-        board_themes: List of board themes
-        search_mode: "strict", "relaxed", or "relaxed_post"
-        sources: Dictionary of source names to IDs (optional)
-        use_source_filter: Whether to apply source filtering
-
-    Returns:
-        Tuple of (base_queries, date_ranges_list, query_details_template)
-    """
-    base_queries = []
-    query_details_template = []
-
-    # Generate source filter if requested
-    source_filter = None
-    if use_source_filter and sources:
-        source_filter = create_source_filter(list(sources.values()))
-        print(f"Using source filter with {len(sources)} trusted sources")
-    else:
-        print("Using all available news sources (no source filtering)")
-
-    # Build date ranges list directly from tuples as ISO strings for JSON compatibility
-    date_ranges_list = []
-    for start, end in date_periods:
-        start_date = parse_date(start)
-        end_date = parse_date(end)
-        # Convert to ISO string tuples to avoid JSON serialization issues in tracing
-        start_iso = datetime.combine(start_date, datetime.min.time())
-        end_iso = datetime.combine(end_date, datetime.min.time())
-        date_ranges_list.append((start_iso, end_iso))
-
-    # Build base queries
-    for person_name, data in persons.items():
-        variations = data.get("variations", [person_name])
-        person_component = QueryAny([Keyword(var) for var in variations])
-
-        # In strict mode, require company entity
-        if search_mode == "strict":
-            company_component = Entity(company['id'])
-            combined_component = company_component & person_component
-        else:
-            combined_component = person_component
-
-        # Build queries for management themes
-        for theme in management_themes:
-            if source_filter:
-                q = combined_component & Similarity(theme) & source_filter
-            else:
-                q = combined_component & Similarity(theme)
-            base_queries.append(q)
-            query_details_template.append({
-                "person": person_name,
-                "theme": theme,
-                "theme_type": "management"
-            })
-
-        # Build queries for board themes
-        for theme in board_themes:
-            if source_filter:
-                q = combined_component & Similarity(theme) & source_filter
-            else:
-                q = combined_component & Similarity(theme)
-            base_queries.append(q)
-            query_details_template.append({
-                "person": person_name,
-                "theme": theme,
-                "theme_type": "board"
-            })
-
-    print(f"Prepared {len(base_queries)} base queries and {len(date_ranges_list)} date ranges")
-    return base_queries, date_ranges_list, query_details_template
+def build_queries_for_monitoring(*args, **kwargs):
+    """SDK query builder removed — use search_helper or plain dict payloads."""
+    raise NotImplementedError(
+        "build_queries_for_monitoring removed with SDK. "
+        "Use `src.search_helper.run_universe_search` or build plain dict search payloads for /v1/search. "
+        "See MIGRATION_PATTERNS.md for replacement patterns."
+    )
 
 
 # =============================================================================
@@ -1455,25 +1369,4 @@ def plot_top_sources(df, person_name="Person", top_n=5, interactive=True):
         plt.tight_layout()
         plt.show()
 
-_intialization_sent = False 
-def notebook_initialized():
-    from importlib.metadata import version
-    from bigdata_client import Bigdata
-    from bigdata_client import tracking_services
-
-    try:
-        bigdata = Bigdata()
-        global _intialization_sent
-        if not _intialization_sent:
-            trace = tracking_services.TraceEvent(event_name = "BigdataCookbookExecution", 
-                       properties={"bigdataResearchToolsVersion": version("bigdata_research_tools"),
-                                    "bigdataClientVersion": version("bigdata-client"),
-                                   "cookbook_name": "BoardManagementMonitoring"
-                                  })
-            
-            tracking_services.send_trace(bigdata_client = bigdata, trace = trace)
-            _intialization_sent = True
-    except Exception as e:
-        pass
-        
-notebook_initialized()         
+# SDK removed - no tracking         
