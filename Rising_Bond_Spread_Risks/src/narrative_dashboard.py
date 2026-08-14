@@ -39,7 +39,11 @@ def summarize_narratives(df: pd.DataFrame, entity: str, report_generator: Summar
         entity_narratives[entity] = {}
         for key, value in df.items():
             print(f"  Processing window type: {key} with {len(value)} records")
-            report_text = report_generator.prepare_narrative_summary_input(value, entity_name=entity, date_col='Date', text_col='Quote', sentence_id_col='Document ID', summary_input=['Headline', 'Risk Channel', 'Risk Factor', 'Quote'])
+            # NOTE: the original SDK's RiskLabeler emitted hierarchical
+            # "Risk Channel" / "Risk Factor" taxonomy fields (from the removed
+            # generate_risk_tree mind map). SimpleLabeler only emits a flat
+            # "Sub-Scenario" label, so we substitute that here instead.
+            report_text = report_generator.prepare_narrative_summary_input(value, entity_name=entity, date_col='Date', text_col='Quote', sentence_id_col='Document ID', summary_input=['Headline', 'Sub-Scenario', 'Quote'])
 
             summary = report_generator.summarize_string(report_text)
             entity_narratives[entity][key] = summary
