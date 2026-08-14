@@ -1,89 +1,106 @@
+"""Simple theme tree generator (replaces research-tools mindmap)."""
+
+from __future__ import annotations
 
 import os
-import pandas as pd
-import pickle
-from typing import Dict, List, Optional
+from typing import Any
 
-from src.mindmap.themes import generate_themes
-
-def get_most_granular_elements(tree, element):
-    """
-    Extracts the elements (labels or summaries) of the most granular (leaf) nodes from the taxonomy tree
-    and formats them as a string list.
-
-    Args:
-        tree (dict): The taxonomy tree structure with 'Label' and 'Children'.
-        element (str): The element of the tree, either 'Label' or 'Summary'
-
-    Returns:
-        str: A formatted string with each granular label prefixed by a dash.
-    """
-    granular_labels = []
-
-    def traverse(node):
-        # If the node has no children, it's a leaf node
-        if not node.get('Children'):
-            sentence = f"{node.get(element, '')}"
-            granular_labels.append(sentence)
-        else:
-            for child in node['Children']:
-                traverse(child)
-
-    traverse(tree)
-
-    # Format the labels as a string list
-    formatted_labels = [label for label in granular_labels]
-    return formatted_labels
+from openai import OpenAI
 
 
-def get_label_dict_from_tree(tree):
-    """
-    Extracts the elements (labels and summaries) of the most granular (leaf) nodes from the taxonomy tree
-    and formats them as a string list.
+class ThemeTree:
+    """Simple theme tree structure."""
+
+    def __init__(self, tree_dict: dict[str, Any]) -> None:
+        self.tree = tree_dict
+
+    def get_terminal_label_summaries(self) -> dict[str, str]:
+        """Extract leaf node labels -> summaries."""
+        results = {}
+
+        def traverse(node: dict[str, Any]) -> None:
+            if not node.get("Children"):
+                label = node.get("Label", "")
+                summary = node.get("Summary", "")
+                if label:
+                    results[label] = summary
+            else:
+                for child in node["Children"]:
+                    traverse(child)
+
+        traverse(self.tree)
+        return results
+
+
+def generate_themes(main_theme: str, focus: str) -> dict[str, Any]:
+    """Generate a simple theme taxonomy using OpenAI (replaces research-tools).
 
     Args:
-        tree (dict): The taxonomy tree structure with 'Label' and 'Children'.
+        main_theme: The general theme (e.g., "Trade Policy")
+        focus: Specific focus area (e.g., "Tariffs", "Export Controls")
 
     Returns:
-        dict: A dict of Label (keys) and Summary (values)
+        Dict with structured hierarchy
     """
-    granular_dict = {}
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    prompt = (
+        f"Generate a hierarchical theme taxonomy for '{main_theme}' focused on '{focus}'.\n\n"
+        f"Return a JSON tree with this structure:\n"
+        f'{{"Label": "root label", "Summary": "description", "Children": [...]}}\n\n'
+        f"Keep it small and cheap to search: 2 levels deep with at most 3 leaf nodes total."
+    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            response_format={"type": "json_object"},
+        )
+        import json
 
-    def traverse(node):
-        # If the node has no children, it's a leaf node
-        if not node.get('Children'):
-            label = f"{node.get('Label', '')}"
-            summary = f"{node.get('Summary', '')}"
-            granular_dict[label] = summary
+        tree_dict = json.loads(response.choices[0].message.content.strip())
+        return tree_dict
+    except Exception:
+        # Fallback to simple tree
+        return {
+            "Label": f"{main_theme} in {focus}",
+            "Summary": f"{main_theme} related to {focus}",
+            "Children": [
+                {"Label": f"{focus}_aspect_1", "Summary": f"First aspect of {focus}"},
+                {"Label": f"{focus}_aspect_2", "Summary": f"Second aspect of {focus}"},
+            ],
+        }
+
+
+def get_most_granular_elements(tree_dict: dict[str, Any], key: str) -> list[Any]:
+    """Return ``key`` (e.g. 'Summary' or 'Label') from every leaf node of a theme tree.
+
+    Used by DataRetriever (to build the search queries from leaf 'Summary' text)
+    and TopicSummarizerSector (to enumerate leaf 'Label' topics).
+    """
+    results: list[Any] = []
+
+    def _walk(node: dict[str, Any]) -> None:
+        children = node.get("Children") or []
+        if not children:
+            value = node.get(key)
+            if value:
+                results.append(value)
         else:
-            for child in node['Children']:
-                traverse(child)
+            for child in children:
+                _walk(child)
 
-    traverse(tree)
+    _walk(tree_dict)
+    return results
 
-    return granular_dict
 
-    
-def generate_themes_tree_dict(general_focus, list_specific_themes, import_from_path: Optional[str] = None, export_to_path: Optional[str] = None):
+def generate_themes_tree_dict(main_theme: str, focus: str = "") -> dict[str, Any]:
+    """Generate a theme taxonomy and key it by ``main_theme``.
 
-    # Import Pickle if path provided and file exists
-    if import_from_path:
-        if os.path.isfile(import_from_path):
-            with open(import_from_path, 'rb') as handle:
-                dict_themes = pickle.load(handle)
-            return dict_themes
-    
-    dict_themes = {}
-    for spec_theme in list_specific_themes:
-
-        MAIN_THEME = spec_theme
-        FOCUS = general_focus
-        theme_tree = generate_themes(main_theme=MAIN_THEME, focus=FOCUS)
-        dict_themes[spec_theme] = theme_tree
-
-    # Export to Pickle if path provided
-    if export_to_path:
-        with open(export_to_path, 'wb') as handle:
-            pickle.dump(dict_themes, handle, protocol=pickle.HIGHEST_PROTOCOL)     
-        
-    return dict_themes
+    Downstream consumers (LabelProcessor, DataRetriever, TopicSummarizerSector)
+    look up ``themes_tree_dict[main_theme]``, so the dict key must match the
+    exact ``main_theme`` string used to construct GenerateReport, regardless of
+    the label the LLM assigns to the generated tree's root node.
+    """
+    tree = generate_themes(main_theme, focus)
+    return {main_theme: tree}

@@ -2,7 +2,7 @@
 
 ## Automated Analysis of Trade Tariff Risks and Corporate Mitigation Strategies
 
-This workflow generates sector-wide and company-specific reports on tariff-related risks. It uses Bigdata Research Tools to create a risk taxonomy, retrieve and label content, extract corporate mitigation plans from filings/transcripts (with optional News fallback), and produce executive and detailed HTML reports with CSV exports.
+This workflow generates sector-wide and company-specific reports on tariff-related risks. It uses the Bigdata.com REST API (with `bigdata-smart-batching` for large-scale search) and OpenAI to create a risk taxonomy, retrieve and label content, extract corporate mitigation plans from filings/transcripts (with optional News fallback), and produce executive and detailed HTML reports with CSV exports.
 
 ## Features
 
@@ -32,8 +32,7 @@ cp .env.example .env
 ```
 - Edit the `.env` file and add your credentials:
 ```
-BIGDATA_USERNAME=your_username
-BIGDATA_PASSWORD=your_password
+BIGDATA_API_KEY=your_api_key
 OPENAI_API_KEY=your_openai_api_key
 ```
 
@@ -98,8 +97,7 @@ cp .env.example .env
 ```
 - Edit the `.env` file and add your credentials:
 ```
-BIGDATA_USERNAME=your_username
-BIGDATA_PASSWORD=your_password
+BIGDATA_API_KEY=your_api_key
 OPENAI_API_KEY=your_openai_api_key
 ```
 
@@ -160,6 +158,7 @@ Report_Generator_Specialized_Report_Tariffs/
 - Ensure all credentials are properly configured in the `.env` file before running
 - The notebook should be run sequentially from top to bottom
 - Results (HTML and CSV) are written into the `output/` folder
-- Graphviz installation is required for taxonomy visualization
+- Provide a CSV file with company universe containing `RP_ENTITY_ID` and `COMPANY_NAME` columns
+- Graphviz installation is optional for taxonomy visualization
 
 

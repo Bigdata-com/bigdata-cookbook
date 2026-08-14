@@ -7,19 +7,11 @@ from pandas import merge
 import pickle
 import asyncio
 
-from bigdata_client.models.search import DocumentType, SortBy
-from bigdata_client import Bigdata
-
 from src.mindmap.generate_trees import generate_themes_tree_dict
 from src.search.content_retrieval import DataRetriever
 from src.label.label_process import LabelProcessor
 from src.summary.summary import TopicSummarizerSector, TopicSummarizerCompany
 from src.response.company_response import CompanyResponseProcessor
-from bigdata_research_tools.workflows.risk_analyzer import RiskAnalyzer
-
-# Tracking functionality - defined before classes to avoid NameError
-from importlib.metadata import version
-from bigdata_client import tracking_services
 
 _intialization_sent = False
 
@@ -76,7 +68,7 @@ class GenerateReport:
     """
     def __init__(
         self,
-        watchlist_id: str,
+        universe_df: pd.DataFrame,
         main_theme: str,
         focus: str,
         llm_model: str,
@@ -86,16 +78,14 @@ class GenerateReport:
         search_frequency: str,
         document_limit_news: int,
         document_limit_filings: int,
-        bigdata: Bigdata,
         batch_size: int,
         themes_tree_dict: Dict
     ):
         self.logger: Logger = getLogger(__name__)
-        self.watchlist_id = watchlist_id
+        self.universe_df = universe_df
         self.main_theme = main_theme
         self.focus = focus
         
-        # Initialize tracking automatically
         self.llm_model = llm_model
         self.api_key = api_key
         self.start_date = start_date
@@ -103,9 +93,23 @@ class GenerateReport:
         self.search_frequency = search_frequency
         self.document_limit_news = document_limit_news
         self.document_limit_filings = document_limit_filings
-        self.bigdata = bigdata
         self.batch_size = batch_size
         self.themes_tree_dict = themes_tree_dict
+        
+        # Build company universe from DataFrame
+        self.company_ids = self.universe_df["RP_ENTITY_ID"].astype(str).str.strip().tolist()
+        self.id_to_name = dict(
+            zip(
+                self.universe_df["RP_ENTITY_ID"].astype(str).str.strip(),
+                self.universe_df["COMPANY_NAME"].astype(str).str.strip(),
+            )
+        )
+        # Build fake entity list for downstream summarizers (they expect objects with .id and .name)
+        from types import SimpleNamespace
+        self.list_entities = [
+            SimpleNamespace(id=entity_id, name=name)
+            for entity_id, name in self.id_to_name.items()
+        ]
 
 
     def generate_report(
@@ -115,9 +119,8 @@ class GenerateReport:
         export_to_path: Optional[str] = None,
         news_search_fallback: bool = True
     ) -> Report:
-        # Fetch the watchlist and entities
-        watchlist = self.bigdata.watchlists.get(self.watchlist_id)
-        self.list_entities = self.bigdata.knowledge_graph.get_entities(watchlist.items)
+        # Use pre-built entity list from __init__ (no watchlist fetch needed)
+        # self.list_entities already set in __init__
 
         # Use provided themes_tree_dict and labeled news
 
@@ -160,7 +163,7 @@ class GenerateReport:
 
         # Construct report
         report = Report(
-            watchlist_name=watchlist.name,
+            watchlist_name="Company Universe",
             themes_tree_dict=self.themes_tree_dict,
             report_by_theme=df_by_theme,
             report_by_company=df_by_company_with_responses
@@ -181,31 +184,36 @@ class GenerateReport:
                 return df_by_company_with_responses
         
         data_retriever = DataRetriever(
-            bigdata = self.bigdata, 
+            company_ids=self.company_ids,
+            id_to_name=self.id_to_name,
             document_limit=self.document_limit_filings,
-            sortby=SortBy.RELEVANCE, 
+            sortby="relevance", 
             search_freq=self.search_frequency,
             start_date_query=self.start_date, 
             end_date_query=self.end_date, 
         )
 
         df_sentences_filings = data_retriever.retrieve(
-            list_entities=self.list_entities, 
-            themes_tree_dict=self.themes_tree_dict, 
-            list_specific_themes=[self.main_theme], 
-            document_type=DocumentType.FILINGS,
+            themes_tree_dict=self.themes_tree_dict,
+            list_specific_themes=[self.main_theme],
+            document_type="filings",
             import_from_path=import_from_path+'/df_sentences_filings' if import_from_path else None,
             export_to_path=export_to_path+'/df_sentences_filings' if export_to_path else None
         )
-        
+        # Cost control: cap rows fed into OpenAI labeling/summarization
+        if df_sentences_filings is not None:
+            df_sentences_filings = df_sentences_filings.head(self.document_limit_filings)
+
         df_sentences_transcripts = data_retriever.retrieve(
-            list_entities=self.list_entities, 
-            themes_tree_dict=self.themes_tree_dict, 
-            list_specific_themes=[self.main_theme], 
-            document_type=DocumentType.TRANSCRIPTS,
+            themes_tree_dict=self.themes_tree_dict,
+            list_specific_themes=[self.main_theme],
+            document_type="transcripts",
             import_from_path=import_from_path+'/df_sentences_transcripts' if import_from_path else None,
             export_to_path=export_to_path+'/df_sentences_transcripts' if export_to_path else None
         )
+        # Cost control: cap rows fed into OpenAI labeling/summarization
+        if df_sentences_transcripts is not None:
+            df_sentences_transcripts = df_sentences_transcripts.head(self.document_limit_filings)
 
         # Run the topic verification and identification for Filings and Transcripts
         label_processor = LabelProcessor(
@@ -279,21 +287,8 @@ class GenerateReport:
 
         return df_by_company_with_responses
 
-def notebook_initialized(bigdata):
-    """Call this function after creating your bigdata client to enable usage tracking."""
-    global _intialization_sent
-    if not _intialization_sent:
-            trace = tracking_services.TraceEvent(
-                event_name="BigdataCookbookExecution", 
-                properties={
-                    "bigdataResearchToolsVersion": version("bigdata_research_tools"),
-                    "bigdataClientVersion": version("bigdata-client"),
-                    "cookbook_name": "ReportGeneratorSpecializedReportTariffs"                    
-                }
-            )
-            tracking_services.send_trace(bigdata_client=bigdata, trace=trace)
-            _intialization_sent = True
+def notebook_initialized(bigdata=None):
+    """No-op for SDK tracking (migrated off bigdata-client)."""
+    pass
 
-
-bigdata = Bigdata()
-notebook_initialized(bigdata)
+notebook_initialized()
