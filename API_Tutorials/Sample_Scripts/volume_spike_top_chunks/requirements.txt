@@ -1,2 +1,2 @@
 requests
-bigdata-client
+matplotlib
