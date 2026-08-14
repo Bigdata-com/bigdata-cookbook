@@ -311,7 +311,13 @@ class CompanyResponseProcessor:
         valid_results = [res for res in results if res is not None]
         if not valid_results:
             self.logger.warning("No response data generated; returning an empty DataFrame.")
-            return pd.DataFrame({'entity_id': [], 'entity_name': [], 'topic': [], 'response_summary': [],'n_response_documents': []})
+            return pd.DataFrame({
+                'entity_id': pd.Series(dtype='object'),
+                'entity_name': pd.Series(dtype='object'),
+                'topic': pd.Series(dtype='object'),
+                'response_summary': pd.Series(dtype='object'),
+                'n_response_documents': pd.Series(dtype='int64'),
+            })
         
         final_df = pd.concat(valid_results, ignore_index=True)
         

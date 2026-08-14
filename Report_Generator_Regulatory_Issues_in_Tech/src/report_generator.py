@@ -8,12 +8,10 @@ from pandas import merge
 import pickle
 import asyncio
 
-from bigdata_client.models.search import DocumentType, SortBy
-from bigdata_client import Bigdata
-
-from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
-from bigdata_research_tools.mindmap import generate_theme_tree
+from src.bigdata_rest import BigdataRestClient, load_universe
+from src.labeling import SimpleLabeler
+from src.mindmap_generator import generate_theme_tree
+from src.search_helper import run_universe_search
 
 from src.summary.summary import TopicSummarizerSector, TopicSummarizerCompany
 from src.response.company_response import CompanyResponseProcessor
@@ -60,7 +58,7 @@ class GenerateReport:
 
     def __init__(
         self, 
-        watchlist_id: str,
+        universe_df: pd.DataFrame,
         general_theme: str,
         list_specific_focus: List[str],
         llm_model: str,
@@ -73,26 +71,26 @@ class GenerateReport:
         document_limit_filings: int,
         document_limit_transcripts: int,
         batch_size: int,
-        bigdata: Bigdata
     ):       
         """
         Initialize the GenerateReport class.
 
-        :param watchlist_id: Identifier for the watchlist.
-        :param general_focus: General focus for the mind map.
-        :param specific_themes: List of specific themes.
-        :param llm_model: LLM model identifier to be used for processing.
-        :param api_key: LLM API key for external services.
+        :param universe_df: DataFrame with RP_ENTITY_ID and COMPANY_NAME columns.
+        :param general_theme: General theme for the mind map.
+        :param list_specific_focus: List of specific focus areas.
+        :param llm_model: LLM model identifier (e.g., 'gpt-4o-mini').
+        :param api_key: OpenAI API key.
         :param start_date: Start date for document search (YYYY-MM-DD).
         :param end_date: End date for document search (YYYY-MM-DD).
         :param fiscal_year: Fiscal year for document and transcript search.
-        :param search_frequency: Frequency of searches (e.g., daily, weekly).
+        :param search_frequency: Frequency (ignored, kept for compatibility).
         :param document_limit_news: Maximum number of news documents to retrieve.
-        :param document_limit_filings: Maximum number of filings/transcripts to retrieve.
-        :param bigdata: Bigdata client instance.
+        :param document_limit_filings: Maximum number of filings to retrieve.
+        :param document_limit_transcripts: Maximum number of transcripts to retrieve.
+        :param batch_size: Batch size (ignored, kept for compatibility).
         """
         self.logger = GenerateReport.logger
-        self.watchlist_id = watchlist_id
+        self.universe_df = universe_df
         self.general_theme = general_theme 
         self.list_specific_focus = list_specific_focus 
         self.llm_model = llm_model
@@ -105,8 +103,7 @@ class GenerateReport:
         self.document_limit_filings = document_limit_filings
         self.document_limit_transcripts = document_limit_transcripts
         self.batch_size = batch_size
-        self.bigdata = bigdata
-        # self.df_labeled = None 
+        self.rest_client = BigdataRestClient() 
 
 
     @staticmethod
@@ -139,13 +136,25 @@ class GenerateReport:
         formatted_labels = [label for label in granular_labels]
         return formatted_labels
 
+    @staticmethod
+    def extract_theme_summaries(theme_tree_or_dict):
+        """Extract terminal label summaries from theme tree (dict or object)."""
+        # If it has get_terminal_label_summaries method, use it
+        if hasattr(theme_tree_or_dict, 'get_terminal_label_summaries'):
+            return list(theme_tree_or_dict.get_terminal_label_summaries().values())
+        # Otherwise, assume it's a dict and walk it
+        elif isinstance(theme_tree_or_dict, dict):
+            return GenerateReport.get_most_granular_elements(theme_tree_or_dict, 'Summary')
+        else:
+            raise ValueError(f"Unknown theme tree type: {type(theme_tree_or_dict)}")
+
     
     def generate_report(self, import_from_path: Optional[str] = None, export_to_path: Optional[str] = None) -> Report:
         """
         Generate the final report.
 
         This function coordinates the entire process:
-          1. Retrieve watchlist and entities.
+          1. Load company universe (CSV / RP_ENTITY_ID list).
           2. Generate the themes tree.
           3. Retrieve news documents.
           4. Label news documents.
@@ -158,11 +167,22 @@ class GenerateReport:
         :return: A Report object with the consolidated results.
         """
 
-        # Fetch the watchlist and set up the entity mapping
-        watchlist = self.bigdata.watchlists.get(self.watchlist_id)
-        self.list_entities = self.bigdata.knowledge_graph.get_entities(watchlist.items) 
-        self.logger.info("list_entities: %d entities", len(self.list_entities))
-        
+        # Company universe from caller-supplied CSV / DataFrame (not platform watchlists)
+        self.company_ids = self.universe_df["RP_ENTITY_ID"].astype(str).str.strip().tolist()
+        self.id_to_name = dict(
+            zip(
+                self.universe_df["RP_ENTITY_ID"].astype(str).str.strip(),
+                self.universe_df["COMPANY_NAME"].astype(str).str.strip(),
+            )
+        )
+        # Build fake entity list for downstream summarizers (they expect objects with .id and .name)
+        from types import SimpleNamespace
+        self.list_entities = [
+            SimpleNamespace(id=entity_id, name=name)
+            for entity_id, name in self.id_to_name.items()
+        ]
+        self.logger.info("universe: %d companies", len(self.company_ids))
+
 
         ### Step 1: Mindmap
 
@@ -201,18 +221,27 @@ class GenerateReport:
         else:
             df_sentences_news = []
             for focus in self.list_specific_focus:
-                df_sentences = search_by_companies(
-                    companies=self.list_entities,
-                    sentences=list(self.themes_tree_dict[focus].get_terminal_label_summaries().values()),
-                    fiscal_year=None,
+                # Extract theme summaries from tree (handles both dict and object)
+                theme_summaries = self.extract_theme_summaries(self.themes_tree_dict[focus])
+                df_sentences = run_universe_search(
+                    company_ids=self.company_ids,
+                    queries=theme_summaries,
                     start_date=self.start_date,
                     end_date=self.end_date,
-                    scope=DocumentType.NEWS, 
-                    freq=self.search_frequency,
-                    document_limit=self.document_limit_news,
-                    batch_size=self.batch_size
+                    scope="news",
+                    id_to_name=self.id_to_name,
                 )
                 df_sentences['theme'] = self.general_theme + ' in ' + focus
+                df_sentences['rp_entity_id'] = None
+                df_sentences['rp_document_id'] = None
+                df_sentences['sentence_id'] = df_sentences['document_id'] + '-' + df_sentences.index.astype(str)
+                df_sentences['timestamp_utc'] = df_sentences['timestamp']
+                df_sentences['entity_sector'] = None
+                df_sentences['entity_industry'] = None
+                df_sentences['entity_country'] = None
+                df_sentences['entity_ticker'] = None
+                df_sentences['other_entities'] = None
+                df_sentences['entities'] = None
                 df_sentences_news.append(df_sentences)
             df_sentences_news = pd.concat(df_sentences_news)
             self.logger.info("df_sentences_news: %d rows", len(df_sentences_news))
@@ -229,18 +258,27 @@ class GenerateReport:
         else:
             df_sentences_filings = []
             for focus in self.list_specific_focus:
-                df_sentences = search_by_companies(
-                    companies=self.list_entities,
-                    sentences=list(self.themes_tree_dict[focus].get_terminal_label_summaries().values()),
+                # Extract theme summaries from tree (handles both dict and object)
+                theme_summaries = self.extract_theme_summaries(self.themes_tree_dict[focus])
+                df_sentences = run_universe_search(
+                    company_ids=self.company_ids,
+                    queries=theme_summaries,
                     start_date=self.start_date,
                     end_date=self.end_date,
-                    fiscal_year=self.fiscal_year,
-                    scope=DocumentType.FILINGS, 
-                    freq=self.search_frequency,
-                    document_limit=self.document_limit_filings,
-                    batch_size=self.batch_size
+                    scope="filings",
+                    id_to_name=self.id_to_name,
                 )
                 df_sentences['theme'] = self.general_theme + ' in ' + focus
+                df_sentences['rp_entity_id'] = None
+                df_sentences['rp_document_id'] = None
+                df_sentences['sentence_id'] = df_sentences['document_id'] + '-' + df_sentences.index.astype(str)
+                df_sentences['timestamp_utc'] = df_sentences['timestamp']
+                df_sentences['entity_sector'] = None
+                df_sentences['entity_industry'] = None
+                df_sentences['entity_country'] = None
+                df_sentences['entity_ticker'] = None
+                df_sentences['other_entities'] = None
+                df_sentences['entities'] = None
                 df_sentences_filings.append(df_sentences)
             df_sentences_filings = pd.concat(df_sentences_filings)
             self.logger.info("df_sentences_filings: %d rows", len(df_sentences_filings))
@@ -257,18 +295,27 @@ class GenerateReport:
         else:
             df_sentences_transcripts = []
             for focus in self.list_specific_focus:
-                df_sentences = search_by_companies(
-                    companies=self.list_entities,
-                    sentences=list(self.themes_tree_dict[focus].get_terminal_label_summaries().values()),
+                # Extract theme summaries from tree (handles both dict and object)
+                theme_summaries = self.extract_theme_summaries(self.themes_tree_dict[focus])
+                df_sentences = run_universe_search(
+                    company_ids=self.company_ids,
+                    queries=theme_summaries,
                     start_date=self.start_date,
                     end_date=self.end_date,
-                    fiscal_year=self.fiscal_year,
-                    scope=DocumentType.TRANSCRIPTS, 
-                    freq=self.search_frequency,
-                    document_limit=self.document_limit_transcripts,
-                    batch_size=self.batch_size 
+                    scope="transcripts",
+                    id_to_name=self.id_to_name,
                 )
                 df_sentences['theme'] = self.general_theme + ' in ' + focus
+                df_sentences['rp_entity_id'] = None
+                df_sentences['rp_document_id'] = None
+                df_sentences['sentence_id'] = df_sentences['document_id'] + '-' + df_sentences.index.astype(str)
+                df_sentences['timestamp_utc'] = df_sentences['timestamp']
+                df_sentences['entity_sector'] = None
+                df_sentences['entity_industry'] = None
+                df_sentences['entity_country'] = None
+                df_sentences['entity_ticker'] = None
+                df_sentences['other_entities'] = None
+                df_sentences['entities'] = None
                 df_sentences_transcripts.append(df_sentences)
             df_sentences_transcripts = pd.concat(df_sentences_transcripts)
             self.logger.info("df_sentences_transcripts: %d rows", len(df_sentences_transcripts))
@@ -281,7 +328,7 @@ class GenerateReport:
         ### Step 3: Labeling
 
         # Label the search results with our theme labels
-        labeler = ScreenerLabeler(llm_model=self.llm_model)
+        labeler = SimpleLabeler(model=self.llm_model, api_key=self.api_key)
 
         # News
         # Attempt to import df_news_labeled DataFrame if path provided and file exists
@@ -294,9 +341,17 @@ class GenerateReport:
             for focus in self.list_specific_focus:
                 df_sentences_news_theme = df_sentences_news.loc[(df_sentences_news.theme == self.general_theme + ' in ' + focus)]
                 df_sentences_news_theme.reset_index(drop=True, inplace=True)
+                # Extract theme labels from tree (handles both dict and object)
+                theme_tree = self.themes_tree_dict[focus]
+                if hasattr(theme_tree, 'get_terminal_label_summaries'):
+                    theme_labels = list(theme_tree.get_terminal_label_summaries().keys())
+                elif isinstance(theme_tree, dict):
+                    theme_labels = self.get_most_granular_elements(theme_tree, 'Label')
+                else:
+                    theme_labels = []
                 df_labels = labeler.get_labels(
                     main_theme=self.general_theme + ' in ' + focus, 
-                    labels=list(self.themes_tree_dict[focus].get_terminal_label_summaries().keys()), 
+                    labels=theme_labels, 
                     texts=df_sentences_news_theme["masked_text"].tolist()        
                 )
                 df_news_labels = pd.merge(df_sentences_news_theme, df_labels, left_index=True, right_index=True)
@@ -318,9 +373,17 @@ class GenerateReport:
             for focus in self.list_specific_focus:
                 df_sentences_filings_theme = df_sentences_filings.loc[(df_sentences_filings.theme == self.general_theme + ' in ' + focus)]
                 df_sentences_filings_theme.reset_index(drop=True, inplace=True)
+                # Extract theme labels from tree (handles both dict and object)
+                theme_tree = self.themes_tree_dict[focus]
+                if hasattr(theme_tree, 'get_terminal_label_summaries'):
+                    theme_labels = list(theme_tree.get_terminal_label_summaries().keys())
+                elif isinstance(theme_tree, dict):
+                    theme_labels = self.get_most_granular_elements(theme_tree, 'Label')
+                else:
+                    theme_labels = []
                 df_labels = labeler.get_labels(
                     main_theme=self.general_theme + ' in ' + focus, 
-                    labels=list(self.themes_tree_dict[focus].get_terminal_label_summaries().keys()),
+                    labels=theme_labels,
                     texts=df_sentences_filings_theme["masked_text"].tolist()        
                 )
                 df_filings_labels = pd.merge(df_sentences_filings_theme, df_labels, left_index=True, right_index=True)
@@ -343,9 +406,17 @@ class GenerateReport:
             for focus in self.list_specific_focus:
                 df_sentences_transcripts_theme = df_sentences_transcripts.loc[(df_sentences_transcripts.theme == self.general_theme + ' in ' + focus)]
                 df_sentences_transcripts_theme.reset_index(drop=True, inplace=True)
+                # Extract theme labels from tree (handles both dict and object)
+                theme_tree = self.themes_tree_dict[focus]
+                if hasattr(theme_tree, 'get_terminal_label_summaries'):
+                    theme_labels = list(theme_tree.get_terminal_label_summaries().keys())
+                elif isinstance(theme_tree, dict):
+                    theme_labels = self.get_most_granular_elements(theme_tree, 'Label')
+                else:
+                    theme_labels = []
                 df_labels = labeler.get_labels(
                     main_theme=self.general_theme + ' in ' + focus, 
-                    labels=list(self.themes_tree_dict[focus].get_terminal_label_summaries().keys()), # to adapt
+                    labels=theme_labels, # to adapt
                     texts=df_sentences_transcripts_theme["masked_text"].tolist()        
                 )
                 df_transcripts_labels = pd.merge(df_sentences_transcripts_theme, df_labels, left_index=True, right_index=True)
@@ -477,7 +548,7 @@ class GenerateReport:
 
         # Construct the Report
         report = Report(
-            watchlist_name=watchlist.name,
+            watchlist_name="Company Universe",
             themes_tree_dict=self.themes_tree_dict,
             report_by_theme=df_by_theme,
             report_by_company=df_by_company_with_responses

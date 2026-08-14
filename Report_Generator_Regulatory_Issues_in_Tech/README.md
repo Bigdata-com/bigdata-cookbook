@@ -2,7 +2,9 @@
 
 ## Automated Analysis of Regulatory Risks and Company Mitigation Strategies
 
-This project systematically analyzes regulatory exposure across company watchlists using unstructured data from news, filings, and transcripts. Built for risk managers and investment professionals, it transforms scattered regulatory information into quantifiable risk intelligence.
+This project systematically analyzes regulatory exposure across caller-supplied company lists (CSV with `RP_ENTITY_ID` + `COMPANY_NAME`) using unstructured data from news, filings, and transcripts. Built for risk managers and investment professionals, it transforms scattered regulatory information into quantifiable risk intelligence.
+
+> **SDK migration:** Uses REST + `bigdata-smart-batching` + OpenAI. See [Thematic_Screener_CLI](../Thematic_Screener_CLI/).
 
 ## Features
 
@@ -32,8 +34,7 @@ This project systematically analyzes regulatory exposure across company watchlis
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -98,8 +99,7 @@ This project systematically analyzes regulatory exposure across company watchlis
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -168,5 +168,5 @@ The regulatory issues analysis provides:
 - Ensure all credentials are properly configured in the `.env` file before running
 - The notebook should be run sequentially from top to bottom
 - Analysis generates both inline results and structured HTML reports
-- Custom company watchlists can be modified in the notebook configuration
+- Custom company universes can be supplied as a CSV (`RP_ENTITY_ID`, `COMPANY_NAME`)
 - Graphviz installation is required for visualization features
