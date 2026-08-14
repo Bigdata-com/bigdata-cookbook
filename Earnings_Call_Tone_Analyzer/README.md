@@ -97,12 +97,25 @@ Within each company, transcript downloads and tone analyses run in parallel (all
 
 ## Setup
 
+**MIGRATION NOTE**: This project has been migrated from `bigdata-client` SDK to REST API. Transcript text is assembled from search result chunks. For single-document fetch, contact support for endpoint details.
+
 ```bash
+# Using uv (recommended)
+uv venv
+uv pip install -r requirements.txt
+
+# Or using pip
 python3 -m venv .venv
-.venv/bin/pip install bigdata-client openai python-dotenv pandas
+.venv/bin/pip install -r requirements.txt
 ```
 
-Create a `.env` file:
+Create a `.env` file (copy from `.env.example`):
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your credentials:
 
 ```
 BIGDATA_API_KEY=your_bigdata_api_key
