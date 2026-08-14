@@ -1,30 +1,36 @@
+"""Feature extractor using OpenAI (no SDK)."""
+
+from __future__ import annotations
+
 import json
 import os
-import pandas as pd
-from typing import List, Dict, Any, Optional, Union
-from bigdata_research_tools.labeler.labeler import Labeler
+from typing import Any, Optional
 
-class FeatureExtractor(Labeler):
+import pandas as pd
+from openai import OpenAI
+
+
+class FeatureExtractor:
 
     def __init__(
         self,
-        llm_model: str = "openai::gpt-4o-mini",
+        llm_model: str = "gpt-4o-mini",
         unknown_label: str = "unclear",
         temperature: float = 0,
         api_key: Optional[str] = None,
     ):
-        """
-        Initialize the EntityRoleLabeler.
+        """Initialize the FeatureExtractor.
 
         Args:
-            llm_model: Name of the LLM model to use
+            llm_model: Name of the OpenAI model to use
             unknown_label: Label for unclear classifications
             temperature: Temperature for the LLM
-            api_key: API key for the LLM provider (if needed)
+            api_key: API key for OpenAI (defaults to OPENAI_API_KEY)
         """
-        super().__init__(llm_model, unknown_label)
-        if api_key:
-            os.environ["OPENAI_API_KEY"] = api_key
+        self.llm_model = llm_model
+        self.unknown_label = unknown_label
+        self.temperature = temperature
+        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
         
         # Define the labeling prompt for entity role detection
         self.labeling_prompt = """
@@ -310,7 +316,75 @@ These examples provide illustrations of extracting all necessary information, fo
         - If no information is available for a specific field, ensure that it is represented as an empty string.
 """
 
-    def _add_prompt_fields(self, df_sentences: pd.DataFrame, additional_prompt_fields: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    def get_prompts_for_labeler(
+        self,
+        texts: list[str],
+        textsconfig: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Build prompts for labeling."""
+        prompts = []
+        for idx, text in enumerate(texts):
+            prompt_dict = {"index": idx, "text": text}
+            if textsconfig and idx < len(textsconfig):
+                prompt_dict.update(textsconfig[idx])
+            prompts.append(prompt_dict)
+        return prompts
+    
+    def _run_labeling_prompts(
+        self,
+        prompts: list[dict[str, Any]],
+        system_prompt: str,
+        max_workers: int = 100,
+        timeout: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        """Run labeling prompts against OpenAI."""
+        import concurrent.futures
+        
+        def label_single(prompt_data: dict[str, Any]) -> dict[str, Any]:
+            # Format the user prompt
+            user_content = f"sentence_id: {prompt_data['index']}\n"
+            for key, value in prompt_data.items():
+                if key not in ['index']:
+                    user_content += f"{key}: {value}\n"
+            
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.llm_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content}
+                    ],
+                    temperature=self.temperature,
+                    response_format={"type": "json_object"},
+                )
+                content = response.choices[0].message.content
+                return {"index": prompt_data["index"], "response": content}
+            except Exception as e:
+                return {"index": prompt_data["index"], "response": json.dumps({"error": str(e)})}
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = list(executor.map(label_single, prompts))
+        
+        return results
+    
+    def deserialize_label_responses_as_df(self, responses: list[dict[str, Any]]) -> pd.DataFrame:
+        """Parse JSON responses into a DataFrame."""
+        rows = []
+        for item in responses:
+            try:
+                response_data = json.loads(item["response"])
+                # Get the first key (sentence_id) from the response
+                for sentence_id, data in response_data.items():
+                    row = {"index": item["index"]}
+                    if isinstance(data, dict):
+                        row.update(data)
+                    rows.append(row)
+            except (json.JSONDecodeError, KeyError):
+                rows.append({"index": item["index"], "label": self.unknown_label, "motivation": ""})
+        
+        return pd.DataFrame(rows).set_index("index")
+    
+    def _add_prompt_fields(self, df_sentences: pd.DataFrame, additional_prompt_fields: Optional[list[str]] = None) -> list[dict[str, Any]]:
         """
         Add additional fields from the DataFrame for the labeling prompt.
 
@@ -319,7 +393,7 @@ These examples provide illustrations of extracting all necessary information, fo
             additional_prompt_fields (Optional[List[str]]): Additional field names to be used in the labeling prompt.
 
         Returns:
-            List[Dict[str, Any]]: A list of dictionaries with the additional fields for each row in the DataFrame.
+            list[dict[str, Any]]: A list of dictionaries with the additional fields for each row in the DataFrame.
         """
         if additional_prompt_fields:
             missing = set(additional_prompt_fields) - set(df_sentences.columns)
@@ -334,7 +408,7 @@ These examples provide illustrations of extracting all necessary information, fo
         self, 
         df: pd.DataFrame,
         text_col: str = 'contextualized_chunk_text', 
-        additional_prompt_fields: Optional[List[str]] = ['entity_name', 'headline'],
+        additional_prompt_fields: Optional[list[str]] = ['entity_name', 'headline'],
         action_type: str = 'detect',
         system_prompt: Optional[str] = None,
         max_workers: int = 100
@@ -376,7 +450,11 @@ These examples provide illustrations of extracting all necessary information, fo
             timeout=None
         )
         df_labeled = self.deserialize_label_responses_as_df(responses)
-        if len(df_labeled['motivation'].unique()) == 1 and df_labeled['motivation'].values[0]=='':
+        if (
+            'motivation' in df_labeled.columns
+            and len(df_labeled['motivation'].unique()) == 1
+            and df_labeled['motivation'].values[0] == ''
+        ):
             df_labeled = df_labeled.drop(columns=['motivation', 'label'])
 
         
@@ -396,9 +474,9 @@ These examples provide illustrations of extracting all necessary information, fo
         self,
         df: pd.DataFrame,
         text_col: str = 'contextualized_chunk_text',
-        additional_prompt_fields: Optional[List[str]] = ['rater_entity', 'ratee_entity', 'unclear_entities'],
+        additional_prompt_fields: Optional[list[str]] = ['rater_entity', 'ratee_entity', 'unclear_entities'],
         max_workers: int = 100
-    ) -> Dict[str, pd.DataFrame]:
+    ) -> dict[str, pd.DataFrame]:
         """
         Extract features from credit rating content.
 
@@ -409,7 +487,7 @@ These examples provide illustrations of extracting all necessary information, fo
             max_workers: Maximum number of concurrent workers
 
         Returns:
-            Dictionary of DataFrames with extracted features
+            dict[str, pd.DataFrame]: Dictionary of DataFrames with extracted features
         """
         
         # Get text configs using the flexible prompt fields method
@@ -463,7 +541,7 @@ These examples provide illustrations of extracting all necessary information, fo
         feature_type: str,
         text_col: str = 'contextualized_chunk_text',
         system_prompt: Optional[str] = None,
-        additional_prompt_fields: Optional[List[str]] = ['rater_entity', 'ratee_entity', 'unclear_entities'],
+        additional_prompt_fields: Optional[list[str]] = ['rater_entity', 'ratee_entity', 'unclear_entities'],
         max_workers: int = 100
     ) -> pd.DataFrame:
         """
@@ -515,7 +593,7 @@ These examples provide illustrations of extracting all necessary information, fo
     def group_text_and_labels(
         self, 
         df: pd.DataFrame,
-        group_columns: List[str] = ['date', 'sentence_id', 'headline', 'source_name', 'contextualized_chunk_text', 'url'],
+        group_columns: list[str] = ['date', 'sentence_id', 'headline', 'source_name', 'contextualized_chunk_text', 'url'],
         role_column: str = 'validated_label',
         entity_column: str = 'entity_name',
     ) -> pd.DataFrame:
@@ -552,7 +630,7 @@ These examples provide illustrations of extracting all necessary information, fo
     def _combine_features(
         self, 
         df: pd.DataFrame, 
-        features: Dict[str, pd.DataFrame]
+        features: dict[str, pd.DataFrame]
     ) -> pd.DataFrame:
         """
         Combine all extracted features into a single DataFrame.

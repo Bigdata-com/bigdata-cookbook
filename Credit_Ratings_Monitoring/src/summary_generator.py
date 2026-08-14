@@ -1,14 +1,17 @@
-import pandas as pd
-import re
+"""Summary generator using OpenAI (no SDK)."""
+
+from __future__ import annotations
+
 import json
-import asyncio
-from typing import List, Dict, Union, Optional, Tuple, Any
+import os
+import re
+from typing import Any, Optional
 
-from bigdata_research_tools.llm.base import AsyncLLMEngine
-from bigdata_research_tools.labeler.labeler import Labeler
+import pandas as pd
+from openai import OpenAI
 
 
-class SummaryGenerator(Labeler):
+class SummaryGenerator:
     """
     A class to generate summaries and reports from credit rating data.
     
@@ -18,17 +21,30 @@ class SummaryGenerator(Labeler):
     specialized handling for token limits through text splitting.
     """
 
-    def __init__(self, llm_model: str = "openai::gpt-4o-mini", temperature: float = 0, max_workers: int = 30):
-        """
-        Initialize the SummaryGenerator with LLM configuration.
+    def __init__(
+        self,
+        llm_model: str = "gpt-4o-mini",
+        temperature: float = 0,
+        max_workers: int = 30,
+        api_key: str | None = None,
+    ):
+        """Initialize the SummaryGenerator with OpenAI client.
         
         Args:
-            llm_model: LLM model to use in format "provider::model" (e.g., "openai::gpt-4o-mini")
+            llm_model: OpenAI model name (e.g., "gpt-4o-mini")
             temperature: Temperature for the model
             max_workers: Maximum number of concurrent workers for batch processing
+            api_key: OpenAI API key (defaults to OPENAI_API_KEY)
         """
-        super().__init__(llm_model_config=llm_model)
-        self.llm_engine = AsyncLLMEngine(model=llm_model)
+        self.llm_model = llm_model
+        # Plain synchronous OpenAI client (not AsyncOpenAI): notebooks apply
+        # nest_asyncio so Jupyter's own event loop can host nested asyncio.run()
+        # calls, but that patch breaks AsyncOpenAI's httpx/anyio sniffio-based
+        # async-library detection ("unknown async library, or not in async
+        # context") both on the main thread and inside worker threads. The sync
+        # client sidesteps asyncio entirely, matching the (working) pattern
+        # feature_extractor.py already uses for its OpenAI calls.
+        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
         self.temperature = temperature
         self.max_workers = max_workers
         self.unknown_label = "unclear"
@@ -232,7 +248,78 @@ You are tasked with generating a comprehensive timeline report based on input te
             Ensure precision by accurately assigning ratings to the date, rater, and key drivers listed in the same line of the report. Do not mix dates, ratings, or drivers across different report entries.
             """
     
-    def _split_text_on_nearest_linebreak(self, text_string: str, num_splits: int) -> List[str]:
+    
+    def _get_response(self, messages: list[dict[str, str]], **kwargs) -> str:
+        """Call OpenAI (sync) and return response text."""
+        response = self.client.chat.completions.create(
+            model=self.llm_model,
+            messages=messages,
+            temperature=self.temperature,
+            **kwargs
+        )
+        return response.choices[0].message.content
+    
+    def get_prompts_for_labeler(
+        self,
+        texts: list[str],
+        textsconfig: list[dict[str, Any]] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Build prompts for labeling."""
+        prompts = []
+        for idx, text in enumerate(texts):
+            prompt_dict = {"index": idx, "text": text}
+            if textsconfig and idx < len(textsconfig):
+                prompt_dict.update(textsconfig[idx])
+            prompts.append(prompt_dict)
+        return prompts
+    
+    def _run_labeling_prompts(
+        self,
+        prompts: list[dict[str, Any]],
+        system_prompt: str,
+        max_workers: int = 30,
+        timeout: Optional[int] = None,
+    ) -> list[dict[str, Any]]:
+        """Run labeling prompts."""
+        import concurrent.futures
+        
+        def label_single(prompt_data: dict[str, Any]) -> dict[str, Any]:
+            user_content = f"sentence_id: {prompt_data['index']}\n"
+            for key, value in prompt_data.items():
+                if key not in ['index']:
+                    user_content += f"{key}: {value}\n"
+            
+            try:
+                response = self._get_response([
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content}
+                ], response_format={"type": "json_object"})
+                return {"index": prompt_data["index"], "response": response}
+            except Exception as e:
+                return {"index": prompt_data["index"], "response": json.dumps({"error": str(e)})}
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = list(executor.map(label_single, prompts))
+        
+        return results
+    
+    def deserialize_label_responses_as_df(self, responses: list[dict[str, Any]]) -> pd.DataFrame:
+        """Parse JSON responses into a DataFrame."""
+        rows = []
+        for item in responses:
+            try:
+                response_data = json.loads(item["response"])
+                for sentence_id, data in response_data.items():
+                    row = {"index": item["index"]}
+                    if isinstance(data, dict):
+                        row.update(data)
+                    rows.append(row)
+            except (json.JSONDecodeError, KeyError):
+                rows.append({"index": item["index"], "label": self.unknown_label, "motivation": ""})
+        
+        return pd.DataFrame(rows).set_index("index")
+    
+    def _split_text_on_nearest_linebreak(self, text_string: str, num_splits: int) -> list[str]:
         """
         Split text into parts at the nearest line breaks for handling large inputs.
         
@@ -279,7 +366,8 @@ You are tasked with generating a comprehensive timeline report based on input te
         
         return split_texts
     
-    def _add_prompt_fields(self, df_sentences: pd.DataFrame, additional_prompt_fields: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    
+    def _add_prompt_fields(self, df_sentences: pd.DataFrame, additional_prompt_fields: Optional[list[str]] = None) -> list[dict[str, Any]]:
         """
         Add additional fields from the DataFrame for the labeling prompt.
 
@@ -288,7 +376,7 @@ You are tasked with generating a comprehensive timeline report based on input te
             additional_prompt_fields (Optional[List[str]]): Additional field names to be used in the labeling prompt.
 
         Returns:
-            List[Dict[str, Any]]: A list of dictionaries with the additional fields for each row in the DataFrame.
+            list[dict[str, Any]]: A list of dictionaries with the additional fields for each row in the DataFrame.
         """
         if additional_prompt_fields:
             missing = set(additional_prompt_fields) - set(df_sentences.columns)
@@ -303,7 +391,7 @@ You are tasked with generating a comprehensive timeline report based on input te
                                     date_col: str = 'date',
                                     sentence_id_col: str = 'sentence_id',
                                     text_col: str = 'text',
-                                    summary_input: List[str] = None) -> pd.DataFrame:
+                                    summary_input: list[str] | None = None) -> pd.DataFrame:
         """
         Generate summaries grouped by date from a DataFrame.
         
@@ -361,7 +449,7 @@ You are tasked with generating a comprehensive timeline report based on input te
         
         return date_grouped
 
-    def generate_summaries_df(self, df: pd.DataFrame, summary_input_col: str, system_prompt: Optional[str] = None, additional_prompt_fields: Optional[list] = [], max_workers: int = 30) -> pd.DataFrame:
+    def generate_summaries_df(self, df: pd.DataFrame, summary_input_col: str, system_prompt: Optional[str] = None, additional_prompt_fields: Optional[list] = [], max_workers: int = 30) -> tuple[pd.DataFrame, str]:
 
         if system_prompt is None:
             system_prompt = self.daily_chunk_summarization
@@ -384,7 +472,11 @@ You are tasked with generating a comprehensive timeline report based on input te
         ## add error catching, splits, retries, and consolidation to the failed ones.
 
         parsed_responses = self.deserialize_label_responses_as_df(responses)
-        if len(parsed_responses['motivation'].unique()) == 1 and parsed_responses['motivation'].values[0]=='':
+        if (
+            'motivation' in parsed_responses.columns
+            and len(parsed_responses['motivation'].unique()) == 1
+            and parsed_responses['motivation'].values[0] == ''
+        ):
             parsed_responses = parsed_responses.drop(columns=['motivation', 'label'])
 
         if 'index' not in df.columns:
@@ -398,31 +490,23 @@ You are tasked with generating a comprehensive timeline report based on input te
 
         entity_name = df_merged['ratee_entity'].iloc[0] if 'ratee_entity' in df_merged.columns else 'Unknown Entity'
 
+        # If every row in a date-group failed to parse as JSON (LLM/network flakiness),
+        # 'daily_summary' may be entirely absent from df_merged -- fall back to the raw
+        # summary_input for that date rather than crashing the whole report generation.
+        if 'daily_summary' not in df_merged.columns:
+            df_merged['daily_summary'] = df_merged.get(summary_input_col, '')
+
         report_text_input = f'Ratee Entity: {entity_name}\n' + '\n'.join(
-            [f'Date{i}: {str(row.date)}\nText{i}: {row.daily_summary}' 
+            [f'Date{i}: {str(row.date)}\nText{i}: {row.get("daily_summary") or row.get(summary_input_col, "")}'
              for i, (_, row) in enumerate(df_merged.iterrows())]
         )
         return df_merged, report_text_input
 
     def summarize_string(self, text: str, system_prompt: Optional[str] = None, max_retries: int = 5,
                       max_split_retries: int = 5) -> str:
-        """
-        Summarize a text string with retry and text splitting capabilities.
-        
-        Args:
-            text: Text to summarize
-            prompt_type: Type of prompt to use
-            replacements: Key-value pairs for prompt replacements
-            max_retries: Maximum retry attempts
-            max_split_retries: Maximum retry attempts with text splitting
-            
-        Returns:
-            Summarized text
-        """
+        """Summarize a text string with retry and text splitting capabilities."""
         if system_prompt is None:
             system_prompt = self.daily_credit_ratings_report
-        # print(system_prompt)
-        # print(text)
 
         # Build chat history
         chat_history = [
@@ -432,15 +516,14 @@ You are tasked with generating a comprehensive timeline report based on input te
         
         # Try to get response directly
         try:
-            return asyncio.run(self.llm_engine.get_response(chat_history, temperature=self.temperature))
+            return self._get_response(chat_history)
         except Exception as e:
             if 'context_length_exceeded' in str(e) or 'string_above_max_length' in str(e):
                 print("Text too long for direct processing, attempting split-and-consolidate approach...")
                 
                 # Try splitting and processing in chunks
                 try:
-                    # Split the text
-                    splits = self._split_text_on_nearest_linebreak(text, 2)  # Start with 2 splits
+                    splits = self._split_text_on_nearest_linebreak(text, 2)
                     
                     # Process each split
                     results = []
@@ -449,10 +532,7 @@ You are tasked with generating a comprehensive timeline report based on input te
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": split_text}
                         ]
-                        response = asyncio.run(self.llm_engine.get_response(
-                            split_chat_history, 
-                            temperature=self.temperature
-                        ))
+                        response = self._get_response(split_chat_history)
                         results.append(response)
                     
                     # Consolidate results
@@ -465,10 +545,7 @@ You are tasked with generating a comprehensive timeline report based on input te
                             {"role": "user", "content": f"Please merge and consolidate these completions into a single response:\n\n{consolidation_text}"}
                         ]
                         
-                        return asyncio.run(self.llm_engine.get_response(
-                            consolidation_chat_history,
-                            temperature=self.temperature
-                        ))
+                        return self._get_response(consolidation_chat_history)
                     else:
                         return results[0]
                         
@@ -480,16 +557,7 @@ You are tasked with generating a comprehensive timeline report based on input te
                 return f"Error: {str(e)}"
     
     def create_consolidated_data_table(self, text: str, system_prompt: Optional[str] = None) -> pd.DataFrame:
-        """
-        Extract structured data from text.
-        
-        Args:
-            text: Text to process
-            prompt_type: Type of prompt to use
-            
-        Returns:
-            DataFrame with extracted structured data
-        """
+        """Extract structured data from text."""
         if system_prompt is None:
             system_prompt = self.credit_ratings_data_table
         
@@ -501,21 +569,32 @@ You are tasked with generating a comprehensive timeline report based on input te
         
         try:
             # Get response
-            json_string = asyncio.run(self.llm_engine.get_response(
+            json_string = self._get_response(
                 chat_history,
-                temperature=self.temperature,
                 response_format={"type": "json_object"}
-            ))
+            )
             
             # Clean up JSON string
             json_string = re.sub('```', '', json_string)
             json_string = re.sub('json', '', json_string)
 
-            # Parse JSON into DataFrame
+            # Parse JSON into DataFrame. response_format={"type": "json_object"} forces the
+            # model to return a top-level JSON *object* even though the prompt asks for a
+            # JSON *array* -- the model is free to pick any wrapper key (not always "data"),
+            # so look for the first list-valued field instead of assuming one fixed key.
             try:
-                json_string = json.loads(json_string)['data']
-                data = pd.DataFrame(json_string)
-                return data
+                parsed = json.loads(json_string)
+                if isinstance(parsed, list):
+                    records = parsed
+                elif isinstance(parsed, dict):
+                    if isinstance(parsed.get('data'), list):
+                        records = parsed['data']
+                    else:
+                        list_values = [v for v in parsed.values() if isinstance(v, list)]
+                        records = list_values[0] if list_values else [parsed]
+                else:
+                    records = []
+                return pd.DataFrame(records)
             except json.JSONDecodeError as e:
                 print(f"Error parsing JSON: {e}.")
                 return pd.DataFrame()
@@ -525,7 +604,7 @@ You are tasked with generating a comprehensive timeline report based on input te
             return pd.DataFrame()
     
     def generate_company_report(self, df: pd.DataFrame, entity_id: str,text_col:str='text',
-                               fields_for_summary: List[str] = None,) -> Tuple[str, pd.DataFrame]:
+                               fields_for_summary: list[str] | None = None) -> tuple[str, pd.DataFrame]:
         """
         Generate a complete report for a single company.
         
@@ -565,8 +644,8 @@ You are tasked with generating a comprehensive timeline report based on input te
             
             return report_text, structured_data
 
-    def generate_report_by_entities(self, df: pd.DataFrame, entity_keys: List[str], text_col: str = 'text', 
-                              fields_for_summary: List[str] = None) -> Dict[str, Tuple[str, pd.DataFrame]]:
+    def generate_report_by_entities(self, df: pd.DataFrame, entity_keys: list[str], text_col: str = 'text', 
+                              fields_for_summary: list[str] | None = None) -> dict[str, tuple[str, pd.DataFrame]]:
         """
         Process multiple entities in batch.
         
@@ -599,25 +678,14 @@ You are tasked with generating a comprehensive timeline report based on input te
             
         return results
 
-_intialization_sent = False 
-def notebook_initialized():
-    from importlib.metadata import version
-    from bigdata_client import Bigdata
-    from bigdata_client import tracking_services
+_initialization_sent = False
 
-    try:
-        bigdata = Bigdata()
-        global _intialization_sent
-        if not _intialization_sent:
-            trace = tracking_services.TraceEvent(event_name = "BigdataCookbookExecution", 
-                       properties={"bigdataResearchToolsVersion": version("bigdata_research_tools"),
-                                    "bigdataClientVersion": version("bigdata-client"),
-                                   "cookbook_name": "CreditRatingsMonitoring"
-                                  })
-            
-            tracking_services.send_trace(bigdata_client = bigdata, trace = trace)
-            _intialization_sent = True
-    except Exception as e:
+def notebook_initialized():
+    """Stub for notebook initialization (no SDK tracking)."""
+    global _initialization_sent
+    if not _initialization_sent:
+        _initialization_sent = True
+        # Tracking removed - no SDK dependency
         pass
-        
-notebook_initialized() 
+
+notebook_initialized()
