@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import time
+from concurrent.futures import ProcessPoolExecutor
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
@@ -107,9 +108,23 @@ async def run_requests_with_schema(prompts, system_prompt, schema, replacements 
     return results
 
 
+def _run_requests_with_schema_sync(prompts, system_prompt, schema, replacements, api_key):
+    return asyncio.run(run_requests_with_schema(prompts, system_prompt, schema, replacements, api_key))
+
+
 def process_request_with_schema(prompts, system_prompt, schema, replacements = None, api_key=None):
     tic = time.perf_counter()
-    responses = asyncio.run(run_requests_with_schema(prompts, system_prompt, schema, replacements, api_key))
+    # Run in a fresh subprocess rather than asyncio.run() directly on the notebook loop:
+    # nest_asyncio.apply() monkey-patches `asyncio.run` process-wide (not just the
+    # notebook's loop object), so even a new thread in this process still hits the
+    # patched version. Newer openai/sniffio releases call asyncio.current_task() to
+    # detect the running library, which returns None inside nest_asyncio's re-entrant
+    # loop stepping and raises AsyncLibraryNotFoundError. A subprocess has a clean,
+    # unpatched asyncio module, sidestepping the incompatibility entirely.
+    with ProcessPoolExecutor(max_workers=1) as executor:
+        responses = executor.submit(
+            _run_requests_with_schema_sync, prompts, system_prompt, schema, replacements, api_key
+        ).result()
     toc = time.perf_counter() - tic
     print(f"Completed {len(prompts)} requests in {toc:.2f} seconds.")
     return responses
@@ -398,9 +413,17 @@ async def run_requests(prompts, system_prompt, replacements = None, api_key=None
     return results
 
 
+def _run_requests_sync(prompts, system_prompt, replacements, api_key):
+    return asyncio.run(run_requests(prompts, system_prompt, replacements, api_key))
+
+
 def process_request(prompts, system_prompt, replacements = None, api_key=None):
     tic = time.perf_counter()
-    responses = asyncio.run(run_requests(prompts, system_prompt, replacements, api_key))
+    # See process_request_with_schema for why this runs in a fresh subprocess.
+    with ProcessPoolExecutor(max_workers=1) as executor:
+        responses = executor.submit(
+            _run_requests_sync, prompts, system_prompt, replacements, api_key
+        ).result()
     toc = time.perf_counter() - tic
     print(f"Completed {len(prompts)} requests in {toc:.2f} seconds.")
     return responses

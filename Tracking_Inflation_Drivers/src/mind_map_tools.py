@@ -1,30 +1,27 @@
-"""
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-Author: Alessandro Bouchs (abouchs@ravenpack.com)
+"""Mind map generation tools using OpenAI (SDK imports removed).
+
+SDK query and search functions have been removed — use search_helper instead.
+Mind map generation functions using OpenAI remain functional.
 """
 
+from __future__ import annotations
 
-from bigdata_client import Bigdata
-from bigdata_client.models.search import DocumentType, SortBy
-from bigdata_client.query import Keyword, Entity, Any
-from bigdata_client.daterange import AbsoluteDateRange
+import ast
+import html
+import re
+from collections import defaultdict
+from typing import Any
 
 import graphviz
-import time
-from tqdm.notebook import tqdm
-import pandas as pd
-import hashlib
-import plotly.express as px
-from IPython.display import display, HTML
-import re
-import openai
-import html
 import networkx as nx
-import plotly.graph_objects as go
 import numpy as np
-from collections import defaultdict
+import openai
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from IPython.display import HTML, display
+
 MODEL_NAME = 'gpt-4o-mini'
-import ast
 # Function to add line breaks
 def add_line_breaks(text, max_len=50):
     

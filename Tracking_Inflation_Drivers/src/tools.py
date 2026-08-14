@@ -1,25 +1,24 @@
-"""
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-Author: Alessandro Bouchs (abouchs@ravenpack.com)
+"""Utility functions (SDK imports removed).
+
+Most query-building functions have been migrated to use search_helper.run_universe_search.
+Import processing helpers like process_dataframe and visualization helpers remain.
 """
 
-from bigdata_client import Bigdata
-from bigdata_client.models.search import DocumentType, SortBy
-from bigdata_client.query import Keyword, Entity, Any
-from bigdata_client.daterange import AbsoluteDateRange
+from __future__ import annotations
 
-import time
-from tqdm.notebook import tqdm
-import pandas as pd
 import hashlib
-import plotly.express as px
-from IPython.display import display, HTML
 import re
+
 import openai
+import pandas as pd
+import plotly.express as px
+from IPython.display import HTML, display
+from tqdm.notebook import tqdm
+
 MODEL_NAME = 'gpt-4o-mini'
 
-def process_dataframe( 
-    results):
+
+def process_dataframe(results):
     """
     Build a dataframe for when no companies are specified.
 
