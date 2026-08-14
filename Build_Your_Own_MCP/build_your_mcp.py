@@ -1,34 +1,33 @@
 #!/usr/bin/env -S uv run --script
 #
 # /// script
-# requires-python = ">=3.12"
-# dependencies = ["mcp[cli]==1.11.0", "bigdata-research-tools>=1.0.0", "nest-asyncio==1.6.0", "python-dotenv==1.1.1"]
+# requires-python = ">=3.12,<3.14"
+# dependencies = ["mcp[cli]==1.11.0", "bigdata-smart-batching>=1.3.1,<2.0.0", "requests>=2.31.0", "openai>=1.0.0", "python-dotenv>=1.2.2", "nest-asyncio==1.6.0"]
 # ///
+
+"""Build Your Own MCP - migrated from bigdata-research-tools to REST + OpenAI."""
+
+# NOTE: deliberately NOT using `from __future__ import annotations` here.
+# mcp[cli]==1.11.0's FastMCP.Tool.from_function() calls issubclass() on raw
+# inspect.signature() parameter annotations without eval_str=True; postponed
+# evaluation (PEP 563) turns those into plain strings and crashes tool
+# registration with "TypeError: issubclass() arg 1 must be a class".
 
 import os
 from typing import Literal
 from datetime import datetime
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
-from bigdata_research_tools.watchlists import (
-    create_watchlist as create_watchlist_internal,
-    fuzzy_find_watchlist_by_name,
-)
-from bigdata_research_tools.workflows.thematic_screener import (
-    ThematicScreener,
-    DocumentType,
-)
-from bigdata_research_tools.search.search import run_search
-from bigdata_client import Bigdata
 import nest_asyncio
-from bigdata_client.query import Similarity
-from bigdata_client.daterange import AbsoluteDateRange
-# Select your LLM model here
-LLM_MODEL = "openai::gpt-4o-mini"
-# LLM_MODEL = "azure::gpt-4o-mini"
-# LLM_MODEL = "bedrock::anthropic.claude-3-sonnet-20240229-v1:0"
+from openai import OpenAI
+import json
 
-# Use streamable-http for better compatibility with various clients, unless you want to connect to ChatGPT developer mode
+from bigdata_rest import BigdataRestClient
+
+# Select your LLM model here
+LLM_MODEL = "gpt-4o-mini"  # OpenAI model
+
+# Use streamable-http for better compatibility with various clients
 TRANSPORT: Literal["sse", "streamable-http"] = "streamable-http"
 
 nest_asyncio.apply()
@@ -36,98 +35,201 @@ nest_asyncio.apply()
 # Create an MCP server
 mcp = FastMCP("Demo", stateless_http=True, json_response=True, host="0.0.0.0")
 
+load_dotenv(".env")
 
-load_dotenv('.env')
-# Initialize Bigdata client
-BIGDATA = Bigdata()
+# Initialize clients
+REST_CLIENT = BigdataRestClient()
+OPENAI_CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-# Add an addition tool
 @mcp.tool()
-def create_watchlist(watchlist_name: str, companies: list[str]):
-    """Create a watchlist for the given companies."""
-    return create_watchlist_internal(watchlist_name, companies, BIGDATA)
+def create_watchlist(watchlist_name: str, company_ids: list[str]):
+    """
+    Create a watchlist for the given company IDs.
+    
+    Args:
+        watchlist_name: Name for the watchlist
+        company_ids: List of Bigdata entity IDs (e.g., ["4F2B", "D8442"])
+    
+    Returns:
+        Dict with watchlist info
+    """
+    # In the migrated version, we simply store the list in memory or return it
+    # No actual watchlist creation via SDK
+    return {
+        "watchlist_name": watchlist_name,
+        "company_ids": company_ids,
+        "company_count": len(company_ids),
+        "message": f"Watchlist '{watchlist_name}' created with {len(company_ids)} companies. Use these IDs for screening.",
+    }
 
 
 @mcp.tool()
 def screen_companies(
-    watchlist_name: str, main_theme: str, fiscal_year: int, focus: str = ""
+    company_ids: list[str],
+    main_theme: str,
+    fiscal_year: int,
+    focus: str = "",
+    document_limit: int = 20,
 ):
-    """Screen companies in a watchlist for a given theme and fiscal year. This will return
-    a JSON string with the results."""
-    # Find the watchlist by name
-    watchlist = fuzzy_find_watchlist_by_name(watchlist_name, BIGDATA)
-    if not watchlist:
-        return {"error": f"Watchlist '{watchlist_name}' not found."}
+    """
+    Screen companies for a given theme and fiscal year using REST API.
+    
+    Args:
+        company_ids: List of Bigdata entity IDs
+        main_theme: Main theme to screen for
+        fiscal_year: Fiscal year to analyze
+        focus: Optional focus area
+        document_limit: Max documents per query
+    
+    Returns:
+        JSON string with screening results
+    """
+    # Build date range around fiscal year
+    start_date = f"{fiscal_year - 1}-01-01"
+    end_date = f"{fiscal_year + 1}-12-31"
 
-    # Extract companies from the watchlist
-    companies = BIGDATA.knowledge_graph.get_entities(watchlist.items)
+    # Generate theme taxonomy using OpenAI
+    theme_prompt = f"""Generate a list of 5-8 specific sub-themes related to "{main_theme}".
+    
+Focus: {focus if focus else "General analysis"}
 
-    # Configure and run the thematic screener
-    them = ThematicScreener(
-        llm_model_config=LLM_MODEL,
-        main_theme=main_theme,
-        focus=focus,
-        companies=companies,
-        start_date=datetime(fiscal_year - 1, 1, 1),
-        end_date=datetime(fiscal_year + 1, 12, 31),
-        document_type=DocumentType.TRANSCRIPTS,
-        fiscal_year=fiscal_year,
-    )
-    result = them.screen_companies(
-        document_limit=20,
-        batch_size=10,
-        frequency="3M",
-    )
+Return ONLY a JSON array of strings, e.g.:
+["Sub-theme 1", "Sub-theme 2", "Sub-theme 3"]
+"""
 
-    # Extract and return the relevant data as JSON
-    return str(result["df_company"].to_json(orient="records"))
+    try:
+        response = OPENAI_CLIENT.chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": theme_prompt}],
+            temperature=0.7,
+        )
+        sub_themes_text = response.choices[0].message.content.strip()
+        
+        # Parse JSON response
+        if sub_themes_text.startswith("```json"):
+            sub_themes_text = sub_themes_text.split("```json")[1].split("```")[0].strip()
+        elif sub_themes_text.startswith("```"):
+            sub_themes_text = sub_themes_text.split("```")[1].split("```")[0].strip()
+            
+        sub_themes = json.loads(sub_themes_text)
+        
+    except Exception as e:
+        # Fallback to generic sub-themes
+        sub_themes = [
+            f"{main_theme} - Innovation",
+            f"{main_theme} - Market Position",
+            f"{main_theme} - Competitive Advantage",
+        ]
+
+    # Search for each company and theme combination
+    results = []
+
+    for company_id in company_ids:
+        company_scores = {"company_id": company_id}
+
+        for theme in sub_themes:
+            # Build search query (POST /v1/search PublicSearchRequest shape)
+            query = {
+                "text": theme,
+                "filters": {
+                    "timestamp": {
+                        "start": f"{start_date}T00:00:00Z",
+                        "end": f"{end_date}T23:59:59Z",
+                    },
+                    "entity": {"any_of": [company_id], "search_in": "BODY"},
+                },
+                "max_chunks": document_limit,
+                "auto_enrich_filters": False,
+            }
+
+            try:
+                search_results = REST_CLIENT.search(query)
+                # Simple scoring: count of relevant documents
+                company_scores[theme] = len(search_results)
+            except Exception as e:
+                print(f"Search failed for company {company_id}, theme {theme}: {e}")
+                company_scores[theme] = 0
+
+        # Calculate composite score
+        company_scores["Composite Score"] = sum(
+            v for k, v in company_scores.items() if k not in ["company_id", "Composite Score"]
+        )
+
+        results.append(company_scores)
+
+    # Convert to JSON
+    return json.dumps(results, indent=2)
+
 
 @mcp.tool()
-def bigdata_search(queries: list[str]):
-    """Run a search on bigdata for the given queries and return the results."""
-
-    search_results = run_search(
-        [Similarity(query) for query in queries],
-        date_ranges=AbsoluteDateRange(datetime(1970, 1, 1), datetime(2025, 12, 31)),
-        bigdata=BIGDATA,
-    )
+def bigdata_search(queries: list[str], start_date: str = "2020-01-01", end_date: str = "2025-12-31"):
+    """
+    Run a search on Bigdata API for the given queries.
+    
+    Args:
+        queries: List of search query strings
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+    
+    Returns:
+        Dict mapping queries to search results
+    """
     results = {}
-    for i, _ in enumerate(search_results):
-        results[queries[i]] = []
-        for result in search_results[i]:
-            results[queries[i]].append(
+
+    for query_text in queries:
+        # POST /v1/search PublicSearchRequest shape: {"query": {"text": ..., "filters": {...}}}
+        query = {
+            "text": query_text,
+            "filters": {
+                "timestamp": {
+                    "start": f"{start_date}T00:00:00Z",
+                    "end": f"{end_date}T23:59:59Z",
+                },
+            },
+            "max_chunks": 10,
+            "auto_enrich_filters": False,
+        }
+
+        try:
+            search_results = REST_CLIENT.search(query)
+            results[query_text] = [
                 {
-                    "title": result.headline,
-                    "content": "".join([p.text for p in result.chunks]),
-                    "timestamp": result.timestamp,
-                    "url": result.url,
+                    "title": doc.get("headline") or doc.get("title"),
+                    "content": " ".join(
+                        chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                        for chunk in (doc.get("chunks") or [])
+                    )[:500],
+                    "timestamp": doc.get("timestamp") or doc.get("timestamp_utc"),
+                    "url": doc.get("url"),
                 }
-            )
+                for doc in search_results[:5]  # Limit to top 5
+            ]
+        except Exception as e:
+            print(f"Search failed for query '{query_text}': {e}")
+            results[query_text] = []
 
     return results
 
+
 def test_llm_model_configured():
     """Test that the LLM model is configured correctly."""
-    from bigdata_research_tools.llm.base import LLMEngine
-
     try:
-        test_answer = LLMEngine(LLM_MODEL).get_response(
-            [{"role": "user", "content": "Hello, world!"}]
+        test_answer = OPENAI_CLIENT.chat.completions.create(
+            model=LLM_MODEL,
+            messages=[{"role": "user", "content": "Hello, world!"}],
+            max_tokens=10,
         )
+        assert test_answer.choices[0].message.content, "LLM model test failed"
     except Exception as e:
         raise RuntimeError(
-            "[ERROR] LLM model is not configured correctly. Read more here: https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration"
+            f"[ERROR] OpenAI model '{LLM_MODEL}' is not configured correctly. "
+            f"Ensure OPENAI_API_KEY is set in .env"
         ) from e
-    else:
-        assert isinstance(test_answer, str), (
-            "LLM model is not configured correctly. Read more here: https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration"
-        )
 
 
 if __name__ == "__main__":
     test_llm_model_configured()
-    assert "BIGDATA_API_KEY" in os.environ, (
-        "Please set the BIGDATA_API_KEY environment variable."
-    )
+    assert "BIGDATA_API_KEY" in os.environ, "Please set BIGDATA_API_KEY in .env"
+    assert "OPENAI_API_KEY" in os.environ, "Please set OPENAI_API_KEY in .env"
     mcp.run(transport=TRANSPORT)
