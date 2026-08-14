@@ -770,25 +770,5 @@ def display_sample_data(news_df, transcripts_df, filings_df):
     print("\n======= SAMPLE SEC FILING NARRATIVES =======")
     display(filings_df[['Date', 'Headline', 'Label', 'Chunk Text']].head(3))
 
-_intialization_sent = False 
-def notebook_initialized():
-    from importlib.metadata import version
-    from bigdata_client import Bigdata
-    from bigdata_client import tracking_services
-
-    try:
-        bigdata = Bigdata()
-        global _intialization_sent
-        if not _intialization_sent:
-            trace = tracking_services.TraceEvent(event_name = "BigdataCookbookExecution", 
-                       properties={"bigdataResearchToolsVersion": version("bigdata_research_tools"),
-                                    "bigdataClientVersion": version("bigdata-client"),
-                                   "cookbook_name": "NarrativeMiner"
-                                  })
-            
-            tracking_services.send_trace(bigdata_client = bigdata, trace = trace)
-            _intialization_sent = True
-    except Exception as e:
-        pass
-        
-notebook_initialized()     
+# MIGRATION NOTE: Tracking removed during bigdata-client SDK deprecation.
+# This project now uses REST API + bigdata-smart-batching.     
