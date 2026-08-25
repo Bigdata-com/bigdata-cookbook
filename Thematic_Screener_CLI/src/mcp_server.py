@@ -39,6 +39,8 @@ def create_run(
     start_date: str = mcp_workflow.screener.DEFAULT_START_DATE,
     end_date: str = mcp_workflow.screener.DEFAULT_END_DATE,
     output_goal: str | None = None,
+    taxonomy_style: str = "exposure",
+    ground_with_bigdata: bool = False,
 ) -> dict[str, Any]:
     """Create a run, persist the run brief, and validate the universe."""
     return _run_workflow(
@@ -50,6 +52,8 @@ def create_run(
         start_date=start_date,
         end_date=end_date,
         output_goal=output_goal,
+        taxonomy_style=taxonomy_style,
+        ground_with_bigdata=ground_with_bigdata,
     )
 
 
@@ -71,6 +75,8 @@ def generate_mindmap(
     run_id: str,
     max_leaf_labels: int | None = None,
     model: str = mcp_workflow.screener.DEFAULT_LABELS_MODEL,
+    taxonomy_style: str | None = None,
+    ground_with_bigdata: bool | None = None,
 ) -> dict[str, Any]:
     """Generate and store a taxonomy tree for the run theme."""
     return _run_workflow(
@@ -78,6 +84,8 @@ def generate_mindmap(
         run_id=run_id,
         max_leaf_labels=max_leaf_labels,
         model=model,
+        taxonomy_style=taxonomy_style,
+        ground_with_bigdata=ground_with_bigdata,
     )
 
 
