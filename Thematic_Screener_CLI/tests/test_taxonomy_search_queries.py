@@ -16,8 +16,10 @@ from src.screener import (
     EXCEL_MAX_CELL_CHARS,
     EXCEL_TRUNCATION_NOTICE,
     Node,
+    analyst_focus_with_leaf_cap,
     build_plans,
     export_excel,
+    normalize_max_leaf_labels,
     write_taxonomy_artifacts,
 )
 from src.search_query import has_exposure_meta_language, normalize_summary_to_search_query
@@ -203,3 +205,15 @@ def test_export_excel_marks_cells_over_the_excel_limit(tmp_path: Path) -> None:
     cell = str(written.loc[0, "text"])
     assert len(cell) <= EXCEL_MAX_CELL_CHARS
     assert cell.endswith(EXCEL_TRUNCATION_NOTICE)
+
+
+def test_normalize_max_leaf_labels_treats_zero_as_uncapped() -> None:
+    assert normalize_max_leaf_labels(None) is None
+    assert normalize_max_leaf_labels(0) is None
+    assert normalize_max_leaf_labels(15) == 15
+
+
+def test_analyst_focus_with_leaf_cap_appends_limit() -> None:
+    capped = analyst_focus_with_leaf_cap("Hidden hops.", 12)
+    assert capped.endswith("Limit the final tree to at most 12 leaf nodes.")
+    assert analyst_focus_with_leaf_cap("Hidden hops.", 0) == "Hidden hops."

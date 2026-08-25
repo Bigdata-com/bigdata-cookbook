@@ -142,6 +142,7 @@ def generate_taxonomy(
     taxonomy (thematic-screener) or a risk taxonomy (risk-analyzer).
     ``taxonomy_style='derivatives'`` is thematic-only and forces a 1st/2nd/3rd
     hop tree. ``grounding_brief`` is injected into that prompt when provided.
+    ``max_leaf_labels`` of ``0`` or ``None`` leaves the tree uncapped.
     """
     active_profile = profile if profile is not None else _THEMATIC_PROFILE
     openai_client = client if client is not None else OpenAI()

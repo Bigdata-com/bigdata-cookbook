@@ -64,8 +64,13 @@ Run commands from this directory so `.env` is found automatically.
 
 `notebooks/01_derivative_thematic_screener.ipynb` is a client-facing walkthrough of the
 derivatives workflow: it screens the TSX Top 150 (`tsx_top150_rp_entities.csv`) for exposure to an
-oil price increase and runs the entire pipeline in-notebook — grounding, mindmap, planning,
-retrieval, labeling, company narratives, and both exports.
+oil price increase.
+
+`notebooks/02_derivative_eu_parcel_tariffs.ipynb` is the same workflow on European mid- and
+large-caps (`europe_ml_caps.csv`), tracing EU tariffs on low-value parcels from AliExpress-style
+platforms (Temu, Shein, AliExpress) through 1st / 2nd / 3rd hops. It writes to
+`runs/eu_parcel_tariff_derivatives/` and uses `RETRIEVAL_DEPTH = 0.1` because that universe is
+several times larger than the TSX book.
 
 ```bash
 uv sync --group jupyter
@@ -186,7 +191,7 @@ python -m src.cli <subcommand> [options]
 | `--main-theme` | see defaults below | Main screening theme |
 | `--analyst-focus` | see defaults below | Analyst focus guiding the taxonomy |
 | `--labels-model` | `gpt-5.6-luna` | OpenAI model for label generation |
-| `--max-leaf-labels` | `15` | Cap on leaf sub-scenarios in the taxonomy (`0` = no limit) |
+| `--max-leaf-labels` | `15` | Cap on taxonomy leaf count (`0` = no limit) |
 | `--taxonomy-style` | `exposure` | `exposure` or `derivatives` (thematic mode) |
 | `--ground-with-bigdata` | off | Theme-level Bigdata.com briefing for derivatives mindmaps |
 | `--universe` | `XNAS_companies.csv` | Persisted for later `plans`; used with `--start-date` / `--end-date` as the grounding window |
