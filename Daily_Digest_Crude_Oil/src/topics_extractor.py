@@ -19,6 +19,8 @@ from tqdm.notebook import tqdm
 from tqdm.asyncio import tqdm as tqdm_asyncio
 import ast
 
+from .openai_compat import sampling_params_for_model
+
 
 def flatten_trending_topics(df, original_df):
     flattened_data = []
@@ -78,7 +80,7 @@ def flatten_trending_topics(df, original_df):
     return flattened_df
 
 
-async def generate_text_summary(text, topic, api_key, model='gpt-4o-mini-2024-07-18'):
+async def generate_text_summary(text, topic, api_key, model='gpt-5.6-luna'):
     client = openai.AsyncOpenAI(api_key=api_key, timeout=25)
 
     # Create the prompt incorporating the topic
@@ -98,7 +100,7 @@ async def generate_text_summary(text, topic, api_key, model='gpt-4o-mini-2024-07
             {"role": "user", "content": prompt}
         ],
         response_format={ "type":"json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
 
     summary = response.model_dump()
@@ -111,7 +113,7 @@ async def generate_text_summary(text, topic, api_key, model='gpt-4o-mini-2024-07
     return summary_dict
 
 # Asynchronous function to process DataFrame rows
-async def add_text_summaries_to_df(df, api_key, model='gpt-4o-mini-2024-07-18'):
+async def add_text_summaries_to_df(df, api_key, model='gpt-5.6-luna'):
     # Create a dictionary to hold the mapping of Text to summaries
     text_to_summary = {}
 
@@ -141,7 +143,7 @@ async def add_text_summaries_to_df(df, api_key, model='gpt-4o-mini-2024-07-18'):
     return df
 
 
-async def generate_advanced_novelty_score(client, topic, previous_topics_dict, main_theme, model='gpt-4o-mini-2024-07-18'):
+async def generate_advanced_novelty_score(client, topic, previous_topics_dict, main_theme, model='gpt-5.6-luna'):
     # Format the previous topics dictionary into a string for the prompt
     previous_topics_formatted = "\n".join([f"{date}: {', '.join(topics)}" for date, topics in previous_topics_dict.items()])
 
@@ -169,7 +171,7 @@ async def generate_advanced_novelty_score(client, topic, previous_topics_dict, m
             {"role": "system", "content": "You are an expert analyst."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
 
     try:
@@ -226,7 +228,7 @@ async def add_advanced_novelty_scores_to_df(df, api_key, main_theme):
 def run_add_advanced_novelty_scores(df, api_key, main_theme):
     return asyncio.run(add_advanced_novelty_scores_to_df(df, api_key, main_theme))
 
-def generate_market_impact_and_magnitude(client, text, topic, main_theme, point_of_view, model='gpt-4o-mini-2024-07-18'):
+def generate_market_impact_and_magnitude(client, text, topic, main_theme, point_of_view, model='gpt-5.6-luna'):
     # Create the prompt for determining market impact and magnitude
     prompt = (
         f"You are an expert market analyst with deep knowledge of the {point_of_view} market, tasked with evaluating the impact of the topic '{topic}' within the context of '{main_theme}'. "
@@ -256,7 +258,7 @@ def generate_market_impact_and_magnitude(client, text, topic, main_theme, point_
         {"role": "system", "content": "You are an expert market analyst specializing in the oil market."},
         {"role": "user", "content": prompt}
     ],
-    temperature=0
+    **sampling_params_for_model(model, temperature=0),
 )
     
     impact_and_magnitude = response.model_dump()
@@ -366,7 +368,7 @@ async def extract_trending_topics(text_to_analyze, model, yearmonth, number_of_r
                 {"role": "user", "content": text_to_analyze}
             ],
             response_format={ "type":"json_object"},
-            temperature=0
+            **sampling_params_for_model(model, temperature=0),
         )
 
         # Extract and process the response
@@ -488,7 +490,7 @@ async def consolidate_trending_topics(batch_results, model, api_key, main_theme)
         ],
         response_format={ "type":"json_object"},
         #max_tokens=4000,
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
     
     # Extract and process the response
@@ -552,7 +554,7 @@ async def summarize_grouped_summaries(df, model, api_key, main_theme, yearmonth)
                 }
             ],
             response_format={"type": "json_object"},
-            temperature=0
+            **sampling_params_for_model(model, temperature=0),
         )
 
         # Extract the LLM's response
@@ -613,7 +615,7 @@ async def generate_title_for_summary(summary, model, api_key):
             {"role": "system", "content": title_prompt}
         ],
         response_format={"type": "json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
 
     # Process the response
@@ -625,7 +627,7 @@ async def generate_title_for_summary(summary, model, api_key):
     return title_data['title']
 
 # Function to create titles from unique summaries and map them back to the original DataFrame
-async def create_titles_from_summaries(df, model='gpt-4o-mini', api_key=None):
+async def create_titles_from_summaries(df, model='gpt-5.6-luna', api_key=None):
     # Step 1: Extract unique summaries
     unique_summaries = df['Summary'].unique()
 
@@ -679,7 +681,7 @@ def fetch_entities(client, prompt, model):
                 {"role": "system", "content": prompt},
             ],
             response_format={"type": "json_object"},
-            temperature=0
+            **sampling_params_for_model(model, temperature=0),
         )
         
         entities_result = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'])
@@ -730,7 +732,7 @@ def fetch_subject_relevance(client, prompt, model):
                 {"role": "system", "content": prompt},
             ],
             response_format={"type": "json_object"},
-            temperature=0
+            **sampling_params_for_model(model, temperature=0),
         )
         relevance_result = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'])
         return relevance_result
@@ -796,7 +798,7 @@ def process_matching(reports, model, api_key, main_theme):
     matched_reports = process_reports(reports, model, api_key, main_theme)
     return matched_reports
 
-async def phase1_extract_topics(unique_reports, start_query, end_query, main_theme, model='gpt-4o-mini', api_key=None, batches=5, freq='D'):
+async def phase1_extract_topics(unique_reports, start_query, end_query, main_theme, model='gpt-5.6-luna', api_key=None, batches=5, freq='D'):
     """
     PHASE 1: Topic Extraction
     Extracts topics from reports using the LLM for each date.
@@ -899,7 +901,7 @@ def phase2_flatten_topics(trending_topics_df, unique_reports):
     return flattened_raw_topics_df, total_cited_for_summary
 
 
-async def phase3_consolidate_topics(flattened_raw_topics_df, model='gpt-4o-mini', api_key=None, main_theme='energy markets', 
+async def phase3_consolidate_topics(flattened_raw_topics_df, model='gpt-5.6-luna', api_key=None, main_theme='energy markets', 
                                     consolidation_batch_size=50, consolidation_round_batch_size=80, max_consolidation_rounds=8):
     """
     PHASE 3: Consolidation
@@ -1240,7 +1242,7 @@ async def phase3_consolidate_topics(flattened_raw_topics_df, model='gpt-4o-mini'
     return flattened_raw_topics_df, final_mapping, consolidation_stats
 
 
-async def phase4_summarize_topics(flattened_df, model='gpt-4o-mini', api_key=None, main_theme='energy markets', yearmonth='2024-01'):
+async def phase4_summarize_topics(flattened_df, model='gpt-5.6-luna', api_key=None, main_theme='energy markets', yearmonth='2024-01'):
     """
     PHASE 4: Summarization
     Generates consolidated summaries for each topic.
@@ -1253,7 +1255,7 @@ async def phase4_summarize_topics(flattened_df, model='gpt-4o-mini', api_key=Non
     return flattened_df
 
 
-async def phase5_generate_titles(flattened_df, model='gpt-4o-mini', api_key=None):
+async def phase5_generate_titles(flattened_df, model='gpt-5.6-luna', api_key=None):
     """
     PHASE 5: Title Generation
     Generates journalistic titles from summaries.
@@ -1286,7 +1288,7 @@ async def phase6_postprocess(flattened_df, api_key=None, main_theme='energy mark
     return flattened_df
 
 
-async def process_all_trending_topics_modular(unique_reports, start_query, end_query, main_theme, model='gpt-4o-mini', api_key=None, batches=5, freq='D', phases='all',
+async def process_all_trending_topics_modular(unique_reports, start_query, end_query, main_theme, model='gpt-5.6-luna', api_key=None, batches=5, freq='D', phases='all',
                                              consolidation_batch_size=50, consolidation_round_batch_size=80, max_consolidation_rounds=8):
     """
     Modular workflow to process trending topics.
@@ -1416,7 +1418,7 @@ async def process_all_trending_topics_modular(unique_reports, start_query, end_q
     return results
 
 
-def run_process_all_trending_topics_modular(unique_reports, start_query, end_query, main_theme, model='gpt-4o-mini', api_key=None, batches=5, freq='D', phases='all',
+def run_process_all_trending_topics_modular(unique_reports, start_query, end_query, main_theme, model='gpt-5.6-luna', api_key=None, batches=5, freq='D', phases='all',
                                            consolidation_batch_size=50, consolidation_round_batch_size=80, max_consolidation_rounds=8):
     """
     Synchronous wrapper for process_all_trending_topics_modular.
@@ -1431,7 +1433,7 @@ async def run_full_trending_topics_pipeline(
     start_query, 
     end_query, 
     main_theme, 
-    model='gpt-4o-mini', 
+    model='gpt-5.6-luna', 
     api_key=None, 
     batches=5, 
     freq='D',
@@ -1455,7 +1457,7 @@ async def run_full_trending_topics_pipeline(
         start_query: Start date (format 'YYYY-MM-DD')
         end_query: End date (format 'YYYY-MM-DD')
         main_theme: Main theme (e.g. 'Energy - Gas and Power')
-        model: LLM model to use (default: 'gpt-4o-mini')
+        model: LLM model to use (default: 'gpt-5.6-luna')
         api_key: OpenAI API key
         batches: Number of batches per date in extraction phase (default: 5)
         freq: Time frequency ('D' for daily, 'W' for weekly, etc.)
@@ -1473,7 +1475,7 @@ async def run_full_trending_topics_pipeline(
             start_query='2025-11-05',
             end_query='2025-11-12',
             main_theme='Energy - Gas and Power',
-            model='gpt-4o-mini',
+            model='gpt-5.6-luna',
             api_key=OPENAI_API_KEY,
             batches=20,
             consolidation_batch_size=50
@@ -1542,7 +1544,7 @@ def process_full_trending_topics_pipeline(
     start_query, 
     end_query, 
     main_theme, 
-    model='gpt-4o-mini', 
+    model='gpt-5.6-luna', 
     api_key=None, 
     batches=5, 
     freq='D',
@@ -1561,7 +1563,7 @@ def process_full_trending_topics_pipeline(
         start_query: Start date (format 'YYYY-MM-DD')
         end_query: End date (format 'YYYY-MM-DD')
         main_theme: Main theme (e.g. 'Energy - Gas and Power')
-        model: LLM model to use (default: 'gpt-4o-mini')
+        model: LLM model to use (default: 'gpt-5.6-luna')
         api_key: OpenAI API key
         batches: Number of batches per date in extraction phase (default: 5)
         freq: Time frequency ('D' for daily, 'W' for weekly, etc.)
@@ -1579,7 +1581,7 @@ def process_full_trending_topics_pipeline(
             start_query='2025-11-05',
             end_query='2025-11-12',
             main_theme='Energy - Gas and Power',
-            model='gpt-4o-mini',
+            model='gpt-5.6-luna',
             api_key=OPENAI_API_KEY
         )
         ```
@@ -1608,7 +1610,7 @@ async def fetch_relevance(client, text_to_analyze, current_prompt, model, semaph
                     {"role": "system", "content": current_prompt},
                     {"role": "user", "content": text_to_analyze}
                 ],
-                temperature=0
+                **sampling_params_for_model(model, temperature=0),
             )
 
             relevance = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'].strip())
@@ -1620,7 +1622,7 @@ async def fetch_relevance(client, text_to_analyze, current_prompt, model, semaph
             return None
 
 
-def generate_day_in_review(text, api_key, main_theme, model='gpt-4o-mini-2024-07-18'):
+def generate_day_in_review(text, api_key, main_theme, model='gpt-5.6-luna'):
     client = openai.Client(api_key=api_key)
     
     # Create the prompt to summarize the key events of the day based on unique topics and summaries
@@ -1640,7 +1642,7 @@ def generate_day_in_review(text, api_key, main_theme, model='gpt-4o-mini-2024-07
             {"role": "system", "content": f"You are an expert market analyst specializing in {main_theme}."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
     
     try:
