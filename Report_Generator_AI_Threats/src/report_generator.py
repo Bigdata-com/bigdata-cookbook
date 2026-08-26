@@ -299,7 +299,10 @@ class GenerateReport:
         # attributes (matching the old SDK's entity objects); the universe
         # DataFrame only has RP_ENTITY_ID / COMPANY_NAME columns, so adapt it here.
         list_entities = [
-            SimpleNamespace(id=row.RP_ENTITY_ID, name=row.COMPANY_NAME)
+            SimpleNamespace(
+                id=str(row.RP_ENTITY_ID).strip(),
+                name=str(row.COMPANY_NAME).strip(),
+            )
             for row in self.universe_df.itertuples()
         ]
 
@@ -350,16 +353,42 @@ class GenerateReport:
         self.logger.info("df_proactivity_by_company: %d rows", len(df_proactivity_by_company))
 
         # Merge risk and proactivity dataframes
-        dfr = df_risk_by_company[['entity_id', 'entity_name', 'topic_summary', 'n_documents']].copy()
-        dfr = dfr.rename(columns={'topic_summary': 'risk_summary', 'n_documents': 'n_documents_risk'})
-        dfp = df_proactivity_by_company[['entity_id', 'entity_name', 'topic_summary', 'n_documents']].copy()
-        dfp = dfp.rename(columns={'topic_summary': 'proactivity_summary', 'n_documents': 'n_documents_proactivity'})
-        df_by_company = dfr.merge(dfp, on=['entity_id', 'entity_name'], how='outer')
+        def _company_summary_frame(df: pd.DataFrame) -> pd.DataFrame:
+            if df.empty:
+                return pd.DataFrame(
+                    {
+                        "entity_id": [entity.id for entity in list_entities],
+                        "entity_name": [entity.name for entity in list_entities],
+                        "topic_summary": [None] * len(list_entities),
+                        "n_documents": [0] * len(list_entities),
+                    }
+                )
+            return df[["entity_id", "entity_name", "topic_summary", "n_documents"]].copy()
 
-        df_by_company['n_documents_risk'] = df_by_company['n_documents_risk'].fillna(0)
-        df_by_company['n_documents_proactivity'] = df_by_company['n_documents_proactivity'].fillna(0)
-        df_by_company['ai_disruption_risk_score'] = df_by_company['n_documents_risk']/df_by_company['n_documents_risk'].mean()
-        df_by_company['ai_proactivity_score'] = df_by_company['n_documents_proactivity']/df_by_company['n_documents_proactivity'].mean()
+        dfr = _company_summary_frame(df_risk_by_company)
+        dfr = dfr.rename(columns={"topic_summary": "risk_summary", "n_documents": "n_documents_risk"})
+        dfp = _company_summary_frame(df_proactivity_by_company)
+        dfp = dfp.rename(
+            columns={"topic_summary": "proactivity_summary", "n_documents": "n_documents_proactivity"}
+        )
+        df_by_company = dfr.merge(dfp, on=["entity_id", "entity_name"], how="outer")
+
+        df_by_company["n_documents_risk"] = df_by_company["n_documents_risk"].fillna(0)
+        df_by_company["n_documents_proactivity"] = df_by_company["n_documents_proactivity"].fillna(0)
+        risk_mean = df_by_company["n_documents_risk"].mean()
+        proactivity_mean = df_by_company["n_documents_proactivity"].mean()
+        if risk_mean > 0:
+            df_by_company["ai_disruption_risk_score"] = (
+                df_by_company["n_documents_risk"] / risk_mean
+            )
+        else:
+            df_by_company["ai_disruption_risk_score"] = 0.0
+        if proactivity_mean > 0:
+            df_by_company["ai_proactivity_score"] = (
+                df_by_company["n_documents_proactivity"] / proactivity_mean
+            )
+        else:
+            df_by_company["ai_proactivity_score"] = 0.0
         df_by_company['ai_proactivity_minus_disruption_risk_score'] = df_by_company['ai_proactivity_score'] - df_by_company['ai_disruption_risk_score']
 
         # Add concatanated quotes and document ids

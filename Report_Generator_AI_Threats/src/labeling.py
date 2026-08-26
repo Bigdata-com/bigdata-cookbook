@@ -8,6 +8,8 @@ from typing import Any
 import pandas as pd
 from openai import OpenAI
 
+from src.openai_utils import completion_token_params_for_model, sampling_params_for_model
+
 
 class SimpleLabeler:
     """Basic labeler using OpenAI structured outputs."""
@@ -44,8 +46,8 @@ class SimpleLabeler:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.0,
-                    max_tokens=50,
+                    **completion_token_params_for_model(self.model, 50),
+                    **sampling_params_for_model(self.model, temperature=0.0),
                 )
                 label = response.choices[0].message.content.strip().lower()
                 if label not in labels and label not in ["unassigned", "unclear"]:

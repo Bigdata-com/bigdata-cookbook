@@ -1,5 +1,7 @@
 from openai import OpenAI
 
+from src.openai_utils import sampling_params_for_model
+
 
 def topic_summary_by_company(text_to_analyze, model, number_of_reports, api_key, topic, entity_name, focus):
 
@@ -76,8 +78,8 @@ def topic_summary_by_company(text_to_analyze, model, number_of_reports, api_key,
                 "content": text_to_analyze
             }
         ],
-        response_format={ "type":"json_object"},
-        temperature=0
+        response_format={"type": "json_object"},
+        **sampling_params_for_model(model, temperature=0),
     )
     
     # Extract and process the response
