@@ -17,8 +17,19 @@ import pandas as pd
 from openai import AsyncOpenAI
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-MODEL_NAME = 'gpt-4o-mini'
+MODEL_NAME = 'gpt-5.6-luna'
 SEMAPHORE_COUNT = 1000
+
+
+def sampling_params_for_model(model: str, **params: object) -> dict[str, object]:
+    """Return sampling kwargs that ``model`` accepts.
+
+    ``gpt-5.6-luna`` only supports default sampling, so temperature, top_p,
+    seed, and penalty fields are omitted for luna models.
+    """
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
 
 UNKNOWN_LABEL = 'U'
 TARGET_ENTITY_MASK = 'Target Company'
@@ -144,14 +155,18 @@ async def make_request_with_schema(system_prompt, prompt, schema, semaphore, api
                         "content": prompt
                     }
                 ],
-                model="gpt-4o-mini",
-                temperature = 0,
-                top_p = 1,
-                frequency_penalty = 1,
-                presence_penalty = 1,
+                model=MODEL_NAME,
                 response_format={
                     "type": "json_schema",
-                    "json_schema": schema}
+                    "json_schema": schema,
+                },
+                **sampling_params_for_model(
+                    MODEL_NAME,
+                    temperature=0,
+                    top_p=1,
+                    frequency_penalty=1,
+                    presence_penalty=1,
+                ),
             )
             # Print or process the response
             r_str = response.model_dump()['choices'][0]['message']['content']
@@ -329,7 +344,8 @@ async def make_request(system_prompt, prompt, semaphore, api_key):
                     }
                 ],
                 model=MODEL_NAME,
-                response_format={"type": "json_object"}
+                response_format={"type": "json_object"},
+                **sampling_params_for_model(MODEL_NAME),
             )
             # Print or process the response
             r_str = response.model_dump()['choices'][0]['message']['content']

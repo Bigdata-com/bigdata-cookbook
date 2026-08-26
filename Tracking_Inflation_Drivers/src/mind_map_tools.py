@@ -21,7 +21,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 from IPython.display import HTML, display
 
-MODEL_NAME = 'gpt-4o-mini'
+MODEL_NAME = 'gpt-5.6-luna'
+
+
+def sampling_params_for_model(model: str, **params: object) -> dict[str, object]:
+    """Return sampling kwargs that ``model`` accepts (luna models omit sampling params)."""
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
 # Function to add line breaks
 def add_line_breaks(text, max_len=50):
     
@@ -260,27 +267,22 @@ def generate_theme_taxonomy(openai_api_key,
     client = openai.OpenAI(api_key = openai_api_key)
     
     response = client.chat.completions.create(
-      model = "gpt-4o-mini",
-      messages = [
+      model=MODEL_NAME,
+      messages=[
         {
           "role": "system",
           "content": system_prompt
         },
-        # {
-        #   "role": "user",
-        #   "content": main_theme
-        # },
-        # {
-        #   "role": "user",
-        #   "content": analyst_focus
-        # }
       ],
-      temperature = 0, # we want a small temperature
-      top_p = 1,
-      frequency_penalty = 0,
-      presence_penalty = 0,
-      seed = 123,
-      response_format = {"type": "json_object"}
+      response_format={"type": "json_object"},
+      **sampling_params_for_model(
+          MODEL_NAME,
+          temperature=0,
+          top_p=1,
+          frequency_penalty=0,
+          presence_penalty=0,
+          seed=123,
+      ),
     )
     
     tree_string = response.model_dump()['choices'][0]['message']['content'] 
