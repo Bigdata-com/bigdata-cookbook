@@ -2,12 +2,14 @@
 
 ## Automated Narrative Analysis and Mining Tool
 
+**MIGRATION NOTE**: This project has been migrated from `bigdata-client` and `bigdata-research-tools` (including the deprecated `NarrativeMiner` workflow) to REST API + `bigdata-smart-batching`. The notebook retains legacy imports with a migration banner; Python modules in `src/` are fully migrated.
+
 This project provides comprehensive narrative analysis and mining capabilities for financial and investment research. It's designed for analysts, portfolio managers, and investment professionals to systematically extract, analyze, and track narrative patterns across various data sources and market segments.
 
 ## Features
 
-- **Narrative extraction** and pattern recognition from unstructured data
-- **Sentiment analysis** and narrative sentiment tracking
+- **Narrative extraction** and pattern recognition from unstructured data using REST search
+- **Sentiment analysis** and narrative sentiment tracking via OpenAI
 - **Narrative evolution** and temporal analysis
 - **Automated narrative scoring** and ranking systems
 
@@ -78,6 +80,8 @@ This project provides comprehensive narrative analysis and mining capabilities f
    uv pip install jupyterlab
    ```
 
+   **Note**: Dependencies no longer include `bigdata-client` or `bigdata-research-tools`. Instead, use `bigdata-smart-batching` for search and OpenAI for labeling.
+
 4. **Set up credentials**:
    - Copy the example environment file:
      ```bash
@@ -85,10 +89,11 @@ This project provides comprehensive narrative analysis and mining capabilities f
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_bigdata_api_key
      OPENAI_API_KEY=your_openai_api_key
      ```
+   
+   **Migration change**: Use `BIGDATA_API_KEY` (not username/password) for REST API authentication.
 
 5. **Start JupyterLab**:
    ```bash
