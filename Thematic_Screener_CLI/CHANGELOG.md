@@ -4,10 +4,6 @@ All notable changes to Thematic Screener CLI are documented in this file.
 
 ## [Unreleased] — 2026-08-24
 
-### Changed
-
-- **Removed** legacy `Thematic_Screener/` notebook (deprecated `bigdata-research-tools` SDK + platform watchlists). Use this CLI, MCP, and notebooks instead.
-
 ### Added
 
 - **Derivatives taxonomy style** (`--taxonomy-style derivatives`): 1st / 2nd / 3rd hop mindmaps with theme-level Bigdata.com grounding (`--ground-with-bigdata`), CLI/MCP flags, and `grounding.json` / `derivative_preview.json`

@@ -12,15 +12,13 @@ A comprehensive collection of financial analysis tools and report generators bui
 
 ## Projects
 
-### 🔍 [Thematic Screener CLI](./Thematic_Screener_CLI/)
-**REST-based thematic screening CLI, MCP server, and derivative-hop notebooks**
+### 🔍 [Thematic Screener](./Thematic_Screener/)
+**Automated Thematic Analysis and Screening Tool**
 
-- Screen a CSV company universe against investment themes via Bigdata.com REST API and `bigdata-smart-batching`
-- **Exposure** or **derivatives** taxonomy (`--taxonomy-style derivatives` for 1st/2nd/3rd-hop mindmaps)
-- CLI, MCP server (`thematic-screener-mcp`), and client notebooks (`01` TSX oil, `02` EU parcel tariffs)
-- Risk-analyzer mode exports JSON compatible with the Bigdata Risk Analyzer app
-
-> **Note:** The legacy `Thematic_Screener` notebook (removed `bigdata-research-tools` SDK + platform watchlists) has been deleted from this repo. Use **Thematic_Screener_CLI** for all new work. See [docs: Thematic Screeners](https://docs.bigdata.com/use-cases/research-tools/screeners).
+- Thematic identification and categorization across multiple sectors
+- Automated screening based on thematic criteria
+- Theme tracking and evolution analysis
+- Investment opportunity identification through thematic lenses
 
 ### 📊 [Pricing Power Analysis](./Pricing_Power_Analysis/)
 **Automated Analysis of Pricing Power Narratives and Competitive Positioning**
@@ -346,10 +344,10 @@ bigdata-cookbook/
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
-├── Thematic_Screener_CLI/                            # Thematic screener CLI + MCP (REST)
-│   ├── notebooks/
+├── Thematic_Screener/                                # Thematic analysis tool
+│   ├── ThematicScreener.ipynb
 │   ├── src/
-│   ├── pyproject.toml
+│   ├── requirements.txt
 │   └── README.md
 ├── Narrative_Miners/                                 # Narrative analysis tool
 │   ├── NarrativeMiner.ipynb
