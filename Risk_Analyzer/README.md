@@ -154,8 +154,10 @@ The risk analyzer provides:
 
 ## Usage Notes
 
-- Ensure all credentials are properly configured in the `.env` file before running
+- Ensure all credentials are properly configured in the `.env` file before running:
+  - `BIGDATA_API_KEY`: Your Bigdata.com API key (required)
+  - `OPENAI_API_KEY`: Your OpenAI API key (required for LLM analysis)
 - The notebook should be run sequentially from top to bottom
 - Analysis results are displayed inline in the notebook
+- **Company Lists**: Provide companies as a CSV file with columns `RP_ENTITY_ID` (or `RP_COMPANY_ID`) and `COMPANY_NAME`, or as an explicit list of Bigdata entity IDs
 - Custom risk parameters can be modified in the notebook configuration
-- Graphviz installation is required for visualization features

@@ -522,25 +522,4 @@ def create_industry_analysis_heatmap(df, theme_columns, interactive=True):
         
         return plt.gcf()
 
-_intialization_sent = False 
-def notebook_initialized():
-    from importlib.metadata import version
-    from bigdata_client import Bigdata
-    from bigdata_client import tracking_services
-
-    try:
-        bigdata = Bigdata()
-        global _intialization_sent
-        if not _intialization_sent:
-            trace = tracking_services.TraceEvent(event_name = "BigdataCookbookExecution", 
-                       properties={"bigdataResearchToolsVersion": version("bigdata_research_tools"),
-                                    "bigdataClientVersion": version("bigdata-client"),
-                                   "cookbook_name": "RiskAnalyzer"
-                                  })
-            
-            tracking_services.send_trace(bigdata_client = bigdata, trace = trace)
-            _intialization_sent = True
-    except Exception as e:
-        pass
-        
-notebook_initialized()         
+# Tracking removed - migrated from bigdata-client SDK         
