@@ -32,8 +32,7 @@ This project provides comprehensive board management and monitoring capabilities
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key_here
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -85,8 +84,7 @@ This project provides comprehensive board management and monitoring capabilities
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key_here
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -111,7 +109,11 @@ Board_Management_Monitoring/
 ├── Board_Management_Monitoring.html     # Exported HTML version of the notebook
 ├── requirements.txt                    # Python dependencies
 ├── .env.example                       # Example environment variables
+├── scripts/
+│   └── smoke_test.py                  # REST migration smoke test
 ├── src/
+│   ├── bigdata_rest.py                # Bigdata.com REST helpers (X-API-KEY auth)
+│   ├── search_helper.py               # smart-batching universe search
 │   └── tool.py                        # Core board monitoring functionality
 ├── output/                            # Generated analysis outputs
 └── .venv/                             # Virtual environment (created during setup)
