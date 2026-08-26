@@ -2,7 +2,9 @@
 
 ## Automated Analysis of Pricing Power Narratives and Competitive Positioning
 
-This project provides comprehensive pricing power analysis tools that assess competitive positioning across company watchlists using unstructured data from news sources. It's designed for analysts, portfolio managers, and investment professionals to transform scattered pricing signals into quantified competitive intelligence.
+This project provides comprehensive pricing power analysis tools that assess competitive positioning across caller-supplied company lists (CSV with `RP_ENTITY_ID` + `COMPANY_NAME`) using unstructured data from news sources. It's designed for analysts, portfolio managers, and investment professionals to transform scattered pricing signals into quantified competitive intelligence.
+
+> **SDK migration:** Uses REST + `bigdata-smart-batching` + OpenAI. See [MIGRATION_NOTES.md](./MIGRATION_NOTES.md) and [Thematic_Screener_CLI](../Thematic_Screener_CLI/).
 
 ## Features
 
@@ -133,7 +135,10 @@ The pricing power analysis provides:
 
 ## Usage Notes
 
-- Ensure all credentials are properly configured in the `.env` file before running
+- Ensure all credentials are properly configured in the `.env` file before running:
+  - `BIGDATA_API_KEY`: Your Bigdata.com API key (required)
+  - `OPENAI_API_KEY`: Your OpenAI API key (required for LLM labeling)
 - The notebook should be run sequentially from top to bottom
 - Analysis results are displayed inline in the notebook
-- Custom company watchlists can be modified in the notebook configuration
+- **Company Lists**: Provide companies as a CSV file with columns `RP_ENTITY_ID` (or `RP_COMPANY_ID`) and `COMPANY_NAME`, or as an explicit list of Bigdata entity IDs
+- Custom company universes can be modified in the notebook configuration
