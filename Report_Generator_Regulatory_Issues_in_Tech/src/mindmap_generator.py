@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import os
+import re
 from typing import Any
 
 from openai import OpenAI
+
+from src.openai_utils import sampling_params_for_model
 
 
 class ThemeTree:
@@ -16,7 +20,7 @@ class ThemeTree:
 
     def get_terminal_label_summaries(self) -> dict[str, str]:
         """Extract leaf node labels -> summaries."""
-        results = {}
+        results: dict[str, str] = {}
 
         def traverse(node: dict[str, Any]) -> None:
             if not node.get("Children"):
@@ -32,12 +36,17 @@ class ThemeTree:
         return results
 
 
-def generate_theme_tree(main_theme: str, focus: str) -> ThemeTree:
+def generate_theme_tree(
+    main_theme: str,
+    focus: str,
+    model: str = "gpt-5.6-luna",
+) -> ThemeTree:
     """Generate a simple theme taxonomy using OpenAI (replaces research-tools).
 
     Args:
         main_theme: The general theme (e.g., "Regulatory Issues")
         focus: Specific focus area (e.g., "Data Privacy", "Antitrust")
+        model: OpenAI model id for taxonomy generation
 
     Returns:
         ThemeTree with structured hierarchy
@@ -54,17 +63,12 @@ def generate_theme_tree(main_theme: str, focus: str) -> ThemeTree:
     )
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
             response_format={"type": "json_object"},
+            **sampling_params_for_model(model, temperature=0.3),
         )
-        import json
-        import re
-
         raw = response.choices[0].message.content.strip()
-        # Defensive: strip ```json ... ``` fences some models still add even
-        # when asked for raw JSON / json_object mode.
         fenced = re.match(r"^```(?:json)?\s*(.*?)\s*```$", raw, re.DOTALL)
         if fenced:
             raw = fenced.group(1).strip()
@@ -73,7 +77,6 @@ def generate_theme_tree(main_theme: str, focus: str) -> ThemeTree:
             raise ValueError("Theme tree missing required Label/Summary fields")
         return ThemeTree(tree_dict)
     except Exception:
-        # Fallback to simple tree
         return ThemeTree(
             {
                 "Label": f"{main_theme} in {focus}",

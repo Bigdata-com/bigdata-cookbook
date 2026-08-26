@@ -1,5 +1,7 @@
 from openai import OpenAI
 
+from src.openai_utils import sampling_params_for_model
+
 
 def topic_condense_by_company(text_to_analyze, model, api_key, company_name):
     # Create the prompt
@@ -33,18 +35,17 @@ def topic_condense_by_company(text_to_analyze, model, api_key, company_name):
                 "content": text_to_analyze
             }
         ],
-        response_format={ "type":"json_object"},
-        temperature=0
+        response_format={"type": "json_object"},
+        **sampling_params_for_model(model, temperature=0),
     )
-    
-    # Extract and process the response
+
     summary = response.model_dump()
 
     try:
-        summary = eval(summary['choices'][0]['message']['content'])['sentence']
-    except:
-        summary = ''
-    
+        summary = eval(summary["choices"][0]["message"]["content"])["sentence"]
+    except Exception:
+        summary = ""
+
     return summary
 
 
@@ -94,18 +95,17 @@ def response_summary_by_company(text_to_analyze, model, number_of_reports, api_k
                 "content": text_to_analyze
             }
         ],
-        response_format={ "type":"json_object"},
-        temperature=0
+        response_format={"type": "json_object"},
+        **sampling_params_for_model(model, temperature=0),
     )
-    
-    # Extract and process the response
+
     summary = response.model_dump()
 
     try:
-        summary = eval(summary['choices'][0]['message']['content'])['summary']
-    except:
-        summary = ''
-    
+        summary = eval(summary["choices"][0]["message"]["content"])["summary"]
+    except Exception:
+        summary = ""
+
     return summary
 
 
@@ -148,16 +148,15 @@ def old_response_summary_by_company(text_to_analyze, model, number_of_reports, a
                 "content": text_to_analyze
             }
         ],
-        response_format={ "type":"json_object"},
-        temperature=0
+        response_format={"type": "json_object"},
+        **sampling_params_for_model(model, temperature=0),
     )
-    
-    # Extract and process the response
+
     summary = response.model_dump()
 
     try:
-        summary = eval(summary['choices'][0]['message']['content'])['summary']
-    except:
-        summary = ''
-    
+        summary = eval(summary["choices"][0]["message"]["content"])["summary"]
+    except Exception:
+        summary = ""
+
     return summary

@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import os
-from typing import Any
 
 import pandas as pd
 from openai import OpenAI
+
+from src.openai_utils import completion_token_params_for_model, sampling_params_for_model
 
 
 class SimpleLabeler:
     """Basic labeler using OpenAI structured outputs."""
 
-    def __init__(self, model: str = "gpt-4o-mini", api_key: str | None = None) -> None:
+    def __init__(self, model: str = "gpt-5.6-luna", api_key: str | None = None) -> None:
         self.model = model
         self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
 
@@ -32,8 +33,6 @@ class SimpleLabeler:
         Returns:
             DataFrame with 'label' column
         """
-        # Case-insensitive lookup back to the canonical (as-supplied) label
-        # spelling — the model's raw text is normalized before matching.
         labels_by_lower = {label.lower(): label for label in labels}
 
         results = []
@@ -48,8 +47,8 @@ class SimpleLabeler:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
-                    temperature=0.0,
-                    max_tokens=50,
+                    **completion_token_params_for_model(self.model, 50),
+                    **sampling_params_for_model(self.model, temperature=0.0),
                 )
                 raw = response.choices[0].message.content.strip()
                 normalized = raw.strip(" .\"'").lower()
@@ -58,8 +57,6 @@ class SimpleLabeler:
                 elif normalized in ("unassigned", "unclear"):
                     label = normalized
                 else:
-                    # Fall back to substring containment in case the model
-                    # wraps the label in extra words (e.g. "Label: GDPR").
                     match = next(
                         (
                             canonical

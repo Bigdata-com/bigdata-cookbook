@@ -1,5 +1,7 @@
 from openai import OpenAI
 
+from src.openai_utils import sampling_params_for_model
+
 
 def topic_uncertainty_by_company(text_to_analyze, model, number_of_reports, api_key, topic, entity_name):
     # Create the prompt for determining market impact and magnitude   
@@ -40,8 +42,8 @@ def topic_uncertainty_by_company(text_to_analyze, model, number_of_reports, api_
                 "content": text_to_analyze
             }
         ],
-        response_format={ "type":"json_object"},
-        temperature=0
+        response_format={"type": "json_object"},
+        **sampling_params_for_model(model, temperature=0),
     )
 
     uncertainty_dict = response.model_dump()
@@ -94,8 +96,8 @@ def topic_risk_by_company(text_to_analyze, model, number_of_reports, api_key, to
                 "content": text_to_analyze
             }
         ],
-        response_format={ "type":"json_object"},
-        temperature=0
+        response_format={"type": "json_object"},
+        **sampling_params_for_model(model, temperature=0),
     )
 
     risk_magnitude_dict = response.model_dump()
@@ -148,22 +150,18 @@ def topic_summary_by_company(text_to_analyze, model, number_of_reports, api_key,
                 "content": text_to_analyze
             }
         ],
-        response_format={ "type":"json_object"},
-        temperature=0
+        response_format={"type": "json_object"},
+        **sampling_params_for_model(model, temperature=0),
     )
-    
-    # Extract and process the response
+
     summary = response.model_dump()
 
     try:
-        summary = eval(summary['choices'][0]['message']['content'])['summary']
-    except:
-        summary = ''
-    
+        summary = eval(summary["choices"][0]["message"]["content"])["summary"]
+    except Exception:
+        summary = ""
+
     return summary
-
-
-
 
 
 def topic_summary(text_to_analyze, model, number_of_reports, api_key, main_theme, topic):
@@ -207,16 +205,15 @@ def topic_summary(text_to_analyze, model, number_of_reports, api_key, main_theme
                 "content": text_to_analyze
             }
         ],
-        response_format={ "type":"json_object"},
-        temperature=0
+        response_format={"type": "json_object"},
+        **sampling_params_for_model(model, temperature=0),
     )
-    
-    # Extract and process the response
+
     summary = response.model_dump()
 
     try:
-        summary = eval(summary['choices'][0]['message']['content'])['summary']
-    except:
-        summary = ''
-    
+        summary = eval(summary["choices"][0]["message"]["content"])["summary"]
+    except Exception:
+        summary = ""
+
     return summary
