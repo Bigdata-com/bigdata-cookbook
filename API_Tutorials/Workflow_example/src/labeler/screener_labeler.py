@@ -19,18 +19,26 @@ import pandas as pd
 from openai import OpenAI
 
 VALID_IMPACTS = ("Positive", "Negative", "Neutral", "Unclear")
+DEFAULT_MODEL = "gpt-5.6-luna"
+
+
+def _sampling_params_for_model(model: str, **params: object) -> dict[str, object]:
+    """Luna models only support default sampling — omit temperature/top_p/etc."""
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
 
 
 class Labeler:
     """Validates whether text chunks relate to a theme and their directional impact."""
 
-    def __init__(self, llm_model_config: str = "openai::gpt-4o-mini") -> None:
+    def __init__(self, llm_model_config: str = f"openai::{DEFAULT_MODEL}") -> None:
         provider, _, model = llm_model_config.partition("::")
         if provider != "openai":
             raise NotImplementedError(
                 f"Unsupported llm_model_config provider: {provider!r} (only 'openai' is supported)"
             )
-        self.model = model or "gpt-4o-mini"
+        self.model = model or DEFAULT_MODEL
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     def _label_text(self, main_theme: str, text: str) -> dict:
@@ -52,7 +60,7 @@ class Labeler:
                     {"role": "user", "content": text or ""},
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.0,
+                **_sampling_params_for_model(self.model, temperature=0.0),
             )
             data = json.loads(response.choices[0].message.content)
             is_theme_related = bool(data.get("is_theme_related", False))

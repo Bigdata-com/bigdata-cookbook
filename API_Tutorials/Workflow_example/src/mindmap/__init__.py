@@ -17,7 +17,14 @@ from dataclasses import dataclass, field
 
 from openai import OpenAI
 
-DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_MODEL = "gpt-5.6-luna"
+
+
+def _sampling_params_for_model(model: str, **params: object) -> dict[str, object]:
+    """Luna models only support default sampling — omit temperature/top_p/etc."""
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
 
 
 @dataclass
@@ -86,7 +93,7 @@ def _generate_tree(
             {"role": "user", "content": f"Main theme: {main_theme}"},
         ],
         response_format={"type": "json_object"},
-        temperature=0.2,
+        **_sampling_params_for_model(model, temperature=0.2),
     )
     data = json.loads(response.choices[0].message.content)
     return _parse_tree(data)
