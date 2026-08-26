@@ -30,6 +30,7 @@ def search_credit_ratings(
     Returns:
         DataFrame with search results.
     """
+    basket_filtered = kwargs.pop("basket_filtered_entities", False)
     return run_universe_search(
         company_ids=company_ids,
         queries=queries,
@@ -37,5 +38,6 @@ def search_credit_ratings(
         end_date=end_date,
         scope=scope,
         id_to_name=id_to_name,
+        basket_filtered_entities=basket_filtered,
         **kwargs,
     )

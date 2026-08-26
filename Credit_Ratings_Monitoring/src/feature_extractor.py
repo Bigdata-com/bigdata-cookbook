@@ -9,12 +9,15 @@ from typing import Any, Optional
 import pandas as pd
 from openai import OpenAI
 
+from .constants import DEFAULT_LLM_MODEL
+from .openai_sampling import sampling_params_for_model
+
 
 class FeatureExtractor:
 
     def __init__(
         self,
-        llm_model: str = "gpt-4o-mini",
+        llm_model: str = DEFAULT_LLM_MODEL,
         unknown_label: str = "unclear",
         temperature: float = 0,
         api_key: Optional[str] = None,
@@ -352,10 +355,13 @@ These examples provide illustrations of extracting all necessary information, fo
                     model=self.llm_model,
                     messages=[
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_content}
+                        {"role": "user", "content": user_content},
                     ],
-                    temperature=self.temperature,
                     response_format={"type": "json_object"},
+                    **sampling_params_for_model(
+                        self.llm_model,
+                        temperature=self.temperature,
+                    ),
                 )
                 content = response.choices[0].message.content
                 return {"index": prompt_data["index"], "response": content}

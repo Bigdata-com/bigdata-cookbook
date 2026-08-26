@@ -10,20 +10,22 @@ from typing import Any, Optional
 import pandas as pd
 from openai import OpenAI
 
+from .constants import DEFAULT_LLM_MODEL
+from .openai_sampling import sampling_params_for_model
+
 
 class SummaryGenerator:
     """
     A class to generate summaries and reports from credit rating data.
     
     This class encapsulates the functionality for processing credit rating data,
-    generating summaries, and creating structured reports through LLM processing.
-    Uses the bigdata_research_tools.llm framework for LLM interactions with
+    generating summaries, and creating structured reports through OpenAI with
     specialized handling for token limits through text splitting.
     """
 
     def __init__(
         self,
-        llm_model: str = "gpt-4o-mini",
+        llm_model: str = DEFAULT_LLM_MODEL,
         temperature: float = 0,
         max_workers: int = 30,
         api_key: str | None = None,
@@ -251,11 +253,15 @@ You are tasked with generating a comprehensive timeline report based on input te
     
     def _get_response(self, messages: list[dict[str, str]], **kwargs) -> str:
         """Call OpenAI (sync) and return response text."""
+        sampling_kwargs = sampling_params_for_model(
+            self.llm_model,
+            temperature=self.temperature,
+        )
         response = self.client.chat.completions.create(
             model=self.llm_model,
             messages=messages,
-            temperature=self.temperature,
-            **kwargs
+            **sampling_kwargs,
+            **kwargs,
         )
         return response.choices[0].message.content
     

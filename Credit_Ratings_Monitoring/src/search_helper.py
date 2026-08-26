@@ -37,6 +37,7 @@ def run_universe_search(
     chunk_percentage: float = 0.05,
     requests_per_minute: int = 350,
     id_to_name: dict[str, str] | None = None,
+    basket_filtered_entities: bool = True,
 ) -> pd.DataFrame:
     """Search a company universe for each query text; return chunk-level rows."""
     category = CATEGORY_BY_SCOPE.get(scope, CATEGORY_BY_SCOPE["all"])
@@ -59,7 +60,7 @@ def run_universe_search(
             search_plan=plan,
             chunk_percentage=chunk_percentage,
             requests_per_minute=requests_per_minute,
-            basket_filtered_entities=True,
+            basket_filtered_entities=basket_filtered_entities,
         )
         for document in deduplicate_documents(raw):
             doc_id = document.get("id", "")
