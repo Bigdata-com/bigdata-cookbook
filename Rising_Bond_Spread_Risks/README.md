@@ -1,5 +1,7 @@
 # Rising Bond Spread Risks
 
+> **SDK Migration**: This project no longer uses `bigdata-client` or `bigdata-research-tools`. Use `src/bigdata_rest.py` and `src/search_helper.py` with your `BIGDATA_API_KEY`. Company universes are CSV files (RP_ENTITY_ID, COMPANY_NAME). Advanced features like entity sentiment and risk tree generation require custom implementation.
+
 ## Analyzing Spillover Risks from Rising Bond Spreads in Western Europe
 
 This workflow identifies and quantifies sovereign exposure to bond market vulnerabilities and financial contagion across Western European nations. It uses Bigdata Research Tools to create a risk taxonomy, retrieve and label news content, calculate country-level risk exposure, and generate interactive dashboards with AI-powered narrative summaries.
