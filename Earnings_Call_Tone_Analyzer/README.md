@@ -1,6 +1,6 @@
 # Earnings Call Tone Analyzer
 
-Automated management tone scoring from earnings call transcripts. Uses [Bigdata.com](https://bigdata.com) for transcript retrieval and OpenAI (`gpt-5.4-nano`) for NLP-based sentiment analysis.
+Automated management tone scoring from earnings call transcripts. Uses [Bigdata.com](https://bigdata.com) for transcript retrieval and OpenAI (`gpt-5.6-luna`) for NLP-based sentiment analysis.
 
 Built for portfolio managers and equity analysts who want a standardized, repeatable read on management tone across a large universe — currently the Russell 1000, with the ambition to scale to MSCI ACWI.
 
@@ -49,7 +49,7 @@ Each transcript goes through a two-layer hybrid scoring process:
 
 These numbers are objective, reproducible, and auditable — the same transcript always produces the same counts.
 
-**Layer 2 — LLM contextual interpretation.** The transcript and the Layer 1 word-count statistics are passed together to OpenAI `gpt-5.4-nano`. The model's job is not to redo the counting but to interpret context that raw word counts miss:
+**Layer 2 — LLM contextual interpretation.** The transcript and the Layer 1 word-count statistics are passed together to OpenAI `gpt-5.6-luna`. The model's job is not to redo the counting but to interpret context that raw word counts miss:
 1. **Contextual sentiment** — "revenue declined" in a risk disclaimer is different from "revenue declined" in the CEO's opening remarks
 2. **Forward-looking language** strength (accelerating, expanding vs. cautious, uncertain)
 3. **Hedging and uncertainty** patterns beyond single-word detection
@@ -200,4 +200,4 @@ The relative ranking of companies is preserved (Pearson r = 0.72, Spearman ρ = 
 ## Data sources
 
 - **Transcripts**: [Bigdata.com](https://bigdata.com) — earnings call transcripts via Search + Fetch Document APIs, with entity-level filtering and full annotated document retrieval
-- **Tone scoring**: OpenAI `gpt-5.4-nano` with Loughran-McDonald financial sentiment framework
+- **Tone scoring**: OpenAI `gpt-5.6-luna` with Loughran-McDonald financial sentiment framework

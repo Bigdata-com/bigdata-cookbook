@@ -29,6 +29,17 @@ from openai import AsyncOpenAI
 from src.bigdata_rest import BigdataRestClient
 
 load_dotenv()
+
+
+def sampling_params_for_model(model: str, **params: object) -> dict[str, object]:
+    """Return sampling kwargs that ``model`` accepts.
+
+    ``gpt-5.6-luna`` only supports default sampling, so temperature, top_p,
+    seed, and penalty fields are omitted for luna models.
+    """
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -38,7 +49,7 @@ log = logging.getLogger(__name__)
 BIGDATA_API_KEY = os.environ["BIGDATA_API_KEY"]
 OPENAI_KEY = os.environ["OPENAI_API_KEY"]
 
-MODEL = "gpt-5.4-nano"
+MODEL = "gpt-5.6-luna"
 
 # ── Rate-limit / concurrency knobs ──────────────────────────────────────────
 BIGDATA_RPM = 500            # Bigdata: 500 queries/min
@@ -301,7 +312,7 @@ def load_universe(csv_path: str, limit: int | None = None) -> list[str]:
 class ToneAnalyzer:
     """Orchestrates the async pipeline with proper rate limiting."""
 
-    # OpenAI pricing (gpt-5.4-nano)
+    # OpenAI pricing (gpt-5.6-luna; conservative estimates)
     OAI_INPUT_COST_PER_M = 0.20   # $/1M input tokens
     OAI_OUTPUT_COST_PER_M = 1.25  # $/1M output tokens
 
@@ -396,8 +407,8 @@ class ToneAnalyzer:
                     model=MODEL,
                     messages=messages,
                     response_format={"type": "json_object"},
-                    temperature=0.1,
                     max_completion_tokens=max_completion_tokens,
+                    **sampling_params_for_model(MODEL, temperature=0.1),
                 )
                 if resp.usage:
                     async with self._cost_lock:
