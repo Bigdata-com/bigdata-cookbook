@@ -196,6 +196,13 @@ class CompanyResponseProcessor:
         ]
         
         # Ensure there is a pre-existing topic summary from df_by_company.
+        if df_by_company.empty or 'entity_id' not in df_by_company.columns:
+            self.logger.warning(
+                "No topic summaries available for entity '%s' and topic '%s'",
+                entity.name,
+                topic,
+            )
+            return None
         company_rows = df_by_company.loc[
             (df_by_company.entity_id == entity.id) & (df_by_company.topic == topic)
         ]
@@ -311,7 +318,11 @@ class CompanyResponseProcessor:
         valid_results = [res for res in results if res is not None]
         if not valid_results:
             self.logger.warning("No response data generated; returning an empty DataFrame.")
-            return pd.DataFrame()
+            # Keep the expected schema so downstream merges on these columns
+            # (e.g. in GenerateReport.extract_mitigation_plan_v2) don't KeyError.
+            return pd.DataFrame(
+                columns=['entity_id', 'entity_name', 'topic', 'response_summary', 'n_response_documents']
+            )
         
         final_df = pd.concat(valid_results, ignore_index=True)
         

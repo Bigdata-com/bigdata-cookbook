@@ -1,5 +1,6 @@
 from openai import OpenAI
 
+from src.openai_compat import sampling_params_for_model
 
 def topic_condense_by_company(text_to_analyze, model, api_key, company_name):
     # Create the prompt
@@ -34,7 +35,7 @@ def topic_condense_by_company(text_to_analyze, model, api_key, company_name):
             }
         ],
         response_format={ "type":"json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
     
     # Extract and process the response
@@ -94,7 +95,7 @@ def response_summary_by_company(text_to_analyze, model, number_of_reports, api_k
             }
         ],
         response_format={ "type":"json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
     
     # Extract and process the response
@@ -148,7 +149,7 @@ def old_response_summary_by_company(text_to_analyze, model, number_of_reports, a
             }
         ],
         response_format={ "type":"json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
     
     # Extract and process the response

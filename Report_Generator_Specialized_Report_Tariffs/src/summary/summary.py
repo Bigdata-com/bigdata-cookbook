@@ -386,7 +386,13 @@ class TopicSummarizerCompany:
         df_list = [df for df in results if df is not None]
         if not df_list:
             self.logger.warning("No data was processed; returning an empty DataFrame.")
-            return pd.DataFrame()
+            return pd.DataFrame(
+                columns=[
+                    'entity_id', 'entity_name', 'topic', 'topic_summary',
+                    'risk_magnitude', 'risk_summary', 'uncertainty',
+                    'uncertainty_explanation', 'n_documents',
+                ]
+            )
 
         df_by_company = pd.concat(df_list, ignore_index=True)
 

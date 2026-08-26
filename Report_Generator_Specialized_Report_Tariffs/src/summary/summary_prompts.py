@@ -1,5 +1,6 @@
 from openai import OpenAI
 
+from src.openai_compat import sampling_params_for_model
 
 def topic_uncertainty_by_company(text_to_analyze, model, number_of_reports, api_key, topic, entity_name):
     # Create the prompt for determining market impact and magnitude   
@@ -41,7 +42,7 @@ def topic_uncertainty_by_company(text_to_analyze, model, number_of_reports, api_
             }
         ],
         response_format={ "type":"json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
 
     uncertainty_dict = response.model_dump()
@@ -95,7 +96,7 @@ def topic_risk_by_company(text_to_analyze, model, number_of_reports, api_key, to
             }
         ],
         response_format={ "type":"json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
 
     risk_magnitude_dict = response.model_dump()
@@ -148,7 +149,7 @@ def topic_summary_by_company(text_to_analyze, model, number_of_reports, api_key,
             }
         ],
         response_format={ "type":"json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
     
     # Extract and process the response
@@ -205,7 +206,7 @@ def topic_summary(text_to_analyze, model, number_of_reports, api_key, main_theme
             }
         ],
         response_format={ "type":"json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
     
     # Extract and process the response
