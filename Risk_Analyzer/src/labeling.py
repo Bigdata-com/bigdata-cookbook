@@ -14,8 +14,19 @@ import os
 import pandas as pd
 from openai import OpenAI
 
-DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_MODEL = "gpt-5.6-luna"
 NOT_RELEVANT = "Not Relevant"
+
+
+def sampling_params_for_model(model: str, **params: object) -> dict[str, object]:
+    """Return sampling kwargs that ``model`` accepts.
+
+    ``gpt-5.6-luna`` only supports default sampling, so temperature, top_p,
+    seed, and penalty fields are omitted for luna models.
+    """
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
 
 
 def _client(client: OpenAI | None = None) -> OpenAI:
@@ -40,7 +51,7 @@ Return ONLY a JSON array of {n} short risk scenario descriptions (each one sente
     response = _client(client).chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.7,
+        **sampling_params_for_model(model, temperature=0.7),
     )
     text = (response.choices[0].message.content or "").strip()
     if text.startswith("```json"):
@@ -96,8 +107,8 @@ Return ONLY a JSON object like:
             response = oai.chat.completions.create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0,
                 response_format={"type": "json_object"},
+                **sampling_params_for_model(model, temperature=0),
             )
             payload = json.loads(response.choices[0].message.content or "{}")
             label = str(payload.get("label", NOT_RELEVANT))
