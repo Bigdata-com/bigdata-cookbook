@@ -7,7 +7,7 @@ import openai
 from .openai_compat import sampling_params_for_model
 
 class LexiconGenerator:
-    def __init__(self, openai_key: str, model: str="gpt-4o", seeds: list[int]=None):
+    def __init__(self, openai_key: str, model: str="gpt-5.6-luna", seeds: list[int]=None):
         self.openai_key = openai_key
         self.model = model
         if seeds is None:
