@@ -1,5 +1,7 @@
 # Liquid Cooling Market Watch
 
+> **SDK Migration**: This project no longer uses `bigdata-client` or `bigdata-research-tools`. Use `src/bigdata_rest.py` and `src/search_helper.py` with your `BIGDATA_API_KEY`. Company universes are CSV files (RP_ENTITY_ID, COMPANY_NAME).
+
 ## Automated Analysis of Liquid Cooling Technology Providers and Adopters
 
 This project provides comprehensive liquid cooling ecosystem analysis tools that identify technology providers, track customer adoption patterns, and map provider-customer relationships using unstructured data from news sources. It's designed for technology analysts, infrastructure investors, and industry professionals to transform scattered technology signals into quantified market intelligence.
