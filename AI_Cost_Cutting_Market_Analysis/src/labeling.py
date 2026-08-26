@@ -16,6 +16,39 @@ import hashlib
 import pickle
 from pathlib import Path
 
+DEFAULT_LABELING_MODEL = "gpt-5.6-luna"
+
+
+def sampling_params_for_model(model: str, **params: Any) -> dict[str, Any]:
+    """Return sampling kwargs that ``model`` accepts.
+
+    ``gpt-5.6-luna`` only supports default sampling, so temperature, top_p,
+    seed, and penalty fields are omitted for luna models.
+    """
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
+
+
+def chat_completion_parameters(
+    model: str = DEFAULT_LABELING_MODEL,
+    *,
+    temperature: float = 0.0,
+    response_format: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Build OpenAI chat completion kwargs with luna-safe sampling."""
+    params: dict[str, Any] = {"model": model}
+    params.update(
+        sampling_params_for_model(
+            model,
+            temperature=temperature,
+        )
+    )
+    if response_format is not None:
+        params["response_format"] = response_format
+    return params
+
+
 # ==============================================================================
 # ORIGINAL IMPLEMENTATION - EXACTLY AS IN THE WORKFLOW
 # ==============================================================================
@@ -230,10 +263,7 @@ async def async_extract_label(
         openai_api_key: str,
         path_call_hash_location: str,
         path_result_hash_location: str,
-        parameters: dict = {
-            'model': "gpt-3.5-turbo-1106",
-            'temperature': 0,
-            'response_format': {'type': 'json_object'}},
+        parameters: dict | None = None,
         masked: bool = False,
         sentence_column: str = 'text',
         context_window_size: int = 16385,
@@ -259,7 +289,12 @@ async def async_extract_label(
         }
     ]
 
-    model = parameters['model']
+    if parameters is None:
+        parameters = chat_completion_parameters(
+            response_format={"type": "json_object"},
+        )
+
+    model = parameters["model"]
     sentences_unique = sentences.copy().drop_duplicates(
         subset=['rp_entity_id', sentence_column])
     
@@ -356,11 +391,10 @@ async def process_sentences(sentences, sentence_column_2, masked_2, system_promp
                 batch_size=batch_size,
                 concurrency=200,  # defines the number of calls made simultaneously
                 openai_api_key=open_ai_credentials,
-                parameters={
-                    'model': model,
-                    'temperature': 0,
-                    'response_format': {'type': 'json_object'}
-                }
+                parameters=chat_completion_parameters(
+                    model=model,
+                    response_format={"type": "json_object"},
+                ),
             )
             
             sentences_labels_2 = sentences_labels_2
@@ -408,7 +442,7 @@ def run_prompt(sentences, sentence_column_2, masked_2, system_prompt_ai_classifi
         raise
 
 
-def compute_costs(df, text_column, system_prompt, model='gpt-4o-mini-2024-07-18'):
+def compute_costs(df, text_column, system_prompt, model=DEFAULT_LABELING_MODEL):
     """
     Estimate costs for DataFrame processing.
     """
@@ -517,7 +551,7 @@ Label: N
 
 def run_liquid_cooling_prompt(sentences, sentence_column_2='text', masked_2=False, 
                               path_training='./output/', n_expected_response_tokens=100, 
-                              batch_size=10, model='gpt-4o-mini-2024-07-18', open_ai_credentials=None):
+                              batch_size=10, model=DEFAULT_LABELING_MODEL, open_ai_credentials=None):
     """
     Convenience wrapper function for liquid cooling classification using the original workflow prompt.
     
@@ -531,7 +565,7 @@ def run_liquid_cooling_prompt(sentences, sentence_column_2='text', masked_2=Fals
         path_training (str): Path to save intermediate results (default: './output/')
         n_expected_response_tokens (int): Number of expected tokens in response (default: 100)
         batch_size (int): Batch size for processing (default: 10)
-        model (str): OpenAI model name to use (default: 'gpt-4o-mini-2024-07-18')
+        model (str): OpenAI model name to use (default: ``gpt-5.6-luna``)
         open_ai_credentials (str): OpenAI API key
     
     Returns:
@@ -568,7 +602,7 @@ def run_liquid_cooling_prompt(sentences, sentence_column_2='text', masked_2=Fals
 
 def run_ai_cost_cutting_prompt(sentences, sentence_column_2='text', masked_2=False, 
                                path_training='./output/', n_expected_response_tokens=100, 
-                               batch_size=10, model='gpt-4o-mini-2024-07-18', open_ai_credentials=None):
+                               batch_size=10, model=DEFAULT_LABELING_MODEL, open_ai_credentials=None):
     """
     Convenience wrapper function for AI cost cutting classification using specialized prompt.
     
@@ -582,7 +616,7 @@ def run_ai_cost_cutting_prompt(sentences, sentence_column_2='text', masked_2=Fal
         path_training (str): Path to save intermediate results (default: './output/')
         n_expected_response_tokens (int): Number of expected tokens in response (default: 100)
         batch_size (int): Batch size for processing (default: 10)
-        model (str): OpenAI model name to use (default: 'gpt-4o-mini-2024-07-18')
+        model (str): OpenAI model name to use (default: ``gpt-5.6-luna``)
         open_ai_credentials (str): OpenAI API key
     
     Returns:
