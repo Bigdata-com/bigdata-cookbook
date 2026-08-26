@@ -196,6 +196,13 @@ class CompanyResponseProcessor:
         ]
         
         # Ensure there is a pre-existing topic summary from df_by_company.
+        if df_by_company.empty or 'entity_id' not in df_by_company.columns:
+            self.logger.warning(
+                "No topic summaries available for entity '%s' and topic '%s'",
+                entity.name,
+                topic,
+            )
+            return None
         company_rows = df_by_company.loc[
             (df_by_company.entity_id == entity.id) & (df_by_company.topic == topic)
         ]

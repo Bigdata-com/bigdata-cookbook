@@ -2,6 +2,17 @@ import tiktoken
 from typing import List, Optional
 import logging
 
+
+def _encoding_for_model(model_name: str) -> tiktoken.Encoding:
+    """Return a tiktoken encoder, falling back for newer OpenAI model ids."""
+    try:
+        return tiktoken.encoding_for_model(model_name)
+    except KeyError:
+        if "luna" in model_name.lower() or model_name.startswith("gpt-5"):
+            return tiktoken.get_encoding("o200k_base")
+        return tiktoken.get_encoding("cl100k_base")
+
+
 class TokenManager:
     """
     Manages token counting and text splitting for large language model API calls.
@@ -29,7 +40,7 @@ class TokenManager:
             verbose (bool): Enable detailed logging
         """
         # Initialize the tokenizer for the specified model
-        self.encoder = tiktoken.encoding_for_model(model_name)
+        self.encoder = _encoding_for_model(model_name)
         self.max_tokens = max_tokens
         self.timeout = timeout
         self.verbose = verbose

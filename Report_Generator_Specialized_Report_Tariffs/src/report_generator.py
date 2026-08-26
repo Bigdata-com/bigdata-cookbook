@@ -228,11 +228,25 @@ class GenerateReport:
         df_transcripts_labeled = label_processor.run_label_process(
             df_sentences=df_sentences_transcripts, import_from_path=import_from_path+'/df_transcripts_labeled' if import_from_path else None, export_to_path=export_to_path+'/df_transcripts_labeled' if export_to_path else None)        
 
-        # Concatenate Filings and Transcripts dataframes
-        df_filings_labeled['doc_type'] = 'Filings'
-        df_transcripts_labeled['doc_type'] = 'Transcripts'
-        df_ft_labeled = pd.concat([df_filings_labeled, df_transcripts_labeled])
-        df_ft_labeled = df_ft_labeled.reset_index(drop=True)
+        if df_filings_labeled is None:
+            df_filings_labeled = pd.DataFrame()
+        if df_transcripts_labeled is None:
+            df_transcripts_labeled = pd.DataFrame()
+
+        labeled_parts: list[pd.DataFrame] = []
+        if not df_filings_labeled.empty:
+            df_filings_labeled = df_filings_labeled.copy()
+            df_filings_labeled['doc_type'] = 'Filings'
+            labeled_parts.append(df_filings_labeled)
+        if not df_transcripts_labeled.empty:
+            df_transcripts_labeled = df_transcripts_labeled.copy()
+            df_transcripts_labeled['doc_type'] = 'Transcripts'
+            labeled_parts.append(df_transcripts_labeled)
+        df_ft_labeled = (
+            pd.concat(labeled_parts, ignore_index=True)
+            if labeled_parts
+            else pd.DataFrame()
+        )
 
         # Run the process to extract company's mitigation plan from the documents (filings and transcripts)
         response_processor = CompanyResponseProcessor(model=self.llm_model, api_key=self.api_key, verbose=True)

@@ -11,8 +11,9 @@ from openai import AsyncOpenAI
 
 from src.label.label_prompts import compose_labeling_system_prompt
 from src.mindmap.themes import extract_terminal_summaries, stringify_label_summaries
+from src.openai_compat import DEFAULT_LLM_MODEL
 
-MODEL_NAME = 'gpt-4o-mini'
+MODEL_NAME = DEFAULT_LLM_MODEL
 SEMAPHORE_COUNT = 1000
 
 UNKNOWN_LABEL = 'unclear'

@@ -7,6 +7,8 @@ from typing import Any
 
 from openai import OpenAI
 
+from src.openai_compat import DEFAULT_LLM_MODEL, sampling_params_for_model
+
 
 class ThemeTree:
     """Simple theme tree structure."""
@@ -32,7 +34,11 @@ class ThemeTree:
         return results
 
 
-def generate_themes(main_theme: str, focus: str) -> dict[str, Any]:
+def generate_themes(
+    main_theme: str,
+    focus: str,
+    model: str = DEFAULT_LLM_MODEL,
+) -> dict[str, Any]:
     """Generate a simple theme taxonomy using OpenAI (replaces research-tools).
 
     Args:
@@ -51,10 +57,10 @@ def generate_themes(main_theme: str, focus: str) -> dict[str, Any]:
     )
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
             response_format={"type": "json_object"},
+            **sampling_params_for_model(model, temperature=0.3),
         )
         import json
 
