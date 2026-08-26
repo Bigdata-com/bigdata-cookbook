@@ -22,7 +22,8 @@ Notable choices made during the rewrite, for anyone re-running or extending this
   replacement anywhere in `src/`, so the notebook now defines a minimal inline OpenAI labeler
   (`label_chunks` in the "Label the Results" section) that classifies each chunk with a single
   `gpt-4o-mini` chat completion (JSON response format) and keeps only relevant rows. It is
-  capped at `max_labeling_rows` (10) per theme to bound OpenAI cost.
+  capped at `max_labeling_rows` (10) per theme to bound OpenAI cost. Default model is
+  `gpt-5.6-luna` with luna-safe sampling (temperature/top_p omitted for luna models).
 - **Schema bridge**: a `to_screener_frame()` helper renames the REST/smart-batching output
   columns (`entity_name`, `entity_id`, `timestamp`, `headline`, `chunk_text`, ...) to the
   `Company` / `Sector` / `Date` / `Headline` / `Motivation` / `Quote` schema that the existing
