@@ -1,7 +1,57 @@
 from datetime import datetime
 import pandas as pd
 
+_THEME_COLUMNS = ["theme", "topic", "topic_summary", "n_documents"]
+_COMPANY_COLUMNS = [
+    "entity_name",
+    "topic",
+    "topic_summary",
+    "risk_summary",
+    "uncertainty_explanation",
+    "n_documents",
+    "risk_score",
+    "uncertainty_score",
+    "response_summary",
+    "n_response_documents",
+    "response_from_news",
+]
+
+
+def _empty_theme_df() -> pd.DataFrame:
+    return pd.DataFrame(columns=_THEME_COLUMNS)
+
+
+def _empty_company_df() -> pd.DataFrame:
+    return pd.DataFrame(columns=_COMPANY_COLUMNS)
+
+
 def prepare_data_report_0(df_by_theme, df_by_company_with_responses):
+
+    if df_by_theme is None:
+        df_by_theme = _empty_theme_df()
+    if df_by_company_with_responses is None:
+        df_by_company_with_responses = _empty_company_df()
+
+    if df_by_company_with_responses.empty:
+        top_by_theme = (
+            df_by_theme.sort_values(by=["theme", "n_documents"], ascending=[True, False])
+            .groupby(["theme"], as_index=False)
+            .head(5)
+            .reset_index(drop=True)
+        )
+        empty_company = pd.DataFrame(
+            columns=[
+                "entity_name",
+                "topic",
+                "headline",
+                "n_documents",
+                "response_summary",
+                "n_response_documents",
+                "response_from_news",
+                "criterion",
+            ]
+        )
+        return top_by_theme, empty_company
 
     ### Section 1 - Sector-Wide Issues
     
@@ -56,6 +106,11 @@ def prepare_data_report_0(df_by_theme, df_by_company_with_responses):
 
 
 def prepare_data_report_1(df_by_theme, df_by_company_with_responses):
+    if df_by_theme is None:
+        df_by_theme = _empty_theme_df()
+    if df_by_company_with_responses is None:
+        df_by_company_with_responses = _empty_company_df()
+
     ### Section 1 - Sector-Wide Issues
     
     user_selected_ranking = ['theme', 'n_documents']
