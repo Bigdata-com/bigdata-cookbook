@@ -7,6 +7,7 @@ from typing import Any
 
 import pandas as pd
 
+from .openai_utils import DEFAULT_LLM_MODEL
 from .simple_labeler import SimpleLabeler
 
 
@@ -28,7 +29,7 @@ def label_search_results(
         DataFrame: The labeled DataFrame.
     """
     labeler = SimpleLabeler(
-        model=kwargs.get("model", "gpt-4o-mini"),
+        model=kwargs.get("model", DEFAULT_LLM_MODEL),
         api_key=os.getenv("OPENAI_API_KEY"),
     )
 

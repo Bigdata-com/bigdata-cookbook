@@ -8,6 +8,8 @@ from typing import Any, Optional
 import pandas as pd
 from openai import AsyncOpenAI
 
+from .openai_utils import DEFAULT_LLM_MODEL, sampling_params_for_model
+
 
 class SummaryGenerator:
     """
@@ -21,7 +23,7 @@ class SummaryGenerator:
 
     def __init__(
         self,
-        model: str = "gpt-4o-mini",
+        model: str = DEFAULT_LLM_MODEL,
         temperature: float = 0,
         system_prompt: str | None = None,
         max_workers: int = 30,
@@ -30,7 +32,7 @@ class SummaryGenerator:
         """Initialize with OpenAI client.
         
         Args:
-            model: OpenAI model name (e.g., "gpt-4o-mini")
+            model: OpenAI model name (e.g., "gpt-5.6-luna")
             temperature: Temperature for sampling
             system_prompt: Optional system prompt
             max_workers: Maximum concurrent workers
@@ -247,7 +249,10 @@ Carefully merge all completions into a single, clear, and actionable summary. Re
         response = await self.client.chat.completions.create(
             model=self.model,
             messages=messages,
-            temperature=self.temperature,
+            **sampling_params_for_model(
+                self.model,
+                temperature=self.temperature,
+            ),
         )
         return response.choices[0].message.content
 
