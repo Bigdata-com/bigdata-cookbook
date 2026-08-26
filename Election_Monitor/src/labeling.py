@@ -13,6 +13,16 @@ warnings.filterwarnings('ignore')
 from openai import OpenAI
 
 
+def sampling_params_for_model(model: str, *, temperature: float) -> dict[str, Any]:
+    """Return OpenAI sampling kwargs accepted by ``model``.
+
+    ``gpt-5.6-luna`` only supports default sampling, so temperature is omitted.
+    """
+    if "luna" in model.lower():
+        return {}
+    return {"temperature": temperature}
+
+
 def replace_company_placeholders(row: pd.Series) -> str:
     """Replace TARGET_ENTITY and OTHER_ENTITY_N placeholders."""
     text = row["motivation"]
@@ -61,8 +71,8 @@ class ElectionLabeler:
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": f"sentence_id: {idx}\ntext: {text}"}
                     ],
-                    temperature=self.temperature,
                     response_format={"type": "json_object"},
+                    **sampling_params_for_model(self.llm_model, temperature=self.temperature),
                 )
                 content = response.choices[0].message.content
                 parsed = json.loads(content)
