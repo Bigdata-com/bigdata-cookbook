@@ -20,6 +20,9 @@ from tqdm.asyncio import tqdm as tqdm_asyncio
 import ast
 
 
+from .openai_compat import sampling_params_for_model
+
+
 def flatten_trending_topics(df, original_df):
     flattened_data = []
     
@@ -98,7 +101,7 @@ async def generate_text_summary(text, topic, api_key, model='gpt-4o-mini-2024-07
             {"role": "user", "content": prompt}
         ],
         response_format={ "type":"json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
 
     summary = response.model_dump()
@@ -169,7 +172,7 @@ async def generate_advanced_novelty_score(client, topic, previous_topics_dict, m
             {"role": "system", "content": "You are an expert analyst."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
 
     try:
@@ -256,7 +259,7 @@ def generate_market_impact_and_magnitude(client, text, topic, main_theme, point_
         {"role": "system", "content": "You are an expert market analyst specializing in the oil market."},
         {"role": "user", "content": prompt}
     ],
-    temperature=0
+    **sampling_params_for_model(model, temperature=0),
 )
     
     impact_and_magnitude = response.model_dump()
@@ -366,7 +369,7 @@ async def extract_trending_topics(text_to_analyze, model, yearmonth, number_of_r
                 {"role": "user", "content": text_to_analyze}
             ],
             response_format={ "type":"json_object"},
-            temperature=0
+            **sampling_params_for_model(model, temperature=0),
         )
 
         # Extract and process the response
@@ -488,7 +491,7 @@ async def consolidate_trending_topics(batch_results, model, api_key, main_theme)
         ],
         response_format={ "type":"json_object"},
         #max_tokens=4000,
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
     
     # Extract and process the response
@@ -552,7 +555,7 @@ async def summarize_grouped_summaries(df, model, api_key, main_theme, yearmonth)
                 }
             ],
             response_format={"type": "json_object"},
-            temperature=0
+            **sampling_params_for_model(model, temperature=0),
         )
 
         # Extract the LLM's response
@@ -613,7 +616,7 @@ async def generate_title_for_summary(summary, model, api_key):
             {"role": "system", "content": title_prompt}
         ],
         response_format={"type": "json_object"},
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
 
     # Process the response
@@ -679,10 +682,10 @@ def fetch_entities(client, prompt, model):
                 {"role": "system", "content": prompt},
             ],
             response_format={"type": "json_object"},
-            temperature=0
+            **sampling_params_for_model(model, temperature=0),
         )
         
-        entities_result = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'])
+        entities_result = json.loads(response.model_dump()['choices'][0]['message']['content'])
         return entities_result['entities']
     except Exception as e:
         print(f"Error detecting entities: {e}")
@@ -730,9 +733,9 @@ def fetch_subject_relevance(client, prompt, model):
                 {"role": "system", "content": prompt},
             ],
             response_format={"type": "json_object"},
-            temperature=0
+            **sampling_params_for_model(model, temperature=0),
         )
-        relevance_result = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'])
+        relevance_result = json.loads(response.model_dump()['choices'][0]['message']['content'])
         return relevance_result
     except Exception as e:
         print(f"Error checking subject relevance: {e}")
@@ -1608,10 +1611,10 @@ async def fetch_relevance(client, text_to_analyze, current_prompt, model, semaph
                     {"role": "system", "content": current_prompt},
                     {"role": "user", "content": text_to_analyze}
                 ],
-                temperature=0
+                **sampling_params_for_model(model, temperature=0),
             )
 
-            relevance = ast.literal_eval(response.model_dump()['choices'][0]['message']['content'].strip())
+            relevance = json.loads(response.model_dump()['choices'][0]['message']['content'].strip())
             return relevance['relevance']
         except Exception as e:
             # Log the error for debugging purposes
@@ -1640,7 +1643,7 @@ def generate_day_in_review(text, api_key, main_theme, model='gpt-4o-mini-2024-07
             {"role": "system", "content": f"You are an expert market analyst specializing in {main_theme}."},
             {"role": "user", "content": prompt}
         ],
-        temperature=0
+        **sampling_params_for_model(model, temperature=0),
     )
     
     try:

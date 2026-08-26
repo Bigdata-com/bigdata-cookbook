@@ -1,7 +1,10 @@
+import asyncio
 import json
 import re
+
 import openai
-import asyncio
+
+from .openai_compat import sampling_params_for_model
 
 class LexiconGenerator:
     def __init__(self, openai_key: str, model: str="gpt-4o", seeds: list[int]=None):
@@ -38,14 +41,17 @@ class LexiconGenerator:
             model=self.model,
             messages=[
                 {"role": "system", "content": system_prompt2},
-                {"role": "user", "content": theme}
+                {"role": "user", "content": theme},
             ],
-            temperature=0.25,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-            seed=seed,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
+            **sampling_params_for_model(
+                self.model,
+                temperature=0.25,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
+                seed=seed,
+            ),
         )
         return response.model_dump()['choices'][0]['message']['content']
 
