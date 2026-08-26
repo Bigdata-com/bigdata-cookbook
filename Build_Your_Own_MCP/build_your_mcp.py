@@ -25,7 +25,7 @@ import json
 from bigdata_rest import BigdataRestClient
 
 # Select your LLM model here
-LLM_MODEL = "gpt-4o-mini"  # OpenAI model
+LLM_MODEL = "gpt-5.6-luna"  # OpenAI model (luna: omit temperature)
 
 # Use streamable-http for better compatibility with various clients
 TRANSPORT: Literal["sse", "streamable-http"] = "streamable-http"
@@ -40,6 +40,19 @@ load_dotenv(".env")
 # Initialize clients
 REST_CLIENT = BigdataRestClient()
 OPENAI_CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+def _chat_completion_kwargs(**extra: object) -> dict[str, object]:
+    """Build OpenAI chat kwargs; luna models omit temperature and use max_completion_tokens."""
+    kwargs: dict[str, object] = {"model": LLM_MODEL}
+    if "luna" in LLM_MODEL:
+        if "max_tokens" in extra:
+            extra = {**extra}
+            extra["max_completion_tokens"] = extra.pop("max_tokens")
+    else:
+        kwargs["temperature"] = 0.7
+    kwargs.update(extra)
+    return kwargs
 
 
 @mcp.tool()
@@ -100,9 +113,9 @@ Return ONLY a JSON array of strings, e.g.:
 
     try:
         response = OPENAI_CLIENT.chat.completions.create(
-            model=LLM_MODEL,
-            messages=[{"role": "user", "content": theme_prompt}],
-            temperature=0.7,
+            **_chat_completion_kwargs(
+                messages=[{"role": "user", "content": theme_prompt}],
+            ),
         )
         sub_themes_text = response.choices[0].message.content.strip()
         
@@ -216,9 +229,10 @@ def test_llm_model_configured():
     """Test that the LLM model is configured correctly."""
     try:
         test_answer = OPENAI_CLIENT.chat.completions.create(
-            model=LLM_MODEL,
-            messages=[{"role": "user", "content": "Hello, world!"}],
-            max_tokens=10,
+            **_chat_completion_kwargs(
+                messages=[{"role": "user", "content": "Hello, world!"}],
+                max_tokens=50,
+            ),
         )
         assert test_answer.choices[0].message.content, "LLM model test failed"
     except Exception as e:
