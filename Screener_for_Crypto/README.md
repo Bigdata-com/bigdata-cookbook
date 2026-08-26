@@ -111,11 +111,12 @@ sources = ["D6D057"]  # Crypto Wire source
 ### Key Parameters
 
 - **Main Theme**: The central investment concept to explore
-- **Entity Universe**: Cryptocurrencies to screen (uses Bigdata's top 100 crypto watchlist by default)
+- **Entity Universe**: Provide as:
+  - CSV file with columns `RP_ENTITY_ID` (or `RP_COMPANY_ID`) and `COMPANY_NAME` (or `NAME`), OR
+  - Python list/dict of entity IDs (e.g., `["4F2B", "D8442"]`) with names
 - **Time Period**: Date range for analysis
-- **Document Type**: News, transcripts, or filings to analyze
-- **Sources**: Specific news sources to include
-- **LLM Model**: Language model for theme generation and classification
+- **Sources**: Specific news sources to include (optional)
+- **LLM Model**: OpenAI model for theme generation and classification
 
 ## 📁 Project Structure
 
@@ -139,14 +140,13 @@ Screener_for_Crypto/
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `BIGDATA_USERNAME` | Your Bigdata platform username | Yes |
-| `BIGDATA_PASSWORD` | Your Bigdata platform password | Yes |
+| `BIGDATA_API_KEY` | Your Bigdata.com API key | Yes |
 | `OPENAI_API_KEY` | OpenAI API key for LLM analysis | Yes |
 
 ### Analysis Parameters
 
 - **Theme Definition**: Customize the investment theme and focus area
-- **Entity Selection**: Choose specific cryptocurrencies or use default watchlist
+- **Entity Selection**: Pass a CSV of crypto entity IDs (`RP_ENTITY_ID`, `COMPANY_NAME`) or an explicit ID list
 - **Time Range**: Set analysis period (supports daily, weekly, monthly, yearly intervals)
 - **Document Sources**: Filter by specific news sources or document types
 - **LLM Settings**: Configure model selection and classification parameters
@@ -229,11 +229,14 @@ The tool generates several types of output:
 ## 📚 Dependencies
 
 ### Core Dependencies
-- `bigdata-client>=2.17.0` - Bigdata API client
-- `bigdata-research-tools[graphviz]>=0.17.3` - Research analysis tools
-- `nest-asyncio>=1.6.0` - Async compatibility
+- `bigdata-smart-batching>=1.3.1` - Plan/execute search over entity universes
+- `requests>=2.31.0` - REST calls to Bigdata.com
+- `openai>=1.0.0` - Local labeling / taxonomy
+- `python-dotenv>=1.0.0` - `BIGDATA_API_KEY` loading
 - `pandas>=1.3.0` - Data manipulation
 - `numpy>=1.20.0` - Numerical computing
+
+> Do not install `bigdata-client` or `bigdata-research-tools`.
 
 ### Visualization
 - `plotly>=5.0.0` - Interactive visualizations
