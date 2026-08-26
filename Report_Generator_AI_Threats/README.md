@@ -2,7 +2,7 @@
 
 ## Automated Analysis of AI Threats and Opportunities in Technology Companies
 
-This project systematically evaluates both AI disruption risks and proactive AI adoption across company watchlists using unstructured data from multiple sources. Built for portfolio managers and financial analysts, it transforms scattered AI-related information into quantifiable positioning intelligence.
+This project systematically evaluates both AI disruption risks and proactive AI adoption across company universes using unstructured data from multiple sources. Built for portfolio managers and financial analysts, it transforms scattered AI-related information into quantifiable positioning intelligence.
 
 ## Features
 
@@ -32,8 +32,7 @@ This project systematically evaluates both AI disruption risks and proactive AI 
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -85,8 +84,7 @@ This project systematically evaluates both AI disruption risks and proactive AI 
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -143,4 +141,4 @@ The AI disruption risk analysis provides:
 - Ensure all credentials are properly configured in the `.env` file before running
 - The notebook should be run sequentially from top to bottom
 - Analysis generates both inline results and structured HTML reports
-- Custom company watchlists can be modified in the notebook configuration
+- Provide a CSV file with company universe containing `RP_ENTITY_ID` and `COMPANY_NAME` columns (e.g., `../Thematic_Screener_CLI/XNAS_companies.csv`)
