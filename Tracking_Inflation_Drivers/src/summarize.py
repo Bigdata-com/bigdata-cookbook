@@ -120,9 +120,12 @@ def summarize_topic_by_theme(df_labeled, list_specific_themes,sub_topics, themes
             df_by_theme = pd.DataFrame({'theme': [main_theme], 'topic': [topic], 'topic_summary': [summary], 'n_documents': [n_documents]})
             list_df_by_theme.append(df_by_theme)
 
+    if not list_df_by_theme:
+        return pd.DataFrame(columns=['theme', 'topic', 'topic_summary', 'n_documents'])
+
     df_by_theme = pd.concat(list_df_by_theme)
     df_by_theme = df_by_theme.reset_index(drop=True)
-    
+
     return df_by_theme
 
 ## Create Intro Section
@@ -179,9 +182,15 @@ def call_llm_intro_section(text_to_analyze, model, api_key, main_theme):
     return summary
 
 def create_intro_section(df_labeled, api, main_theme):
-    
+
     model = 'gpt-4o-mini-2024-07-18'
     api_key = api
+
+    if df_labeled.empty:
+        return (
+            f"No narratives were confidently matched to a {main_theme} driver in this "
+            "cost-limited sample run; re-run with a larger sample/date range for a full report."
+        )
 
     list_df_by_theme = []
     
@@ -293,25 +302,6 @@ def prepare_html_for_display(html):
     """
     return html.replace("$", r"\$")
 
-_intialization_sent = False 
-def notebook_initialized():
-    from importlib.metadata import version
-    from bigdata_client import Bigdata
-    from bigdata_client import tracking_services
-
-    try:
-        bigdata = Bigdata()
-        global _intialization_sent
-        if not _intialization_sent:
-            trace = tracking_services.TraceEvent(event_name = "BigdataCookbookExecution", 
-                       properties={"bigdataResearchToolsVersion": version("bigdata_research_tools"),
-                                    "bigdataClientVersion": version("bigdata-client"),
-                                   "cookbook_name": "TrackingInflationDrivers"
-                                  })
-            
-            tracking_services.send_trace(bigdata_client = bigdata, trace = trace)
-            _intialization_sent = True
-    except Exception as e:
-        pass
-        
-notebook_initialized()     
+def notebook_initialized() -> None:
+    """No-op: SDK tracking removed (use REST / smart-batching)."""
+    return None     

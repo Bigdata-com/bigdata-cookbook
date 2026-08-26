@@ -1,0 +1,18 @@
+"""OpenAI helpers shared by migrated Rising_Bond_Spread_Risks modules."""
+
+from __future__ import annotations
+
+from typing import Any
+
+DEFAULT_LLM_MODEL = "gpt-5.6-luna"
+
+
+def sampling_params_for_model(model: str, **params: Any) -> dict[str, Any]:
+    """Return sampling kwargs that ``model`` accepts.
+
+    ``gpt-5.6-luna`` only supports default sampling, so temperature, top_p,
+    seed, and penalty fields are omitted for luna models.
+    """
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}

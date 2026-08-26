@@ -13,13 +13,8 @@ import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='plotly')
 warnings.filterwarnings('ignore', category=FutureWarning, module='pandas')
 
-# Optional imports for unified dashboard approach
-try:
-    from bigdata_research_tools.visuals.risk_visuals import create_risk_exposure_dashboard
-    from bigdata_research_tools.visuals.thematic_visuals import create_thematic_exposure_dashboard
-    UNIFIED_VISUALS_AVAILABLE = True
-except ImportError:
-    UNIFIED_VISUALS_AVAILABLE = False
+# Research-tools dashboards removed; use local plotly helpers in this module.
+UNIFIED_VISUALS_AVAILABLE = False
 
 
 def create_entity_theme_heatmap(df, theme_columns, interactive=True):

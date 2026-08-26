@@ -1,101 +1,96 @@
+"""Election labeling using OpenAI (SDK removed)."""
+
+from __future__ import annotations
+
 import asyncio
 import os
-from typing import Any, Coroutine, Optional, Union, List, Dict, Any
+from typing import Any, Optional
 import pandas as pd
 import json
 import warnings
 warnings.filterwarnings('ignore')
 
-from bigdata_research_tools.prompts.labeler import(
-    get_other_entity_placeholder,
-    get_target_entity_placeholder,
-)
-
-from bigdata_research_tools.labeler.labeler import (
-    Labeler,
-)
+from openai import OpenAI
 
 
-# Import necessary libraries for the complete implementation
-from httpx import ReadTimeout
-from typing import Any, Generator, Iterable, Optional, Union
-import openai
-from tqdm.asyncio import tqdm as async_tqdm
-import hashlib
-import pickle
-from pathlib import Path
+def sampling_params_for_model(model: str, *, temperature: float) -> dict[str, Any]:
+    """Return OpenAI sampling kwargs accepted by ``model``.
+
+    ``gpt-5.6-luna`` only supports default sampling, so temperature is omitted.
+    """
+    if "luna" in model.lower():
+        return {}
+    return {"temperature": temperature}
+
 
 def replace_company_placeholders(row: pd.Series) -> str:
-    """
-    Replace company placeholders in text.
-
-    Args:
-        row: Row of the DataFrame. Expected columns:
-            - motivation: str
-            - entity_name: str
-            - other_entities_map: List[Tuple[int, str]]
-    Returns:
-        Text with placeholders replaced.
-    """
+    """Replace TARGET_ENTITY and OTHER_ENTITY_N placeholders."""
     text = row["motivation"]
-    text = text.replace(get_target_entity_placeholder(), row["entity_name"])
+    if "entity_name" in row:
+        text = text.replace("TARGET_ENTITY", row["entity_name"])
     if row.get("other_entities_map"):
         for entity_id, entity_name in row["other_entities_map"]:
-            text = text.replace(
-                f"{get_other_entity_placeholder()}_{entity_id}", entity_name
-            )
+            text = text.replace(f"OTHER_ENTITY_{entity_id}", entity_name)
     return text
 
-class ElectionLabeler(Labeler):
+
+class ElectionLabeler:
     """Screener labeler."""
 
     def __init__(
         self,
-        llm_model: str,
+        llm_model: str = "gpt-4o-mini",
         label_prompt: Optional[str] = None,
         unknown_label: str = "unclear",
         temperature: float = 0,
+        api_key: Optional[str] = None,
     ):
-        """
-        Args:
-            llm_model: Name of the LLM model to use. Expected format:
-                <provider>::<model>, e.g. "openai::gpt-4o-mini"
-            label_prompt: Prompt provided by user to label the search result chunks.
-                If not provided, then our default labelling prompt is used.
-            unknown_label: Label for unclear classifications.
-            temperature: Temperature to use in the LLM model.
-        """
-        super().__init__(llm_model, unknown_label)
+        """Initialize with OpenAI client."""
+        self.llm_model = llm_model
         self.label_prompt = label_prompt
+        self.unknown_label = unknown_label
+        self.temperature = temperature
+        self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
 
     def get_labels(
         self,
-        texts: List[str],
+        texts: list[str],
         max_workers: int = 50,
     ) -> pd.DataFrame:
-        """
-        Process thematic labels for texts.
-
-        Args:
-            main_theme: The main theme to analyze.
-            labels: Labels for labelling the chunks.
-            texts: List of chunks to label.
-            max_workers: Maximum number of concurrent workers.
-
-        Returns:
-            DataFrame with schema:
-            - index: sentence_id
-            - columns:
-                - motivation
-                - label
-        """
-        system_prompt = self.label_prompt
-        prompts = self.get_prompts_for_labeler(texts)
-
-        responses = self._run_labeling_prompts(
-            prompts, system_prompt, max_workers=max_workers, timeout=None,
-        )
-        return self.deserialize_label_responses_as_df(responses)
+        """Process labels for texts using OpenAI."""
+        import concurrent.futures
+        
+        system_prompt = self.label_prompt or DEFAULT_TRUMP_REELECTION_PROMPT
+        
+        def label_single(idx_text: tuple[int, str]) -> dict[str, Any]:
+            idx, text = idx_text
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.llm_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"sentence_id: {idx}\ntext: {text}"}
+                    ],
+                    response_format={"type": "json_object"},
+                    **sampling_params_for_model(self.llm_model, temperature=self.temperature),
+                )
+                content = response.choices[0].message.content
+                parsed = json.loads(content)
+                # Extract first key
+                for sentence_id, data in parsed.items():
+                    return {
+                        "index": idx,
+                        "motivation": data.get("motivation", ""),
+                        "label": data.get("label", self.unknown_label),
+                    }
+            except Exception:
+                return {"index": idx, "motivation": "", "label": self.unknown_label}
+            return {"index": idx, "motivation": "", "label": self.unknown_label}
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            results = list(executor.map(label_single, enumerate(texts)))
+        
+        return pd.DataFrame(results).set_index("index")
 
 
 DEFAULT_TRUMP_REELECTION_PROMPT = (

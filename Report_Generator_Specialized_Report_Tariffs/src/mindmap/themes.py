@@ -15,9 +15,10 @@ import openai
 import pandas as pd
 import plotly.express as px
 from src.mindmap.theme_prompts import compose_themes_system_prompt_base
+from src.openai_compat import DEFAULT_LLM_MODEL, sampling_params_for_model
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-MODEL_NAME = 'gpt-4o-mini'
+MODEL_NAME = DEFAULT_LLM_MODEL
 
 TEMPERATURE = 0.01  # Deterministic as possible
 RANDOM_SEED = 42
@@ -51,12 +52,15 @@ def generate_themes(main_theme: str,
                 'content': focus
             }
         ],
-        temperature=TEMPERATURE,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-        seed=RANDOM_SEED,
-        response_format={'type': 'json_object'}
+        response_format={'type': 'json_object'},
+        **sampling_params_for_model(
+            MODEL_NAME,
+            temperature=TEMPERATURE,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            seed=RANDOM_SEED,
+        ),
     )
 
     tree_str = response.model_dump()['choices'][0]['message']['content']

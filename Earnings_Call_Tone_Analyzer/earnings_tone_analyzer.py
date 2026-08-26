@@ -1,10 +1,14 @@
 """
 Earnings Call Management Tone Analyzer
-Uses Bigdata.com for transcript retrieval and OpenAI GPT for tone scoring.
+Uses Bigdata.com REST API for transcript retrieval and OpenAI GPT for tone scoring.
 Produces a standardized sentiment scorecard with Q/Q and Y/Y comparisons.
 
 Async pipeline with rate limiting, semaphore-based concurrency, exponential
 backoff and retries for both Bigdata.com and OpenAI endpoints.
+
+MIGRATION NOTE: Migrated from bigdata-client SDK to REST API (v1/search).
+Full transcript text is assembled from search result chunks; for single-document
+fetch, contact support for document retrieval endpoint details.
 """
 
 import asyncio
@@ -22,11 +26,20 @@ import pandas as pd
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 
-from bigdata_client import Bigdata
-from bigdata_client.query import ReportingEntity, TranscriptTypes, All
-from bigdata_client.models.search import DocumentType, SortBy
+from src.bigdata_rest import BigdataRestClient
 
 load_dotenv()
+
+
+def sampling_params_for_model(model: str, **params: object) -> dict[str, object]:
+    """Return sampling kwargs that ``model`` accepts.
+
+    ``gpt-5.6-luna`` only supports default sampling, so temperature, top_p,
+    seed, and penalty fields are omitted for luna models.
+    """
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -36,7 +49,7 @@ log = logging.getLogger(__name__)
 BIGDATA_API_KEY = os.environ["BIGDATA_API_KEY"]
 OPENAI_KEY = os.environ["OPENAI_API_KEY"]
 
-MODEL = "gpt-5.4-nano"
+MODEL = "gpt-5.6-luna"
 
 # ── Rate-limit / concurrency knobs ──────────────────────────────────────────
 BIGDATA_RPM = 500            # Bigdata: 500 queries/min
@@ -299,12 +312,12 @@ def load_universe(csv_path: str, limit: int | None = None) -> list[str]:
 class ToneAnalyzer:
     """Orchestrates the async pipeline with proper rate limiting."""
 
-    # OpenAI pricing (gpt-5.4-nano)
+    # OpenAI pricing (gpt-5.6-luna; conservative estimates)
     OAI_INPUT_COST_PER_M = 0.20   # $/1M input tokens
     OAI_OUTPUT_COST_PER_M = 1.25  # $/1M output tokens
 
     def __init__(self, company_concurrency: int = COMPANY_MAX_CONCURRENT):
-        self.bd = Bigdata(api_key=BIGDATA_API_KEY)
+        self.bd = BigdataRestClient(api_key=BIGDATA_API_KEY)
         self.oai = AsyncOpenAI(api_key=OPENAI_KEY)
         self.bd_limiter = RateLimiter(BIGDATA_RPM)
         self.bd_sem = asyncio.Semaphore(BIGDATA_MAX_CONCURRENT)
@@ -325,10 +338,10 @@ class ToneAnalyzer:
             self._completed += 1
             log.info(f"[{self._completed}/{self._total}] Done: {ticker}")
 
-    # ── Bigdata calls (sync library → thread pool, rate-limited) ────────
+    # ── Bigdata calls (REST API) ────────────────────────────────────────
 
     async def _bd_call(self, fn, *args, label="bigdata"):
-        """Wrap a sync Bigdata SDK call with semaphore + rate limiter + retry."""
+        """Wrap a Bigdata REST call with semaphore + rate limiter + retry."""
         async def _inner():
             async with self.bd_sem:
                 await self.bd_limiter.acquire()
@@ -342,42 +355,47 @@ class ToneAnalyzer:
     async def resolve_entity(self, entity_id: str) -> dict | None:
         try:
             results = await self._bd_call(
-                self.bd.knowledge_graph.autosuggest, entity_id, 1,
+                self.bd.find_companies, entity_id, 1,
                 label=f"resolve:{entity_id}")
             if results:
                 c = results[0]
-                return {"id": c.id, "name": c.name, "ticker": c.ticker}
+                return {
+                    "id": c.get("rp_entity_id") or c.get("id"),
+                    "name": c.get("name") or c.get("company_name"),
+                    "ticker": c.get("ticker") or c.get("symbol"),
+                }
         except Exception as e:
             log.warning(f"Could not resolve entity {entity_id}: {e}")
         return None
 
-    async def fetch_transcripts(self, entity_id: str) -> list:
+    async def fetch_transcripts(self, entity_id: str) -> list[dict]:
         try:
-            def _search():
-                query = All([
-                    ReportingEntity(entity_id),
-                    TranscriptTypes.EARNINGS_CALL,
-                ])
-                search = self.bd.search.new(
-                    query, scope=DocumentType.TRANSCRIPTS, sortby=SortBy.DATE)
-                return search.run(20)
-            return await self._bd_call(_search, label=f"search:{entity_id}")
+            query = {
+                "text": "earnings",
+                "filters": {
+                    "entity_ids": {"mode": "INCLUDE", "values": [entity_id]},
+                    "category": {"mode": "INCLUDE", "values": ["transcripts"]},
+                },
+                "limit": 20,
+            }
+            return await self._bd_call(self.bd.search, query, label=f"search:{entity_id}")
         except Exception as e:
             log.warning(f"Search failed for {entity_id}: {e}")
             return []
 
-    async def download_transcript(self, doc, max_chars: int = 80000) -> str:
+    async def download_transcript(self, doc: dict, max_chars: int = 80000) -> str:
+        """Assemble transcript from chunks. LIMITATION: no full document fetch in this migration."""
         try:
-            annotated = await self._bd_call(
-                doc.download_annotated_dict, label=f"fetch:{doc.id[:8]}")
-            body = annotated.get("content", {}).get("body", [])
-            text = "\n".join(b.get("text", "") for b in body if b.get("text"))
+            chunks = doc.get("chunks") or []
+            text = "\n".join(c.get("text", "") for c in chunks if c.get("text"))
             if len(text) > max_chars:
                 text = text[:max_chars] + "\n[... transcript truncated ...]"
+            if not text or len(text) < 500:
+                text = doc.get("summary") or ""
             return text
         except Exception as e:
-            log.warning(f"Failed to download document {doc.id}: {e}")
-            return "\n".join(c.text for c in doc.chunks if c.text)
+            log.warning(f"Failed to assemble transcript from {doc.get('id')}: {e}")
+            return ""
 
     # ── OpenAI calls (async native, rate-limited) ───────────────────────
 
@@ -389,8 +407,8 @@ class ToneAnalyzer:
                     model=MODEL,
                     messages=messages,
                     response_format={"type": "json_object"},
-                    temperature=0.1,
                     max_completion_tokens=max_completion_tokens,
+                    **sampling_params_for_model(MODEL, temperature=0.1),
                 )
                 if resp.usage:
                     async with self._cost_lock:
@@ -468,8 +486,8 @@ class ToneAnalyzer:
         seen = set()
         unique_docs = []
         for d in docs:
-            ql, q, y = parse_quarter_from_headline(d.headline)
-            key = (q, y) if q and y else d.id
+            ql, q, y = parse_quarter_from_headline(d.get("headline", ""))
+            key = (q, y) if q and y else d.get("id")
             if key not in seen:
                 seen.add(key)
                 unique_docs.append(d)
@@ -489,9 +507,9 @@ class ToneAnalyzer:
         for d, text in zip(to_process, texts):
             if isinstance(text, Exception) or not text or len(text) < 500:
                 continue
-            ql, q, y = parse_quarter_from_headline(d.headline)
+            ql, q, y = parse_quarter_from_headline(d.get("headline", ""))
             tone_tasks.append(self.analyze_tone(company_name, ticker, ql, text))
-            tone_meta.append((ql, q, y, d.id, str(d.timestamp)))
+            tone_meta.append((ql, q, y, d.get("id", ""), d.get("timestamp", "")))
 
         if not tone_tasks:
             await self._tick_progress(ticker)
@@ -519,7 +537,7 @@ class ToneAnalyzer:
             "company_name": company_name,
             "ticker": ticker,
             "current_quarter": current["quarter_label"],
-            "earnings_date": current.get("timestamp", "")[:10],
+            "earnings_date": str(current.get("timestamp", ""))[:10],
             "tone_category": current["tone_category"],
             "sentiment_score": current["sentiment_score"],
             "key_nlp_signals": "; ".join(current.get("key_nlp_signals", [])),

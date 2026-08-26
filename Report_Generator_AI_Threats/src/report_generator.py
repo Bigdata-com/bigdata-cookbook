@@ -7,15 +7,13 @@ import pandas as pd
 from pandas import merge
 import pickle
 import asyncio
+from types import SimpleNamespace
 import matplotlib.pyplot as plt
 
-from bigdata_client.models.search import DocumentType, SortBy
-from bigdata_client import Bigdata
-
-from bigdata_research_tools.search.screener_search import search_by_companies
-from bigdata_research_tools.labeler.screener_labeler import ScreenerLabeler
-
+from src.bigdata_rest import BigdataRestClient, load_universe
+from src.labeling import SimpleLabeler
 from src.summary.summary import SummarizerCompany
+from src.search_helper import run_universe_search
 
 
 class Report:
@@ -53,7 +51,7 @@ class GenerateReport:
 
     def __init__(
         self, 
-        watchlist_id: str,
+        universe_df: pd.DataFrame,
         keywords: List[str],
         main_theme_risk: str,
         main_theme_proactivity: str,
@@ -69,44 +67,49 @@ class GenerateReport:
         document_limit_filings: int,
         document_limit_transcripts: int,
         batch_size: int,
-
-        bigdata: Bigdata
-    ):       
+        chunk_percentage: float = 0.05,
+    ):
         """
         Initialize the GenerateReport class.
 
-        :param watchlist_id: Identifier for the watchlist.
-        :param general_focus: General focus for the mind map.
-        :param specific_themes: List of specific themes.
-        :param llm_model: LLM model identifier to be used for processing.
-        :param api_key: LLM API key for external services.
+        :param universe_df: DataFrame with RP_ENTITY_ID and COMPANY_NAME columns.
+        :param keywords: Keywords for search.
+        :param main_theme_risk: Main risk theme.
+        :param main_theme_proactivity: Main proactivity theme.
+        :param list_sentences_risks: Semantic search sentences for risk.
+        :param list_sentences_proactivity: Semantic search sentences for proactivity.
+        :param llm_model: LLM model identifier (e.g., 'gpt-4o-mini').
+        :param api_key: OpenAI API key.
         :param start_date: Start date for document search (YYYY-MM-DD).
         :param end_date: End date for document search (YYYY-MM-DD).
         :param fiscal_year: Fiscal year for document and transcript search.
-        :param search_frequency: Frequency of searches (e.g., daily, weekly).
+        :param search_frequency: Frequency (ignored, kept for compatibility).
         :param document_limit_news: Maximum number of news documents to retrieve.
-        :param document_limit_filings: Maximum number of filings/transcripts to retrieve.
-        :param bigdata: Bigdata client instance.
+        :param document_limit_filings: Maximum number of filings to retrieve.
+        :param document_limit_transcripts: Maximum number of transcripts to retrieve.
+        :param batch_size: Batch size (ignored, kept for compatibility).
+        :param chunk_percentage: Fraction of matching chunks to sample per smart-batching
+            search call (cost control knob passed through to ``run_universe_search``).
         """
         self.logger = GenerateReport.logger
-        self.watchlist_id = watchlist_id
+        self.universe_df = universe_df
         self.keywords = keywords
         self.main_theme_risk = main_theme_risk
         self.main_theme_proactivity = main_theme_proactivity
-        self.list_sentences_risks = list_sentences_risks 
-        self.list_sentences_proactivity = list_sentences_proactivity 
+        self.list_sentences_risks = list_sentences_risks
+        self.list_sentences_proactivity = list_sentences_proactivity
         self.llm_model = llm_model
         self.api_key = api_key
         self.start_date = start_date
-        self.end_date = end_date 
+        self.end_date = end_date
         self.fiscal_year = fiscal_year
         self.search_frequency = search_frequency
         self.document_limit_news = document_limit_news
         self.document_limit_filings = document_limit_filings
         self.document_limit_transcripts = document_limit_transcripts
         self.batch_size = batch_size
-        self.bigdata = bigdata
-        # self.df_labeled = None 
+        self.chunk_percentage = chunk_percentage
+        self.rest_client = BigdataRestClient()
 
 
     @staticmethod
@@ -134,8 +137,16 @@ class GenerateReport:
         return df_agg
 
 
-    def retrieve_documents(self, doc_type, doc_limit, doc_type_name, fiscal_year, import_from_path: Optional[str] = None, export_to_path: Optional[str] = None):
+    def retrieve_documents(self, doc_scope, doc_limit, doc_type_name, fiscal_year, import_from_path: Optional[str] = None, export_to_path: Optional[str] = None):
         if doc_limit>0:
+            # Build company_ids and id_to_name mapping
+            company_ids = self.universe_df["RP_ENTITY_ID"].astype(str).str.strip().tolist()
+            id_to_name = dict(
+                zip(
+                    self.universe_df["RP_ENTITY_ID"].astype(str).str.strip(),
+                    self.universe_df["COMPANY_NAME"].astype(str).str.strip(),
+                )
+            )
 
             # Retrieve content for Risk
 
@@ -145,18 +156,20 @@ class GenerateReport:
                 df_sentences_semantic_risk = pd.read_pickle(import_from_path+'/df_sentences_semantic_risk_'+doc_type_name)
                 self.logger.info(f"df_sentences_semantic_risk_{doc_type_name}: %d rows", len(df_sentences_semantic_risk))
             else:
-                df_sentences_semantic_risk = search_by_companies(
-                    companies=self.list_entities,
-                    keywords=self.keywords,
-                    sentences=self.list_sentences_risks,
+                # Use run_universe_search with risk sentences as queries
+                df_sentences_semantic_risk = run_universe_search(
+                    company_ids=company_ids,
+                    queries=self.list_sentences_risks,
                     start_date=self.start_date,
                     end_date=self.end_date,
-                    fiscal_year=fiscal_year,
-                    scope=doc_type, 
-                    freq=self.search_frequency,
-                    document_limit=doc_limit,
-                    batch_size=self.batch_size
+                    scope=doc_scope,
+                    chunk_percentage=self.chunk_percentage,
+                    id_to_name=id_to_name,
                 )
+                # run_universe_search already provides a "text" column identical to
+                # "chunk_text"; drop the duplicate instead of renaming into a collision.
+                df_sentences_semantic_risk = df_sentences_semantic_risk.drop(columns=["chunk_text"], errors="ignore")
+                df_sentences_semantic_risk["document_type"] = doc_scope
                 self.logger.info(f"df_sentences_semantic_risk_{doc_type_name}: %d rows", len(df_sentences_semantic_risk))
                 # Export to Pickle if path provided
                 if export_to_path:
@@ -169,18 +182,20 @@ class GenerateReport:
                 df_sentences_semantic_proactivity = pd.read_pickle(import_from_path+'/df_sentences_semantic_proactivity_'+doc_type_name)
                 self.logger.info(f"df_sentences_semantic_proactivity_{doc_type_name}: %d rows", len(df_sentences_semantic_proactivity))
             else:
-                df_sentences_semantic_proactivity = search_by_companies(
-                    companies=self.list_entities,
-                    keywords=self.keywords,
-                    sentences=self.list_sentences_proactivity,
+                # Use run_universe_search with proactivity sentences as queries
+                df_sentences_semantic_proactivity = run_universe_search(
+                    company_ids=company_ids,
+                    queries=self.list_sentences_proactivity,
                     start_date=self.start_date,
                     end_date=self.end_date,
-                    fiscal_year=fiscal_year,
-                    scope=doc_type, 
-                    freq=self.search_frequency,
-                    document_limit=doc_limit,
-                    batch_size=self.batch_size
+                    scope=doc_scope,
+                    chunk_percentage=self.chunk_percentage,
+                    id_to_name=id_to_name,
                 )
+                # run_universe_search already provides a "text" column identical to
+                # "chunk_text"; drop the duplicate instead of renaming into a collision.
+                df_sentences_semantic_proactivity = df_sentences_semantic_proactivity.drop(columns=["chunk_text"], errors="ignore")
+                df_sentences_semantic_proactivity["document_type"] = doc_scope
                 self.logger.info(f"df_sentences_semantic_proactivity_{doc_type_name}: %d rows", len(df_sentences_semantic_proactivity))
                 # Export to Pickle if path provided
                 if export_to_path:
@@ -199,34 +214,26 @@ class GenerateReport:
         Generate the final report.
 
         This function coordinates the entire process:
-          1. Retrieve watchlist and entities.
-          2. Generate the themes tree.
-          3. Retrieve news documents.
-          4. Label news documents.
-          5. Summarize at sector and company levels.
-          6. Extract the company's mitigation plans.
-          7. Build the final Report object.
+          1. Retrieve documents via smart-batching search.
+          2. Label documents with OpenAI.
+          3. Summarize at company level.
+          4. Build the final Report object.
 
         :param import_from_path: Optional directory to import cached data.
         :param export_to_path: Optional directory to export processed data.
         :return: A Report object with the consolidated results.
         """
 
-        # Fetch the watchlist and set up the entity mapping
-        watchlist = self.bigdata.watchlists.get(self.watchlist_id)
-        self.list_entities = self.bigdata.knowledge_graph.get_entities(watchlist.items) 
-        self.logger.info("list_entities: %d entities", len(self.list_entities))
-
         ### Step 1: Searches
         # Run a (hybrid semantic) search on News via BigData API with our parameters
         df_sentences_semantic_risk_news, df_sentences_semantic_proactivity_news = self.retrieve_documents(
-            doc_type=DocumentType.NEWS, doc_limit=self.document_limit_news, doc_type_name='news', fiscal_year=None,
+            doc_scope="news", doc_limit=self.document_limit_news, doc_type_name='news', fiscal_year=None,
             import_from_path=import_from_path, export_to_path=export_to_path)
         df_sentences_semantic_risk_filings, df_sentences_semantic_proactivity_filings = self.retrieve_documents(
-            doc_type=DocumentType.FILINGS, doc_limit=self.document_limit_filings, doc_type_name='filings', fiscal_year=self.fiscal_year,
+            doc_scope="filings", doc_limit=self.document_limit_filings, doc_type_name='filings', fiscal_year=self.fiscal_year,
             import_from_path=import_from_path, export_to_path=export_to_path)
         df_sentences_semantic_risk_transcripts, df_sentences_semantic_proactivity_transcripts = self.retrieve_documents(
-            doc_type=DocumentType.TRANSCRIPTS, doc_limit=self.document_limit_transcripts, doc_type_name='transcripts', fiscal_year=self.fiscal_year,
+            doc_scope="transcripts", doc_limit=self.document_limit_transcripts, doc_type_name='transcripts', fiscal_year=self.fiscal_year,
             import_from_path=import_from_path, export_to_path=export_to_path)
         df_sentences_semantic_risk = pd.concat([df_sentences_semantic_risk_news, df_sentences_semantic_risk_filings, df_sentences_semantic_risk_transcripts])
         df_sentences_semantic_proactivity = pd.concat([df_sentences_semantic_proactivity_news, 
@@ -236,7 +243,7 @@ class GenerateReport:
         ### Step 2: Check that the search results are related to the main theme 
 
         # Label the search results with our theme labels
-        labeler = ScreenerLabeler(llm_model=self.llm_model)
+        labeler = SimpleLabeler(model=self.llm_model, api_key=self.api_key)
 
         # Risk
         # Attempt to import df_risk_labeled DataFrame if path provided and file exists
@@ -282,11 +289,22 @@ class GenerateReport:
 
         # Run the process to summarize the documents and score media attention, risk and uncertainty by topic at company level.
         summarizer_company = SummarizerCompany(
-            model=self.llm_model.split('::')[1], 
+            model=self.llm_model,
             api_key=self.api_key,
-            logger=self.logger, 
+            logger=self.logger,
             verbose=True
         )
+
+        # SummarizerCompany.process_entity_topic expects objects with .id / .name
+        # attributes (matching the old SDK's entity objects); the universe
+        # DataFrame only has RP_ENTITY_ID / COMPANY_NAME columns, so adapt it here.
+        list_entities = [
+            SimpleNamespace(
+                id=str(row.RP_ENTITY_ID).strip(),
+                name=str(row.COMPANY_NAME).strip(),
+            )
+            for row in self.universe_df.itertuples()
+        ]
 
 
         if import_from_path == None:
@@ -301,8 +319,8 @@ class GenerateReport:
 
         df_risk_by_company = asyncio.run(
             summarizer_company.process_by_company(
-                df_labeled=df_risk_labeled_relevant, 
-                list_entities=self.list_entities, 
+                df_labeled=df_risk_labeled_relevant,
+                list_entities=list_entities,
                 theme=self.main_theme_risk,
                 focus='risk',
                 import_from_path=path_import_risk, 
@@ -324,8 +342,8 @@ class GenerateReport:
 
         df_proactivity_by_company = asyncio.run(
             summarizer_company.process_by_company(
-                df_labeled=df_proactivity_labeled_relevant, 
-                list_entities=self.list_entities, 
+                df_labeled=df_proactivity_labeled_relevant,
+                list_entities=list_entities,
                 theme=self.main_theme_proactivity,
                 focus='',
                 import_from_path=path_import_proactivity, 
@@ -335,16 +353,42 @@ class GenerateReport:
         self.logger.info("df_proactivity_by_company: %d rows", len(df_proactivity_by_company))
 
         # Merge risk and proactivity dataframes
-        dfr = df_risk_by_company[['entity_id', 'entity_name', 'topic_summary', 'n_documents']].copy()
-        dfr = dfr.rename(columns={'topic_summary': 'risk_summary', 'n_documents': 'n_documents_risk'})
-        dfp = df_proactivity_by_company[['entity_id', 'entity_name', 'topic_summary', 'n_documents']].copy()
-        dfp = dfp.rename(columns={'topic_summary': 'proactivity_summary', 'n_documents': 'n_documents_proactivity'})
-        df_by_company = dfr.merge(dfp, on=['entity_id', 'entity_name'], how='outer')
+        def _company_summary_frame(df: pd.DataFrame) -> pd.DataFrame:
+            if df.empty:
+                return pd.DataFrame(
+                    {
+                        "entity_id": [entity.id for entity in list_entities],
+                        "entity_name": [entity.name for entity in list_entities],
+                        "topic_summary": [None] * len(list_entities),
+                        "n_documents": [0] * len(list_entities),
+                    }
+                )
+            return df[["entity_id", "entity_name", "topic_summary", "n_documents"]].copy()
 
-        df_by_company['n_documents_risk'] = df_by_company['n_documents_risk'].fillna(0)
-        df_by_company['n_documents_proactivity'] = df_by_company['n_documents_proactivity'].fillna(0)
-        df_by_company['ai_disruption_risk_score'] = df_by_company['n_documents_risk']/df_by_company['n_documents_risk'].mean()
-        df_by_company['ai_proactivity_score'] = df_by_company['n_documents_proactivity']/df_by_company['n_documents_proactivity'].mean()
+        dfr = _company_summary_frame(df_risk_by_company)
+        dfr = dfr.rename(columns={"topic_summary": "risk_summary", "n_documents": "n_documents_risk"})
+        dfp = _company_summary_frame(df_proactivity_by_company)
+        dfp = dfp.rename(
+            columns={"topic_summary": "proactivity_summary", "n_documents": "n_documents_proactivity"}
+        )
+        df_by_company = dfr.merge(dfp, on=["entity_id", "entity_name"], how="outer")
+
+        df_by_company["n_documents_risk"] = df_by_company["n_documents_risk"].fillna(0)
+        df_by_company["n_documents_proactivity"] = df_by_company["n_documents_proactivity"].fillna(0)
+        risk_mean = df_by_company["n_documents_risk"].mean()
+        proactivity_mean = df_by_company["n_documents_proactivity"].mean()
+        if risk_mean > 0:
+            df_by_company["ai_disruption_risk_score"] = (
+                df_by_company["n_documents_risk"] / risk_mean
+            )
+        else:
+            df_by_company["ai_disruption_risk_score"] = 0.0
+        if proactivity_mean > 0:
+            df_by_company["ai_proactivity_score"] = (
+                df_by_company["n_documents_proactivity"] / proactivity_mean
+            )
+        else:
+            df_by_company["ai_proactivity_score"] = 0.0
         df_by_company['ai_proactivity_minus_disruption_risk_score'] = df_by_company['ai_proactivity_score'] - df_by_company['ai_disruption_risk_score']
 
         # Add concatanated quotes and document ids
@@ -355,7 +399,7 @@ class GenerateReport:
 
         # Construct the Report
         report = Report(
-            watchlist_name=watchlist.name,
+            watchlist_name="Company Universe",
             report_by_company=df_by_company
         )
             

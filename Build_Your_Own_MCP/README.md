@@ -29,6 +29,8 @@ This project showcases how to integrate the Bigdata research tools with an MCP s
      ```
    - Replace `your_bigdata_api_key_here` and `your_openai_api_key_here` with your actual API keys
 
+   **Note**: This migrated version uses REST API + OpenAI. The `create_watchlist` tool now accepts `company_ids` (list of Bigdata entity IDs) instead of company names.
+
 3. **Build and run the Docker container**:
    ```bash
    # Build the Docker image
@@ -83,7 +85,7 @@ Create a watchlist called Next Generation Defense with the following companies: 
      OPENAI_API_KEY=your_openai_api_key
      ```
 
-    > **Note:** To configure a different LLM model, edit the `LLM_MODEL` variable in `build_your_mcp.py`. You can find supported models in the [LLM Integration documentation](https://github.com/Bigdata-com/bigdata-research-tools?tab=readme-ov-file#llm-integration).
+    > **Note:** To configure a different LLM model, edit the `LLM_MODEL` variable in `build_your_mcp.py` (OpenAI models).
 
 4. **Run the MCP server**:
    ```bash
@@ -102,11 +104,15 @@ In cursor: Go to File > Preferences > Cursor Preferences > MCP -> New MCP Server
 For instructions on configuring other MCP clients, such as Claude Desktop or ChatGPT, please refer to the bigdata documentation:
 https://docs.bigdata.com/use-cases/research-tools/build-your-own-mcp
 
-6. **Ask the agent to create a watchlist or generate a screening report for you**
-For example, you can use the following prompt:
-```
-Create a watchlist called Next Generation Defense with the following companies: 3M Co., Accenture PLC, Alphabet Inc., BAE Systems PLC, Cisco Systems Inc., Elbit System Ltd., Gen Digital Inc., General Dynamics Corp., GM (General Motors Co.), and IBM Corp. Then, screen the companies in this watchlist for the theme Next Generation Defense for fiscal year 2024
-```
+6. **Ask the agent to screen companies**
+
+   **Note**: In the migrated version, you provide company IDs directly. Example usage:
+
+   ```
+   Screen the following companies (provide Bigdata entity IDs: 4F2B, D8442, etc.) for the theme "Next Generation Defense" for fiscal year 2024.
+   ```
+
+   To find entity IDs, you can use the Bigdata.com search or knowledge graph endpoints.
 ## Additional Examples of Usage
 
 ### Example prompt to create a watchlist and screen companies using the MCP integration

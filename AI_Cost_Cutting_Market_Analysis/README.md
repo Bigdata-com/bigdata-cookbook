@@ -1,5 +1,7 @@
 # AI Cost Cutting Market Analysis
 
+> **SDK Migration**: This project no longer uses `bigdata-client` or `bigdata-research-tools`. Use `src/bigdata_rest.py` and `src/search_helper.py` with your `BIGDATA_API_KEY`. Company universes are CSV files (RP_ENTITY_ID, COMPANY_NAME).
+
 ## Automated Analysis of AI Cost Cutting Providers and Users
 
 This project provides comprehensive AI cost cutting ecosystem analysis tools that identify technology providers, track customer adoption patterns, and map provider-customer relationships using unstructured data from news sources. It's designed for technology analysts, investors, and industry professionals to transform scattered AI signals into quantified market intelligence and identify investment opportunities in the AI cost cutting value chain.

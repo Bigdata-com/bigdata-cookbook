@@ -265,23 +265,7 @@ def generate_html_report(df_theme, df_entities, title):
 
 _intialization_sent = False 
 def notebook_initialized():
-    from importlib.metadata import version
-    from bigdata_client import Bigdata
-    from bigdata_client import tracking_services
-
-    try:
-        bigdata = Bigdata()
-        global _intialization_sent
-        if not _intialization_sent:
-            trace = tracking_services.TraceEvent(event_name = "BigdataCookbookExecution", 
-                       properties={"bigdataResearchToolsVersion": version("bigdata_research_tools"),
-                                    "bigdataClientVersion": version("bigdata-client"),
-                                   "cookbook_name": "ReportGeneratorRegulatoryIssues"
-                                  })
-            
-            tracking_services.send_trace(bigdata_client = bigdata, trace = trace)
-            _intialization_sent = True
-    except Exception as e:
-        pass
+    """No-op for SDK tracking (migrated off bigdata-client)."""
+    pass
         
 notebook_initialized()     

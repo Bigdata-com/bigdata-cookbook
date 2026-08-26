@@ -402,11 +402,19 @@ class ReportVisualizer():
             
         # Show interactive plot in notebook
         fig.show()
-        
-        from IPython.display import Image, display
-        img_bytes = fig.to_image(format="png")
-        display(Image(img_bytes))
-        
+
+        # Best-effort static PNG preview (kaleido). Notebooks apply nest_asyncio so
+        # Jupyter's own event loop can host nested asyncio.run() calls, but that patch
+        # can break kaleido's internal async rendering (e.g. "Timeout should be used
+        # inside a task"). The interactive plot above already renders fine either way,
+        # so treat the static image as optional rather than failing the whole report.
+        try:
+            from IPython.display import Image, display
+            img_bytes = fig.to_image(format="png")
+            display(Image(img_bytes))
+        except Exception as e:
+            print(f"Skipping static PNG preview (interactive plot above is still valid): {e}")
+
         return fig
     
     def visualize_report_and_table(self, results_dict, company_object, start_date, end_date):

@@ -11,33 +11,33 @@ from functools import reduce
 import sys
 
 def lookup_sector_information(df_filtered, bigdata_credentials):
-    bigdata = bigdata_credentials
-    
+    """Enrich rows with sector/industry/name via REST knowledge-graph lookup."""
     entity_key_to_sector = {}
     entity_key_to_group = {}
     entity_key_to_sector_consolidated = {}
     entity_key_to_name = {}
-    
-    # Get unique entity IDs from the DataFrame
-    unique_entity_ids = df_filtered['rp_entity_id'].unique().tolist()
 
-    # Iterate through entity keys in batches
+    unique_entity_ids = df_filtered["rp_entity_id"].dropna().astype(str).unique().tolist()
+
     for entity_batch in chunked_iterable(unique_entity_ids, max_size_kb=8):
-        # Lookup entity details for the current batch
-        entities_lookup = bigdata.knowledge_graph.get_entities(entity_batch)
+        entities_lookup = bigdata_credentials.get_entities_by_id(entity_batch)
 
-        # Process the returned entities
-        for entity in entities_lookup:
-            if hasattr(entity, 'id') and hasattr(entity, 'name') and entity.entity_type == 'COMP':
-                entity_key_to_name[entity.id] = entity.name
-                if hasattr(entity, 'sector'):
-                    entity_key_to_sector[entity.id] = entity.sector
-                    entity_key_to_sector_consolidated[entity.id] = entity.sector
-                else:
-                    entity_key_to_sector_consolidated[entity.id] = entity.industry_group
-
-                if hasattr(entity, 'industry_group'):
-                    entity_key_to_group[entity.id] = entity.industry_group
+        for entity_id, entity in entities_lookup.items():
+            if not isinstance(entity, dict):
+                continue
+            entity_type = entity.get("entity_type") or entity.get("type")
+            if entity_type and entity_type != "COMP":
+                continue
+            entity_key_to_name[entity_id] = entity.get("name", entity_id)
+            sector = entity.get("sector")
+            industry_group = entity.get("industry_group")
+            if sector:
+                entity_key_to_sector[entity_id] = sector
+                entity_key_to_sector_consolidated[entity_id] = sector
+            elif industry_group:
+                entity_key_to_sector_consolidated[entity_id] = industry_group
+            if industry_group:
+                entity_key_to_group[entity_id] = industry_group
         
     # Display the resulting DataFrame
     df_filtered['sector'] = df_filtered.rp_entity_id.map(entity_key_to_sector)

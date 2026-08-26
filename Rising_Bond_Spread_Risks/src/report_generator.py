@@ -1,10 +1,17 @@
-from bigdata_research_tools.llm.base import AsyncLLMEngine
-from bigdata_research_tools.labeler.labeler import Labeler, get_prompts_for_labeler, parse_labeling_response
-from typing import List, Optional, Union
-import pandas as pd
-import asyncio
+"""Report generator using OpenAI (no SDK)."""
+from __future__ import annotations
 
-class SummaryGenerator(Labeler):
+import asyncio
+import os
+from typing import Any, Optional
+
+import pandas as pd
+from openai import AsyncOpenAI
+
+from .openai_utils import DEFAULT_LLM_MODEL, sampling_params_for_model
+
+
+class SummaryGenerator:
     """
     A class to generate summaries and reports from credit rating data.
     
@@ -14,20 +21,27 @@ class SummaryGenerator(Labeler):
     specialized handling for token limits through text splitting.
     """
 
-    def __init__(self, llm_model: str = "openai::gpt-4o-mini", temperature: float = 0, system_prompt: str = None, max_workers: int = 30):
-        """
-        Initialize the SummaryGenerator with LLM configuration.
+    def __init__(
+        self,
+        model: str = DEFAULT_LLM_MODEL,
+        temperature: float = 0,
+        system_prompt: str | None = None,
+        max_workers: int = 30,
+        api_key: str | None = None,
+    ):
+        """Initialize with OpenAI client.
         
         Args:
-            llm_model: LLM model to use in format "provider::model" (e.g., "openai::gpt-4o-mini")
-            temperature: Temperature for the model
-            max_workers: Maximum number of concurrent workers for batch processing
+            model: OpenAI model name (e.g., "gpt-5.6-luna")
+            temperature: Temperature for sampling
+            system_prompt: Optional system prompt
+            max_workers: Maximum concurrent workers
+            api_key: OpenAI API key (defaults to OPENAI_API_KEY)
         """
-        self.llm_model = llm_model
-        self.llm_engine = AsyncLLMEngine(model=llm_model)
+        self.model = model
+        self.client = AsyncOpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
         self.temperature = temperature
         self.max_workers = max_workers
-        self.unknown_label = "unclear"
         
         # Set default prompts
         self.system_prompt = system_prompt or """
@@ -108,7 +122,7 @@ Dubai’s real estate market faces elevated bubble risk, as highlighted by multi
 Carefully merge all completions into a single, clear, and actionable summary. Return only the summary string.
 """
 
-    def _split_text_on_nearest_linebreak(self, text_string: str, num_splits: int) -> List[str]:
+    def _split_text_on_nearest_linebreak(self, text_string: str, num_splits: int) -> list[str]:
         """
         Split text into parts at the nearest line breaks for handling large inputs.
         
@@ -230,8 +244,25 @@ Carefully merge all completions into a single, clear, and actionable summary. Re
         else:
             return f'Entity: {entity_name}\n' + f'Date: {df[date_col].iloc[0]}\n' + '\n'.join([df[field].iloc[0] for field in fields_for_summary])
 
-    def summarize_string(self, text: str, system_prompt: Optional[str] = None, max_retries: int = 5,
-                      max_split_retries: int = 5) -> str:
+    async def _get_response(self, messages: list[dict[str, str]]) -> str:
+        """Call OpenAI and return response text."""
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            **sampling_params_for_model(
+                self.model,
+                temperature=self.temperature,
+            ),
+        )
+        return response.choices[0].message.content
+
+    def summarize_string(
+        self,
+        text: str,
+        system_prompt: str | None = None,
+        max_retries: int = 5,
+        max_split_retries: int = 5,
+    ) -> str:
         """
         Summarize a text string with retry and text splitting capabilities.
         
@@ -258,7 +289,7 @@ Carefully merge all completions into a single, clear, and actionable summary. Re
         
         # Try to get response directly
         try:
-            return asyncio.run(self.llm_engine.get_response(chat_history, temperature=self.temperature))
+            return asyncio.run(self._get_response(chat_history))
         except Exception as e:
             if 'context_length_exceeded' in str(e) or 'string_above_max_length' in str(e):
                 print("Text too long for direct processing, attempting split-and-consolidate approach...")
@@ -275,10 +306,7 @@ Carefully merge all completions into a single, clear, and actionable summary. Re
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": split_text}
                         ]
-                        response = asyncio.run(self.llm_engine.get_response(
-                            split_chat_history, 
-                            temperature=self.temperature
-                        ))
+                        response = asyncio.run(self._get_response(split_chat_history))
                         results.append(response)
                     
                     # Consolidate results
@@ -291,10 +319,7 @@ Carefully merge all completions into a single, clear, and actionable summary. Re
                             {"role": "user", "content": f"Please merge and consolidate these completions into a single response:\n\n{consolidation_text}"}
                         ]
                         
-                        return asyncio.run(self.llm_engine.get_response(
-                            consolidation_chat_history,
-                            temperature=self.temperature
-                        ))
+                        return asyncio.run(self._get_response(consolidation_chat_history))
                     else:
                         return results[0]
                         

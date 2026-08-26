@@ -1,30 +1,34 @@
-"""
-Copyright (C) 2024, RavenPack | Bigdata.com. All rights reserved.
-Author: Alessandro Bouchs (abouchs@ravenpack.com)
+"""Mind map generation tools using OpenAI (SDK imports removed).
+
+SDK query and search functions have been removed — use search_helper instead.
+Mind map generation functions using OpenAI remain functional.
 """
 
+from __future__ import annotations
 
-from bigdata_client import Bigdata
-from bigdata_client.models.search import DocumentType, SortBy
-from bigdata_client.query import Keyword, Entity, Any
-from bigdata_client.daterange import AbsoluteDateRange
+import ast
+import html
+import re
+from collections import defaultdict
+from typing import Any
 
 import graphviz
-import time
-from tqdm.notebook import tqdm
-import pandas as pd
-import hashlib
-import plotly.express as px
-from IPython.display import display, HTML
-import re
-import openai
-import html
 import networkx as nx
-import plotly.graph_objects as go
 import numpy as np
-from collections import defaultdict
-MODEL_NAME = 'gpt-4o-mini'
-import ast
+import openai
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from IPython.display import HTML, display
+
+MODEL_NAME = 'gpt-5.6-luna'
+
+
+def sampling_params_for_model(model: str, **params: object) -> dict[str, object]:
+    """Return sampling kwargs that ``model`` accepts (luna models omit sampling params)."""
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
 # Function to add line breaks
 def add_line_breaks(text, max_len=50):
     
@@ -263,27 +267,22 @@ def generate_theme_taxonomy(openai_api_key,
     client = openai.OpenAI(api_key = openai_api_key)
     
     response = client.chat.completions.create(
-      model = "gpt-4o-mini",
-      messages = [
+      model=MODEL_NAME,
+      messages=[
         {
           "role": "system",
           "content": system_prompt
         },
-        # {
-        #   "role": "user",
-        #   "content": main_theme
-        # },
-        # {
-        #   "role": "user",
-        #   "content": analyst_focus
-        # }
       ],
-      temperature = 0, # we want a small temperature
-      top_p = 1,
-      frequency_penalty = 0,
-      presence_penalty = 0,
-      seed = 123,
-      response_format = {"type": "json_object"}
+      response_format={"type": "json_object"},
+      **sampling_params_for_model(
+          MODEL_NAME,
+          temperature=0,
+          top_p=1,
+          frequency_penalty=0,
+          presence_penalty=0,
+          seed=123,
+      ),
     )
     
     tree_string = response.model_dump()['choices'][0]['message']['content'] 
