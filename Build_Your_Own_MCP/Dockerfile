@@ -28,7 +28,7 @@ RUN find / -perm +6000 -type f -exec chmod a-s {} \; || true
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
 # Add code
-ADD build_your_mcp.py /app/build_your_mcp.py
+ADD build_your_mcp.py bigdata_rest.py /app/
 
 # Switch to non-root user
 USER bigdata
