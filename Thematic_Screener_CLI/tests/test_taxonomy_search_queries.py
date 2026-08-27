@@ -4,13 +4,24 @@
 
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from src.helpers import get_leaf_labels, get_leaf_pairs, get_leaf_search_queries
 from src.run_context import RunContext
-from src.screener import Node, build_plans, write_taxonomy_artifacts
+from src.screener import (
+    EXCEL_MAX_CELL_CHARS,
+    EXCEL_TRUNCATION_NOTICE,
+    Node,
+    analyst_focus_with_leaf_cap,
+    build_plans,
+    export_excel,
+    normalize_max_leaf_labels,
+    write_taxonomy_artifacts,
+)
 from src.search_query import has_exposure_meta_language, normalize_summary_to_search_query
 
 
@@ -132,3 +143,77 @@ def test_build_plans_uses_search_query_text(monkeypatch: pytest.MonkeyPatch, tmp
     )
 
     assert captured_texts == ["The company sells liquid cooling systems to data centers."]
+
+
+def test_build_plans_removes_plans_from_a_previous_taxonomy(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def fake_plan_search(**kwargs: object) -> dict[str, list[dict[str, object]]]:
+        return {"baskets": [{"query": {"text": kwargs["text"]}, "expected_chunks": 1}]}
+
+    monkeypatch.setattr("src.screener.plan_search", fake_plan_search)
+    monkeypatch.setattr(
+        "src.screener.save_plan",
+        lambda plan, path: Path(path).write_text("{}", encoding="utf-8"),
+    )
+    stale_plan = tmp_path / "Retired_pathway.json"
+    stale_plan.parent.mkdir(parents=True, exist_ok=True)
+    stale_plan.write_text("{}", encoding="utf-8")
+
+    saved_paths = build_plans(
+        labels=["Cooling suppliers"],
+        search_queries=["The company sells liquid cooling systems to data centers."],
+        company_ids=["ABC123"],
+        plans_dir=tmp_path,
+    )
+
+    assert not stale_plan.exists()
+    assert sorted(path.name for path in tmp_path.glob("*.json")) == [
+        path.name for path in saved_paths
+    ]
+
+
+def test_export_excel_marks_cells_over_the_excel_limit(tmp_path: Path) -> None:
+    oversized_quote = "x" * (EXCEL_MAX_CELL_CHARS + 500)
+    screener_df = pd.DataFrame(
+        {
+            "company_name": ["Acme Corp."],
+            "label": ["Cooling suppliers"],
+            "text": [oversized_quote],
+        }
+    )
+    root = Node.model_validate(
+        {
+            "node": 1,
+            "label": "Theme",
+            "summary": "Root.",
+            "search_query": "",
+            "children": [],
+        }
+    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", UserWarning)
+        output_path = export_excel(
+            screener_df=screener_df,
+            company_summaries_df=pd.DataFrame(columns=["company_name", "summary"]),
+            root=root,
+            path=tmp_path / "report.xlsx",
+        )
+
+    written = pd.read_excel(output_path, sheet_name="Results")
+    cell = str(written.loc[0, "text"])
+    assert len(cell) <= EXCEL_MAX_CELL_CHARS
+    assert cell.endswith(EXCEL_TRUNCATION_NOTICE)
+
+
+def test_normalize_max_leaf_labels_treats_zero_as_uncapped() -> None:
+    assert normalize_max_leaf_labels(None) is None
+    assert normalize_max_leaf_labels(0) is None
+    assert normalize_max_leaf_labels(15) == 15
+
+
+def test_analyst_focus_with_leaf_cap_appends_limit() -> None:
+    capped = analyst_focus_with_leaf_cap("Hidden hops.", 12)
+    assert capped.endswith("Limit the final tree to at most 12 leaf nodes.")
+    assert analyst_focus_with_leaf_cap("Hidden hops.", 0) == "Hidden hops."

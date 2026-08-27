@@ -2,6 +2,30 @@
 
 All notable changes to Thematic Screener CLI are documented in this file.
 
+## [Unreleased] — 2026-08-24
+
+### Added
+
+- **Derivatives taxonomy style** (`--taxonomy-style derivatives`): 1st / 2nd / 3rd hop mindmaps with theme-level Bigdata.com grounding (`--ground-with-bigdata`), CLI/MCP flags, and `grounding.json` / `derivative_preview.json`
+- **Client-facing notebook** `notebooks/01_derivative_thematic_screener.ipynb`: narrated end-to-end derivatives run on `tsx_top150_rp_entities.csv` (grounding → mindmap → planning → retrieval → labeling → narratives → exports) with six charts, writing to `runs/tsx_oil_derivatives/`
+- **Client-facing notebook** `notebooks/02_derivative_eu_parcel_tariffs.ipynb`: same workflow on `europe_ml_caps.csv` for EU tariffs on low-value Chinese e-commerce parcels (AliExpress / Temu / Shein), writing to `runs/eu_parcel_tariff_derivatives/` (`RETRIEVAL_DEPTH = 0.1`)
+- CLI `--labeling-concurrency`, `--labeling-rpm`, `--summary-concurrency`
+- Jupyter optional dependency group (`uv sync --group jupyter`), now including `matplotlib`
+- **`src/viz.py`**: derivative-hop charts (mindmap, hop coverage, pathway and company rankings, company × hop exposure matrix, evidence timeline) with empty-data fallbacks. `plot_top_companies` and `plot_company_hop_matrix` accept `hops=` (with `viz.INDIRECT_HOPS` for 2nd/3rd only) so later hops can be ranked on their own terms instead of being crowded out of the top-N by direct-exposure volume
+- **`src/notebook_support.py`**: `quiet_output` context manager suppressing planner/retrieval progress chatter in notebooks
+- `derivative_taxonomy.leaf_branch_map` mapping each taxonomy leaf to its derivative hop
+- Unit tests (7) for chart builders, hop attribution, and quiet-output log restoration
+
+### Fixed
+
+- `build_plans` now deletes plan files left over from an earlier taxonomy in the same run directory. Re-running a run after the mindmap changed left retired plans on disk, and `run_search` executes every plan file it finds, so retrieval covered pathways absent from the current mindmap (affected the CLI and MCP server as well as notebooks)
+- `export_excel` truncates cells over Excel's 32,767-character limit with an explicit marker instead of letting openpyxl cut them silently; full text remains in the CSV and JSON exports
+
+### Changed
+
+- Default OpenAI model for taxonomy, labeling, and summaries: **`gpt-5.6-luna`**
+- Labeling concurrency default **40 → 80**; summary concurrency **20 → 40**; MCP wave estimates 6s avg / 40s straggler (luna, not re-measured)
+
 ## [Unreleased] — 2026-06-24
 
 ### Added

@@ -40,7 +40,7 @@ def test_estimate_mcp_labeling_batch_seconds_uses_straggler_wave_model() -> None
             MCP_LABELING_WAVE_SECONDS_STRAGGLER,
         )
     )
-    assert seconds == 90
+    assert seconds == 80
 
 
 def test_total_labeling_estimate_uses_average_wave_model() -> None:
@@ -50,7 +50,7 @@ def test_total_labeling_estimate_uses_average_wave_model() -> None:
         max_concurrent_requests=DEFAULT_ENRICHMENT_MAX_CONCURRENT,
         seconds_per_wave=MCP_LABELING_WAVE_SECONDS,
     )
-    assert seconds == 216
+    assert seconds == 162
 
 
 def test_mcp_batch_estimate_stays_within_safe_target_for_recommended_size() -> None:

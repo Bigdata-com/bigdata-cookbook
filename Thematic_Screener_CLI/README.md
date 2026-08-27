@@ -17,6 +17,15 @@ The pipeline runs in one of two modes, selected with `--mode` (persisted in `con
 
 Only the prompts, defaults, and label semantics change between modes; the search, batching, and export mechanics are shared.
 
+### Taxonomy styles (thematic-screener)
+
+| Style | Flag | Description |
+|------|------|-------------|
+| `exposure` (default) | `--taxonomy-style exposure` | Generic exposure pathways (original mindmap). |
+| `derivatives` | `--taxonomy-style derivatives` | Forced 1st / 2nd / 3rd hop tree (oil-price chain is the canonical example). Add `--ground-with-bigdata` to inject a theme-level [Bigdata.com](https://bigdata.com) briefing **without** a universe filter before taxonomy generation. |
+
+Derivatives trees typically have **9–15 leaves**. Each leaf is still one `plan_search` over the full universe, so retrieval cost scales with leaf count × names. For the TSX PoC use `tsx_top150_rp_entities.csv` (~150 names).
+
 ## Execution overview example
 
 ![Screener Example](assets/screener_flowchart.svg)
@@ -30,6 +39,7 @@ From this directory (`Thematic_Screener_CLI/`):
 ```bash
 # with uv (recommended)
 uv sync
+uv sync --group jupyter   # optional: Jupyter Lab for notebooks/
 
 # with pip
 pip install -r requirements.txt
@@ -49,6 +59,44 @@ Required environment variables:
 | `BIGDATA_API_KEY` | Search planning and document retrieval |
 
 Run commands from this directory so `.env` is found automatically.
+
+## Notebooks
+
+`notebooks/01_derivative_thematic_screener.ipynb` is a client-facing walkthrough of the
+derivatives workflow: it screens the TSX Top 150 (`tsx_top150_rp_entities.csv`) for exposure to an
+oil price increase.
+
+`notebooks/02_derivative_eu_parcel_tariffs.ipynb` is the same workflow on European mid- and
+large-caps (`europe_ml_caps.csv`), tracing EU tariffs on low-value parcels from AliExpress-style
+platforms (Temu, Shein, AliExpress) through 1st / 2nd / 3rd hops. It writes to
+`runs/eu_parcel_tariff_derivatives/` and uses `RETRIEVAL_DEPTH = 0.1` because that universe is
+several times larger than the TSX book.
+
+```bash
+uv sync --group jupyter
+uv run jupyter lab notebooks/01_derivative_thematic_screener.ipynb
+```
+
+The notebook writes to `runs/tsx_oil_derivatives/`, the same layout the CLI uses, so a session
+started in the notebook can be continued from the command line and vice versa. Charts come from
+`src/viz.py` (mindmap, hop coverage, pathway and company rankings, exposure matrix, evidence
+timeline); `src/notebook_support.quiet_output` keeps planner and retrieval progress chatter out of
+the rendered report.
+
+`RETRIEVAL_DEPTH` in the parameters cell controls how deeply each pathway samples its available
+evidence pool — raise it for a richer evidence set, lower it for a faster pass.
+
+Run artefacts (retrieved passages, labelled quotes, JSON/Excel reports, HTML export) live under
+`runs/` and `artifacts/`. Those directories are gitignored so evidence is not committed. After a
+run, export HTML and pack a local zip:
+
+```bash
+uv run jupyter nbconvert --to html notebooks/01_derivative_thematic_screener.ipynb
+mkdir -p artifacts
+zip -r artifacts/tsx_oil_derivatives.zip \
+  notebooks/01_derivative_thematic_screener.html \
+  runs/tsx_oil_derivatives
+```
 
 ## Claude Desktop MCP
 
@@ -102,14 +150,14 @@ Each step merges its settings into `config.json`. Explicit CLI flags always take
 
 ## Company universe
 
-Plans use `XNAS_companies.csv` by default. The file must contain:
+Plans use `XNAS_companies.csv` by default (CLI smoke). Column names are matched case-insensitively (`rp_entity_id` / `company_name` are accepted).
 
 | Column | Description |
 |--------|-------------|
 | `RP_ENTITY_ID` | Company identifier passed to Bigdata search |
 | `COMPANY_NAME` | Used to resolve company names from search results |
 
-For production runs, pass a larger universe CSV with `--universe`. The cookbook repo includes `Batch_Search_API/global_all_caps.csv` (~10k companies) with the same required columns.
+The derivatives PoC universe is `tsx_top150_rp_entities.csv` (~150 TSX names). For production runs, pass a larger universe CSV with `--universe`. The cookbook repo includes `Batch_Search_API/global_all_caps.csv` (~10k companies) with the same required columns.
 
 The following optional columns enrich the JSON export when present (otherwise `sector`/`industry` default to `Unknown` and `ticker`/`country` to `null`):
 
@@ -142,8 +190,11 @@ python -m src.cli <subcommand> [options]
 |--------|---------|-------------|
 | `--main-theme` | see defaults below | Main screening theme |
 | `--analyst-focus` | see defaults below | Analyst focus guiding the taxonomy |
-| `--labels-model` | `gpt-5.4-nano` | OpenAI model for label generation |
-| `--max-leaf-labels` | `15` | Cap on leaf sub-scenarios in the taxonomy (`0` = no limit) |
+| `--labels-model` | `gpt-5.6-luna` | OpenAI model for label generation |
+| `--max-leaf-labels` | `15` | Cap on taxonomy leaf count (`0` = no limit) |
+| `--taxonomy-style` | `exposure` | `exposure` or `derivatives` (thematic mode) |
+| `--ground-with-bigdata` | off | Theme-level Bigdata.com briefing for derivatives mindmaps |
+| `--universe` | `XNAS_companies.csv` | Persisted for later `plans`; used with `--start-date` / `--end-date` as the grounding window |
 
 ### `plans` — build search plans
 
@@ -166,9 +217,12 @@ Uses `main_theme` and `universe` from `config.json` (set by earlier pipeline ste
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--labeling-model` | `gpt-5.4-nano` | OpenAI model for sentence labeling |
-| `--summary-model` | `gpt-5.4-nano` | OpenAI model for company summaries |
+| `--labeling-model` | `gpt-5.6-luna` | OpenAI model for sentence labeling |
+| `--summary-model` | `gpt-5.6-luna` | OpenAI model for company summaries |
 | `--rerank-threshold` | `0.0` | Drop retrieved chunks whose relevance is below this value (`0.0` keeps all) |
+| `--labeling-concurrency` | `80` | In-flight OpenAI labeling requests |
+| `--labeling-rpm` | `10000` | OpenAI labeling requests per minute |
+| `--summary-concurrency` | `40` | In-flight OpenAI summary requests |
 
 ### `export-json` — export results as JSON
 
@@ -230,10 +284,12 @@ Runs `generate-labels` → `plans` → `search` → `label-sentences` → `expor
 | Analyst focus (risk mode) | How a prolonged federal funding lapse affects company operations and revenue |
 | Start date | `2025-06-01` |
 | End date | `2026-06-09` |
-| Labels model | `gpt-5.4-nano` |
+| Labels model | `gpt-5.6-luna` |
 | Max leaf labels | `15` (`0` = no limit) |
-| Labeling model | `gpt-5.4-nano` |
-| Summary model | `gpt-5.4-nano` |
+| Labeling model | `gpt-5.6-luna` |
+| Summary model | `gpt-5.6-luna` |
+| Labeling concurrency | `80` (RPM `10000`) |
+| Summary concurrency | `40` |
 | Chunk percentage | `0.02` (2%) |
 | Search requests/min | `350` |
 | Document categories | `news_premium`, `transcripts`, `filings` |
@@ -253,6 +309,15 @@ python -m src.cli generate-labels \
   --run-name my_run \
   --main-theme "Ophthalmology medical devices" \
   --analyst-focus "Surgical and diagnostic eye care"
+
+# Derivatives mindmap on TSX Top 150 (theme-level grounding, then confirm leaf count before search)
+python -m src.cli generate-labels \
+  --run-name oil_derivatives_tsx \
+  --taxonomy-style derivatives \
+  --ground-with-bigdata \
+  --main-theme "Oil price increase" \
+  --analyst-focus "Hidden 1st/2nd/3rd derivative exposures in a TSX portfolio" \
+  --universe tsx_top150_rp_entities.csv
 
 # Resume a run: plans only (reads themes.txt, search_queries.txt, and config from the run dir)
 python -m src.cli plans --run-name my_run

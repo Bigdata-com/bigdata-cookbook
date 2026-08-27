@@ -31,7 +31,10 @@ import pandas as pd
 from dotenv import load_dotenv
 
 from src import screener
+from src.derivative_grounding import collect_grounding, format_grounding_brief, write_grounding
+from src.derivative_taxonomy import derivative_preview, validate_derivatives_taxonomy
 from src.modes import AnalysisMode, get_profile
+from src.prompts import TAXONOMY_STYLE_DERIVATIVES, TAXONOMY_STYLE_EXPOSURE
 from src.retrieval_budget import build_retrieval_preset_rows, format_retrieval_budget_report
 from src.run_context import RunContext
 
@@ -88,10 +91,24 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
     max_leaf_labels = screener.normalize_max_leaf_labels(
         _resolve(args, config, "max_leaf_labels", screener.DEFAULT_MAX_LEAF_LABELS)
     )
+    taxonomy_style = _resolve(args, config, "taxonomy_style", TAXONOMY_STYLE_EXPOSURE)
+    ground_with_bigdata = bool(
+        _resolve(args, config, "ground_with_bigdata", False)
+    )
+    start_date = _resolve(args, config, "start_date", screener.DEFAULT_START_DATE)
+    end_date = _resolve(args, config, "end_date", screener.DEFAULT_END_DATE)
+
+    grounding_brief = ""
+    if ground_with_bigdata:
+        logger.info("Retrieving Bigdata.com theme briefing for derivative grounding")
+        payload = collect_grounding(main_theme, start_date=start_date, end_date=end_date)
+        write_grounding(context.grounding_path, payload)
+        grounding_brief = format_grounding_brief(payload)
 
     logger.info(
-        "Generating labels in %s mode for: %s (max_leaf_labels=%s)",
+        "Generating labels in %s mode (%s taxonomy) for: %s (max_leaf_labels=%s)",
         mode,
+        taxonomy_style,
         main_theme,
         max_leaf_labels if max_leaf_labels is not None else "none",
     )
@@ -101,6 +118,8 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
         model=model,
         profile=profile,
         max_leaf_labels=max_leaf_labels,
+        taxonomy_style=taxonomy_style,
+        grounding_brief=grounding_brief,
     )
     labels, search_queries = screener.write_taxonomy_artifacts(
         root,
@@ -109,6 +128,15 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
         taxonomy_tree_path=context.taxonomy_tree_path,
         profile=profile,
     )
+    if taxonomy_style == TAXONOMY_STYLE_DERIVATIVES:
+        findings = validate_derivatives_taxonomy(root)
+        preview = derivative_preview(root)
+        context.derivative_preview_path.write_text(
+            json.dumps({"preview": preview, "findings": findings}, indent=2),
+            encoding="utf-8",
+        )
+        for finding in findings:
+            logger.warning("Derivative taxonomy %s: %s", finding["check"], finding["message"])
     context.save_config(
         {
             "mode": mode,
@@ -116,6 +144,11 @@ def run_labels(context: RunContext, args: argparse.Namespace) -> list[str]:
             "analyst_focus": analyst_focus,
             "labels_model": model,
             "max_leaf_labels": max_leaf_labels if max_leaf_labels is not None else 0,
+            "taxonomy_style": taxonomy_style,
+            "ground_with_bigdata": ground_with_bigdata,
+            "start_date": start_date,
+            "end_date": end_date,
+            "universe": _resolve(args, config, "universe", DEFAULT_UNIVERSE),
         }
     )
     logger.info(
@@ -240,6 +273,22 @@ def run_label(
         taxonomy_root=screener.Node.model_validate(context.read_taxonomy())
         if context.taxonomy_tree_path.exists()
         else None,
+        requests_per_minute=int(
+            _resolve(
+                args,
+                config,
+                "labeling_rpm",
+                screener.DEFAULT_LABELING_REQUESTS_PER_MINUTE,
+            )
+        ),
+        max_concurrent_requests=int(
+            _resolve(
+                args,
+                config,
+                "labeling_concurrency",
+                screener.DEFAULT_LABELING_MAX_CONCURRENT,
+            )
+        ),
     )
     merged_df = screener.build_labeled_dataframe(sentences, parsed_responses)
     merged_df.to_csv(context.labeled_sentences_path, index=False)
@@ -250,6 +299,14 @@ def run_label(
         main_theme=main_theme,
         model=summary_model,
         profile=profile,
+        max_concurrent_requests=int(
+            _resolve(
+                args,
+                config,
+                "summary_concurrency",
+                screener.DEFAULT_SUMMARY_MAX_CONCURRENT,
+            )
+        ),
     )
     company_summaries_df.to_csv(context.company_summaries_path, index=False)
     logger.info(
@@ -460,6 +517,19 @@ def _add_labels_args(parser: argparse.ArgumentParser) -> None:
             "Use 0 for no limit."
         ),
     )
+    parser.add_argument(
+        "--taxonomy-style",
+        action="store",
+        choices=[TAXONOMY_STYLE_EXPOSURE, TAXONOMY_STYLE_DERIVATIVES],
+        default=argparse.SUPPRESS,
+        help="Taxonomy shape: exposure (default) or derivatives (1st/2nd/3rd hop mindmap).",
+    )
+    parser.add_argument(
+        "--ground-with-bigdata",
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help="Retrieve a theme-level Bigdata.com briefing before generating a derivatives mindmap.",
+    )
 
 
 def _add_plans_args(parser: argparse.ArgumentParser) -> None:
@@ -503,6 +573,27 @@ def _add_label_args(parser: argparse.ArgumentParser) -> None:
         default=argparse.SUPPRESS,
         help="Drop chunks with relevance below this threshold (default: 0.0 = keep all).",
     )
+    parser.add_argument(
+        "--labeling-concurrency",
+        type=int,
+        action="store",
+        default=argparse.SUPPRESS,
+        help="In-flight OpenAI labeling requests (default: 80).",
+    )
+    parser.add_argument(
+        "--labeling-rpm",
+        type=int,
+        action="store",
+        default=argparse.SUPPRESS,
+        help="OpenAI labeling requests per minute cap (default: 10000).",
+    )
+    parser.add_argument(
+        "--summary-concurrency",
+        type=int,
+        action="store",
+        default=argparse.SUPPRESS,
+        help="In-flight OpenAI summary requests (default: 40).",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -515,6 +606,7 @@ def build_parser() -> argparse.ArgumentParser:
     labels_parser = subparsers.add_parser("generate-labels", help="Generate theme labels.")
     _add_common_args(labels_parser)
     _add_labels_args(labels_parser)
+    _add_plans_args(labels_parser)
     labels_parser.set_defaults(func=_cmd_labels, requires_api_keys=True)
 
     plans_parser = subparsers.add_parser("plans", help="Build search plans.")
@@ -537,25 +629,7 @@ def build_parser() -> argparse.ArgumentParser:
     _add_labels_args(run_all_parser)
     _add_plans_args(run_all_parser)
     _add_search_args(run_all_parser)
-    run_all_parser.add_argument(
-        "--labeling-model",
-        action="store",
-        default=argparse.SUPPRESS,
-        help="Model used to label sentences.",
-    )
-    run_all_parser.add_argument(
-        "--summary-model",
-        action="store",
-        default=argparse.SUPPRESS,
-        help="Model used to summarize companies.",
-    )
-    run_all_parser.add_argument(
-        "--rerank-threshold",
-        type=float,
-        action="store",
-        default=argparse.SUPPRESS,
-        help="Drop chunks with relevance below this threshold (default: 0.0 = keep all).",
-    )
+    _add_label_args(run_all_parser)
     run_all_parser.set_defaults(func=_cmd_run_all, requires_api_keys=True)
 
     export_json_parser = subparsers.add_parser(

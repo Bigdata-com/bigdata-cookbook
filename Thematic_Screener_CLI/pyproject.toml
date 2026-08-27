@@ -20,9 +20,15 @@ thematic-screener-mcp = "src.mcp_server:main"
 
 [dependency-groups]
 dev = [
+    "decompyle3>=3.9.3",
     "pytest",
     "ruff",
     "ty",
+]
+jupyter = [
+    "ipykernel",
+    "jupyterlab",
+    "matplotlib>=3.8",
 ]
 
 [tool.setuptools.packages.find]

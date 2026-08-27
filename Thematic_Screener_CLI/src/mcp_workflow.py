@@ -16,8 +16,15 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from src import screener
-from src.prompts import SYSTEM_MESSAGE_LABELS, SYSTEM_PROMPT_LABELING, USER_MESSAGE_LABELS
+from src.derivative_grounding import collect_grounding, format_grounding_brief, write_grounding
+from src.derivative_taxonomy import derivative_preview, validate_derivatives_taxonomy
 from src.modes import AnalysisMode, get_profile
+from src.openai_parallel import sampling_params_for_model
+from src.prompts import (
+    SYSTEM_PROMPT_LABELING,
+    TAXONOMY_STYLE_DERIVATIVES,
+    TAXONOMY_STYLE_EXPOSURE,
+)
 from src.retrieval_budget import DEFAULT_RETRIEVAL_PRESETS
 from src.run_context import RunContext
 from src.screener import _company_evidence_block, _company_summary_system_prompt
@@ -32,7 +39,7 @@ SAMPLE_XNAS_UNIVERSE = PROJECT_ROOT / "XNAS_companies.csv"
 RETRIEVAL_CHUNKS_PER_COST_UNIT = 10
 RETRIEVAL_COST_USD_PER_UNIT = 0.015
 DEFAULT_ENRICHMENT_REQUESTS_PER_MINUTE = 10_000
-DEFAULT_ENRICHMENT_MAX_CONCURRENT = 40
+DEFAULT_ENRICHMENT_MAX_CONCURRENT = 80
 CHARS_PER_TOKEN_ESTIMATE = 4
 LABELING_OUTPUT_TOKENS_ESTIMATE = 180
 SUMMARY_OUTPUT_TOKENS_ESTIMATE = 120
@@ -53,10 +60,9 @@ MCP_ENRICHMENT_SPLIT_THRESHOLD_SECONDS = 180
 MCP_LABELING_BATCH_SAFE_SECONDS = 90
 LABELING_BATCH_TARGET_SECONDS = MCP_LABELING_BATCH_SAFE_SECONDS
 MAX_LABELING_BATCH_SIZE = 120
-# Measured on gpt-5.4-nano labeling (Jun 2026): ~4s average per wave; ~30s straggler per wave
-# (p99/max; one 150-batch run hit 58s wall with conc=40).
-MCP_LABELING_WAVE_SECONDS = 4.0
-MCP_LABELING_WAVE_SECONDS_STRAGGLER = 30.0
+# Conservative estimates for gpt-5.6-luna labeling (not yet re-measured vs gpt-5.4-nano).
+MCP_LABELING_WAVE_SECONDS = 6.0
+MCP_LABELING_WAVE_SECONDS_STRAGGLER = 40.0
 MCP_LABELING_STRAGGLER_SAFETY_MARGIN = 1.25
 # Backward-compatible aliases used by older docs/tests.
 MCP_LABELING_WAVE_SECONDS_P95 = MCP_LABELING_WAVE_SECONDS_STRAGGLER
@@ -84,6 +90,8 @@ BUILTIN_UNIVERSE_MODES: frozenset[str] = frozenset(
 UNIVERSE_FILENAME = "universe.csv"
 UNIVERSE_MANIFEST_FILENAME = "universe_manifest.json"
 TAXONOMY_TREE_FILENAME = "taxonomy_tree.json"
+GROUNDING_FILENAME = "grounding.json"
+DERIVATIVE_PREVIEW_FILENAME = "derivative_preview.json"
 MINDMAP_VALIDATION_FILENAME = "mindmap_validation.json"
 BUDGET_SUMMARY_FILENAME = "budget_summary.json"
 BUDGET_APPROVAL_FILENAME = "budget_approval.json"
@@ -272,6 +280,8 @@ def _artifact_path(context: RunContext, artifact_id: str) -> Path:
         "universe_manifest": context.run_dir / UNIVERSE_MANIFEST_FILENAME,
         "normalized_universe": context.run_dir / UNIVERSE_FILENAME,
         "taxonomy_tree": context.run_dir / TAXONOMY_TREE_FILENAME,
+        "grounding": context.run_dir / GROUNDING_FILENAME,
+        "derivative_preview": context.run_dir / DERIVATIVE_PREVIEW_FILENAME,
         "themes": context.themes_path,
         "search_queries": context.search_queries_path,
         "mindmap_validation": context.run_dir / MINDMAP_VALIDATION_FILENAME,
@@ -362,6 +372,8 @@ def _stage_for_artifact(artifact_id: str) -> str:
         "universe_manifest": "intent_capture",
         "normalized_universe": "intent_capture",
         "taxonomy_tree": "mindmap_creation",
+        "grounding": "mindmap_creation",
+        "derivative_preview": "mindmap_creation",
         "themes": "mindmap_creation",
         "search_queries": "mindmap_creation",
         "mindmap_validation": "mindmap_validation",
@@ -387,6 +399,8 @@ def _refresh_artifact_manifest(context: RunContext) -> list[dict[str, Any]]:
         "universe_manifest",
         "normalized_universe",
         "taxonomy_tree",
+        "grounding",
+        "derivative_preview",
         "themes",
         "search_queries",
         "mindmap_validation",
@@ -631,6 +645,8 @@ def create_run(
     start_date: str = screener.DEFAULT_START_DATE,
     end_date: str = screener.DEFAULT_END_DATE,
     output_goal: str | None = None,
+    taxonomy_style: str = TAXONOMY_STYLE_EXPOSURE,
+    ground_with_bigdata: bool = False,
 ) -> dict[str, Any]:
     """Create a run and validate its initial universe."""
     context = _context(run_id)
@@ -643,6 +659,8 @@ def create_run(
             "end_date": end_date,
             "output_goal": output_goal,
             "universe_input": selected_universe,
+            "taxonomy_style": taxonomy_style,
+            "ground_with_bigdata": ground_with_bigdata,
         }
     )
     universe_response = validate_universe(context.run_name, selected_universe)
@@ -731,6 +749,8 @@ def generate_mindmap(
     run_id: str,
     max_leaf_labels: int | None = None,
     model: str = screener.DEFAULT_LABELS_MODEL,
+    taxonomy_style: str | None = None,
+    ground_with_bigdata: bool | None = None,
 ) -> dict[str, Any]:
     """Generate and persist a taxonomy tree with leaf labels."""
     _load_environment()
@@ -738,32 +758,70 @@ def generate_mindmap(
     config = context.load_config()
     main_theme = str(config.get("main_theme", screener.DEFAULT_MAIN_THEME))
     analyst_focus = str(config.get("analyst_focus", screener.DEFAULT_ANALYST_FOCUS))
-
-    client = OpenAI()
-    focus_for_prompt = screener.analyst_focus_with_leaf_cap(analyst_focus, max_leaf_labels)
-    completion = client.chat.completions.create(
-        model=model,
-        temperature=0.0,
-        top_p=1.0,
-        seed=42,
-        response_format={"type": "json_object"},
-        messages=[
-            {
-                "role": "system",
-                "content": SYSTEM_MESSAGE_LABELS.format(
-                    main_theme=main_theme,
-                    analyst_focus=focus_for_prompt,
-                ),
-            },
-            {"role": "user", "content": USER_MESSAGE_LABELS.format(main_theme=main_theme)},
-        ],
+    resolved_style = str(
+        taxonomy_style
+        if taxonomy_style is not None
+        else config.get("taxonomy_style", TAXONOMY_STYLE_EXPOSURE)
     )
-    content = completion.choices[0].message.content
-    if content is None:
-        raise McpWorkflowError("OpenAI returned an empty taxonomy response")
-    root = screener.Node.model_validate_json(content)
+    should_ground = bool(
+        ground_with_bigdata
+        if ground_with_bigdata is not None
+        else config.get("ground_with_bigdata", False)
+    )
+    cap = (
+        max_leaf_labels
+        if max_leaf_labels is not None
+        else screener.DEFAULT_MAX_LEAF_LABELS
+    )
+
+    grounding_brief = ""
+    artifacts = [
+        _artifact_handle("taxonomy_tree", TAXONOMY_TREE_FILENAME, queryable=True),
+        _artifact_handle("themes", "themes.txt"),
+        _artifact_handle("search_queries", "search_queries.txt"),
+    ]
+    if should_ground:
+        payload = collect_grounding(
+            main_theme,
+            start_date=str(config.get("start_date", screener.DEFAULT_START_DATE)),
+            end_date=str(config.get("end_date", screener.DEFAULT_END_DATE)),
+        )
+        write_grounding(context.run_dir / GROUNDING_FILENAME, payload)
+        grounding_brief = format_grounding_brief(payload)
+        artifacts.append(_artifact_handle("grounding", GROUNDING_FILENAME, queryable=True))
+
+    mode = str(config.get("mode", AnalysisMode.THEMATIC_SCREENER.value))
+    profile = get_profile(mode)
+    root = screener.generate_taxonomy(
+        main_theme=main_theme,
+        analyst_focus=analyst_focus,
+        model=model,
+        profile=profile,
+        max_leaf_labels=cap,
+        extra_instruction="",
+        taxonomy_style=resolved_style,
+        grounding_brief=grounding_brief,
+        print_taxonomy=False,
+    )
     labels, _search_queries = _write_taxonomy(context, root.model_dump())
-    context.save_config({"labels_model": model})
+    preview_payload: dict[str, Any] | None = None
+    if resolved_style == TAXONOMY_STYLE_DERIVATIVES:
+        preview_payload = {
+            "preview": derivative_preview(root),
+            "findings": validate_derivatives_taxonomy(root),
+        }
+        (context.run_dir / DERIVATIVE_PREVIEW_FILENAME).write_text(
+            json.dumps(preview_payload, indent=2),
+            encoding="utf-8",
+        )
+        artifacts.append(_artifact_handle("derivative_preview", DERIVATIVE_PREVIEW_FILENAME))
+    context.save_config(
+        {
+            "labels_model": model,
+            "taxonomy_style": resolved_style,
+            "ground_with_bigdata": should_ground,
+        }
+    )
 
     return _response(
         run_id=context.run_name,
@@ -771,11 +829,8 @@ def generate_mindmap(
         status="completed",
         summary=f"Generated a taxonomy with {len(labels)} leaf labels.",
         mindmap_preview=_node_preview(root.model_dump()),
-        artifacts=[
-            _artifact_handle("taxonomy_tree", TAXONOMY_TREE_FILENAME, queryable=True),
-            _artifact_handle("themes", "themes.txt"),
-            _artifact_handle("search_queries", "search_queries.txt"),
-        ],
+        derivative_preview=preview_payload,
+        artifacts=artifacts,
         next_actions=["validate_mindmap", "update_mindmap", "build_search_plans"],
     )
 
@@ -929,9 +984,6 @@ def update_mindmap(
     client = OpenAI()
     completion = client.chat.completions.create(
         model=model,
-        temperature=0.0,
-        top_p=1.0,
-        seed=42,
         response_format={"type": "json_object"},
         messages=[
             {
@@ -953,6 +1005,12 @@ def update_mindmap(
                 ),
             },
         ],
+        **sampling_params_for_model(
+            model,
+            temperature=0.0,
+            top_p=1.0,
+            seed=42,
+        ),
     )
     content = completion.choices[0].message.content
     if content is None:
