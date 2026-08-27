@@ -1,11 +1,27 @@
+import base64
+import json
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
-import plotly.offline as pyo
+import plotly.io as pio
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 from IPython.display import display, HTML
+
+
+def show_plotly_figure(fig: go.Figure) -> None:
+    """Display Plotly interactively and embed PNG for static viewers (e.g. GitHub)."""
+    png_bytes = pio.to_image(fig, format="png", scale=2)
+    display(
+        {
+            "application/vnd.plotly.v1+json": json.loads(fig.to_json()),
+            "text/html": pio.to_html(fig, include_plotlyjs="cdn", full_html=False),
+            "image/png": base64.b64encode(png_bytes).decode("ascii"),
+        },
+        raw=True,
+    )
 
 
 def add_line_breaks(text, max_length=80):
@@ -207,7 +223,7 @@ def plot_top_companies_by_sector(df, min_companies=1, title_suffix="", top_secto
             margin=dict(t=120)
         )
 
-        pyo.iplot(fig)
+        show_plotly_figure(fig)
 
     else:
         # Create static matplotlib version
@@ -474,7 +490,7 @@ def plot_confidence_bar_chart(basket_df, title_theme, df_names, legend_labels, i
 
         fig.update_yaxes(showticklabels=False, row=1, col=2)
 
-        fig.show()
+        show_plotly_figure(fig)
 
     else:
         # Create static matplotlib version
@@ -889,7 +905,7 @@ def track_basket_sectors_weekly_complete_hover_labeled(df, df_names, companies_l
                 margin=dict(t=100, b=100)
             )
 
-            fig.show()
+            show_plotly_figure(fig)
 
             # Add space between plots
             if i < len(sectors_list) - 1:
