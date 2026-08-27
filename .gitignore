@@ -35,5 +35,8 @@ Agent_To_BigData/my_agent/data/
 # Runs
 */runs
 
+# Local evidence packs and HTML exports (do not commit quotes)
+Thematic_Screener_CLI/artifacts/
+
 **/uv.lock
 */internal 

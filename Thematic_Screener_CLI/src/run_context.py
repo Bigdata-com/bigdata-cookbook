@@ -17,6 +17,8 @@ CONFIG_FILENAME = "config.json"
 THEMES_FILENAME = "themes.txt"
 SEARCH_QUERIES_FILENAME = "search_queries.txt"
 TAXONOMY_TREE_FILENAME = "taxonomy_tree.json"
+GROUNDING_FILENAME = "grounding.json"
+DERIVATIVE_PREVIEW_FILENAME = "derivative_preview.json"
 PLANS_DIRNAME = "plans"
 RESULTS_DIRNAME = "results"
 RESULTS_FILENAME = "results.json"
@@ -72,6 +74,14 @@ class RunContext:
     @property
     def taxonomy_tree_path(self) -> Path:
         return self.run_dir / TAXONOMY_TREE_FILENAME
+
+    @property
+    def grounding_path(self) -> Path:
+        return self.run_dir / GROUNDING_FILENAME
+
+    @property
+    def derivative_preview_path(self) -> Path:
+        return self.run_dir / DERIVATIVE_PREVIEW_FILENAME
 
     @property
     def taxonomy_path(self) -> Path:

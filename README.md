@@ -12,13 +12,22 @@ A comprehensive collection of financial analysis tools and report generators bui
 
 ## Projects
 
-### 🔍 [Thematic Screener](./Thematic_Screener/)
-**Automated Thematic Analysis and Screening Tool**
+### 🔍 [Thematic Screener CLI](./Thematic_Screener_CLI/)
+**REST-based thematic screening (CLI, MCP, derivative-hop notebooks)**
+
+- Screen a CSV company universe via Bigdata.com REST API and `bigdata-smart-batching`
+- Exposure or derivatives taxonomy (`--taxonomy-style derivatives`); risk-analyzer export mode
+- Client notebooks for TSX oil and EU parcel-tariff derivative screens
+
+### 🔍 [Thematic Screener](./Thematic_Screener/) *(deprecated)*
+**Legacy SDK notebook — use Thematic Screener CLI instead**
 
 - Thematic identification and categorization across multiple sectors
 - Automated screening based on thematic criteria
 - Theme tracking and evolution analysis
 - Investment opportunity identification through thematic lenses
+
+> **Deprecated:** Relied on the removed `bigdata-research-tools` SDK and platform watchlists. Kept for reference only.
 
 ### 📊 [Pricing Power Analysis](./Pricing_Power_Analysis/)
 **Automated Analysis of Pricing Power Narratives and Competitive Positioning**
@@ -344,7 +353,12 @@ bigdata-cookbook/
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
-├── Thematic_Screener/                                # Thematic analysis tool
+├── Thematic_Screener_CLI/                            # Thematic screener CLI + MCP (REST)
+│   ├── notebooks/
+│   ├── src/
+│   ├── pyproject.toml
+│   └── README.md
+├── Thematic_Screener/                                # Deprecated SDK notebook
 │   ├── ThematicScreener.ipynb
 │   ├── src/
 │   ├── requirements.txt

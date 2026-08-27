@@ -44,6 +44,19 @@ from openai import (
 logger = logging.getLogger(__name__)
 
 Message: TypeAlias = dict[str, str]
+
+
+def sampling_params_for_model(model: str, **params: Any) -> dict[str, Any]:
+    """Return sampling kwargs that ``model`` accepts.
+
+    ``gpt-5.6-luna`` only supports default sampling, so temperature, top_p,
+    seed, and penalty fields are omitted for luna models.
+    """
+    if "luna" in model.lower():
+        return {}
+    return {key: value for key, value in params.items() if value is not None}
+
+
 ResponseFormat: TypeAlias = dict[str, Any]
 
 
@@ -108,7 +121,7 @@ class ChatRequest:
 
     request_id: str
     messages: list[Message]
-    model: str = "gpt-5.4-nano"
+    model: str = "gpt-5.6-luna"
     temperature: float = 0.0
     top_p: float = 1.0
     seed: int | None = 42
@@ -354,15 +367,21 @@ class ParallelOpenAIClient:
             if self._tpm_limiter is not None and request.estimated_tokens > 0:
                 await self._tpm_limiter.acquire(weight=request.estimated_tokens)
 
-            completion = await self._client.chat.completions.create(
-                model=request.model,
-                messages=request.messages,
-                temperature=request.temperature,
-                top_p=request.top_p,
-                seed=request.seed,
-                response_format=request.response_format,
-                max_completion_tokens=request.max_completion_tokens,
-            )
+            create_kwargs: dict[str, Any] = {
+                "model": request.model,
+                "messages": request.messages,
+                **sampling_params_for_model(
+                    request.model,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
+                    seed=request.seed,
+                ),
+            }
+            if request.response_format is not None:
+                create_kwargs["response_format"] = request.response_format
+            if request.max_completion_tokens is not None:
+                create_kwargs["max_completion_tokens"] = request.max_completion_tokens
+            completion = await self._client.chat.completions.create(**create_kwargs)
 
         content = completion.choices[0].message.content if completion.choices else None
         return ChatResponse(

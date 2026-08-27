@@ -1,5 +1,7 @@
 # Thematic Screener
 
+> **Deprecated.** This notebook used the removed `bigdata-research-tools` SDK and platform watchlists. For new work use [`Thematic_Screener_CLI`](../Thematic_Screener_CLI/) (REST API, CSV universes, MCP). See [Thematic Screeners](https://docs.bigdata.com/use-cases/research-tools/screeners) on docs.bigdata.com.
+
 ## Automated Thematic Analysis and Screening Tool
 
 This project provides comprehensive thematic analysis and screening capabilities for investment research. It's designed for portfolio managers, research analysts, and investment professionals to systematically identify, analyze, and track investment themes across various sectors and markets.

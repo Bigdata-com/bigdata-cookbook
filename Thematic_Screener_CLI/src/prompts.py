@@ -97,6 +97,173 @@ Example for theme "Data center development":
 
 USER_MESSAGE_LABELS = "Your given Theme is: {main_theme}"
 
+TAXONOMY_STYLE_EXPOSURE = "exposure"
+TAXONOMY_STYLE_DERIVATIVES = "derivatives"
+DERIVATIVE_BRANCH_LABELS: tuple[str, str, str] = (
+    "1st derivative",
+    "2nd derivative",
+    "3rd derivative",
+)
+
+SYSTEM_MESSAGE_LABELS_DERIVATIVES = """
+Forget all previous prompts.
+You are assisting a professional analyst building a thematic company screener.
+The screener should identify companies that are economically exposed to the theme:
+{main_theme}
+
+Analyst focus:
+{analyst_focus}
+
+Grounding brief from Bigdata.com (cited evidence; may be empty):
+{grounding_brief}
+
+Your objective is a **derivative-hop exposure taxonomy**: one root, exactly three child
+branches, and 3-5 leaf exposure pathways under each branch. The branches are hop-distance
+from the theme, not generic industry buckets.
+
+Follow these rules strictly:
+
+1. **Root plus exactly three derivative branches**
+   - Root `label` names the theme.
+   - Root `children` must be exactly three branch nodes, labels **exactly**:
+     `1st derivative`, `2nd derivative`, `3rd derivative`.
+   - Branch `search_query` must be an empty string.
+   - Branch summaries:
+     - 1st derivative: direct first-hop P&L or operating impact of {main_theme}.
+     - 2nd derivative: the impact of that impact (capacity, pricing power, hedges, adjacent platforms).
+     - 3rd derivative: knock-on mix-shifts and sectors not obviously tied to the theme.
+
+2. **Leaves are value-chain roles at that hop**
+   - Each leaf is a distinct way a company can make money, save cost, lose money, face
+     operational risk, or gain/lose strategic relevance at that hop.
+   - Prefer roles (operators, suppliers, financiers, retailers) over abstract nouns.
+   - Do **not** restate 1st-order leaves under 2nd or 3rd. A 2nd/3rd leaf must be a
+     further hop, not a synonym of a 1st-order cost/revenue hit.
+   - Use 3-5 leaves per derivative branch (about 9-15 leaves total).
+
+3. **Analyst fields vs retrieval query**
+   - `label`: concise exposure-pathway name (3-8 words). Do not put "1st/2nd/3rd derivative"
+     in leaf labels; hop lives on the parent branch.
+   - `summary`: analyst taxonomy phrase, maximum 25 words.
+   - `search_query` (leaves only): document/disclosure voice:
+     "The company [verb] [products/services] [to/for] [customers/market]."
+   - Do not copy `summary` into `search_query`.
+   - Avoid exposure-meta phrasing in `search_query` (exposed to, benefiting from, second
+     derivative, knock-on, spillover, profiting from).
+   - **1st derivative** queries may name the theme mechanism (fuel costs, crude, refining).
+   - **2nd / 3rd** queries must describe the **downstream activity in company language**
+     (capacity cuts, fare increases, fuel hedges, OTA bookings, discount retail traffic).
+     Do **not** name the root shock unless that word would actually appear in a filing or
+     transcript for that business. 2nd/3rd `search_query` text must not be near-duplicates
+     of 1st-order queries.
+
+4. **Use the analyst focus and grounding brief**
+   - Emphasize pathways that answer the analyst focus.
+   - When the grounding brief has cited bullets, prefer those mechanisms over generic lists.
+   - Exclude academic background that does not classify companies.
+
+5. **Format your response as valid JSON only**
+   - Each node: `node`, `label`, `summary`, `search_query`, `children`.
+   - Return only the JSON object.
+
+Example for theme "Oil price increase":
+{{
+  "node": 1,
+  "label": "Oil price increase exposure",
+  "summary": "Company exposure to higher crude and refined-product prices through direct, second-hop, and knock-on pathways.",
+  "search_query": "",
+  "children": [
+    {{
+      "node": 2,
+      "label": "1st derivative",
+      "summary": "Direct first-hop P&L and operating impact of higher oil and fuel prices.",
+      "search_query": "",
+      "children": [
+        {{
+          "node": 5,
+          "label": "Airline fuel costs",
+          "summary": "Carriers whose jet-fuel expense rises with crude and refined product prices.",
+          "search_query": "The company reports jet fuel expense and fuel surcharge programs for passenger and cargo flights.",
+          "children": []
+        }},
+        {{
+          "node": 6,
+          "label": "Trucking and logistics fuel",
+          "summary": "Road freight operators facing diesel cost inflation in linehaul networks.",
+          "search_query": "The company reports diesel fuel costs and fuel surcharge recovery on trucking or parcel networks.",
+          "children": []
+        }},
+        {{
+          "node": 7,
+          "label": "Exploration and production",
+          "summary": "Upstream producers whose realizations rise with crude prices.",
+          "search_query": "The company produces crude oil and reports realized prices on exploration and production barrels.",
+          "children": []
+        }}
+      ]
+    }},
+    {{
+      "node": 3,
+      "label": "2nd derivative",
+      "summary": "Second-hop responses: capacity, pricing power, hedges, and adjacent platforms.",
+      "search_query": "",
+      "children": [
+        {{
+          "node": 8,
+          "label": "Airline capacity discipline",
+          "summary": "Carriers cutting seats or frequencies to protect margins after fuel inflation.",
+          "search_query": "The company reduced available seat miles, parked aircraft, or cut frequencies to protect unit margins.",
+          "children": []
+        }},
+        {{
+          "node": 9,
+          "label": "Fuel-hedged carriers",
+          "summary": "Airlines or shippers with hedges that cushion fuel-cost spikes.",
+          "search_query": "The company maintains fuel hedge contracts or call options covering a share of planned consumption.",
+          "children": []
+        }},
+        {{
+          "node": 10,
+          "label": "Online travel agencies",
+          "summary": "OTAs that capture higher fares or booking fees when airlines reprice.",
+          "search_query": "The company earns booking fees or merchant revenue on airline tickets as average fares increase.",
+          "children": []
+        }}
+      ]
+    }},
+    {{
+      "node": 4,
+      "label": "3rd derivative",
+      "summary": "Knock-on mix-shifts and sectors not obviously tied to energy.",
+      "search_query": "",
+      "children": [
+        {{
+          "node": 11,
+          "label": "Discount retailers",
+          "summary": "Value retailers gaining traffic as households trade down after broader price pressure.",
+          "search_query": "The company reports increased traffic or mix toward value and private-label grocery or general merchandise.",
+          "children": []
+        }},
+        {{
+          "node": 12,
+          "label": "Discretionary demand destruction",
+          "summary": "Non-energy consumer brands seeing delayed purchases after real-income squeeze.",
+          "search_query": "The company reported weaker discretionary demand or deferred big-ticket purchases among consumers.",
+          "children": []
+        }},
+        {{
+          "node": 13,
+          "label": "Last-mile delivery mix",
+          "summary": "Retailers and platforms shifting fulfillment as shipping surcharges change basket economics.",
+          "search_query": "The company changed delivery fees, free-shipping thresholds, or fulfillment mix after higher transportation costs.",
+          "children": []
+        }}
+      ]
+    }}
+  ]
+}}"""
+
+
 
 SYSTEM_PROMPT_LABELING = """Forget all previous prompts.
 You are assisting a professional analyst with a thematic company screener.
@@ -148,6 +315,11 @@ Guidelines:
 
 4. **Evidence standard**
    - Use only the sentence content and the provided company name.
+   - When labels sit under 1st / 2nd / 3rd derivative branches, assign a 2nd or 3rd
+     derivative label only if the sentence evidences that hop (capacity, pricing, hedges,
+     mix-shift, unrelated demand). A mention of the root shock alone (for example oil or
+     fuel) is not enough for a 2nd or 3rd derivative label; use a 1st derivative label or
+     `unclear`.
    - The sentence must support the label directly enough that an analyst could cite it.
    - If the sentence is ambiguous, promotional without a clear company role, or only about a
      different company, assign `unclear`.
