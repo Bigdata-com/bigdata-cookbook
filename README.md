@@ -405,7 +405,6 @@ bigdata-cookbook/
 │   ├── Credit_Factor_Analysis.ipynb
 │   ├── src/
 │   ├── requirements.txt
-│   ├── Dockerfile
 │   └── README.md
 ├── AI_Cost_Cutting_Market_Analysis/                # AI cost cutting analysis
 │   ├── AI_Cost_Cutting_Market_Analysis.ipynb
