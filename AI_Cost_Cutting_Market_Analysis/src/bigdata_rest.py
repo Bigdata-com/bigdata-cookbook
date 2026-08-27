@@ -68,13 +68,35 @@ class BigdataRestClient:
         return []
 
     def get_entities_by_id(self, entity_ids: list[str]) -> list[dict[str, Any]]:
-        data = self.post("/v1/knowledge-graph/entities/id", {"values": entity_ids})
-        results = data.get("results") if isinstance(data, dict) else data
-        if isinstance(results, dict):
-            return list(results.values())
-        if isinstance(results, list):
-            return results
-        return []
+        """Lookup entities by ID in batches; skip batches that return HTTP errors."""
+        cleaned = [str(e).strip() for e in entity_ids if e is not None and str(e).strip()]
+        if not cleaned:
+            return []
+        batch_size = 50
+        out: list[dict[str, Any]] = []
+        for i in range(0, len(cleaned), batch_size):
+            batch = cleaned[i : i + batch_size]
+            try:
+                data = self.post("/v1/knowledge-graph/entities/id", {"values": batch})
+            except Exception:
+                # Fall back to per-id lookups for this batch
+                for eid in batch:
+                    try:
+                        data = self.post("/v1/knowledge-graph/entities/id", {"values": [eid]})
+                    except Exception:
+                        continue
+                    results = data.get("results") if isinstance(data, dict) else data
+                    if isinstance(results, dict):
+                        out.extend(list(results.values()))
+                    elif isinstance(results, list):
+                        out.extend(results)
+                continue
+            results = data.get("results") if isinstance(data, dict) else data
+            if isinstance(results, dict):
+                out.extend(list(results.values()))
+            elif isinstance(results, list):
+                out.extend(results)
+        return out
 
     def find_sources(self, name: str, limit: int = 10) -> list[dict[str, Any]]:
         data = self.post("/v1/knowledge-graph/sources", {"query": name, "limit": limit})

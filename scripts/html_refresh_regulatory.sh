@@ -33,6 +33,8 @@ log="$LOG_DIR/${DIR}-final.log"
     --ExecutePreprocessor.timeout="$TIMEOUT" \
     --ExecutePreprocessor.kernel_name=python3
 
+  .venv-html/bin/python "$ROOT/scripts/fix_notebook_schema.py" "$NOTEBOOK"
+
   .venv-html/bin/python -m jupyter nbconvert --to html "$NOTEBOOK"
 
   echo "=== REGULATORY FINAL DONE $(date -Iseconds) ==="

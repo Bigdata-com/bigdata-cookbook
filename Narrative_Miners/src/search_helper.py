@@ -35,6 +35,7 @@ def run_universe_search(
     end_date: str,
     scope: str = "all",
     chunk_percentage: float = 0.05,
+    document_limit_per_query: int | None = None,
     requests_per_minute: int = 350,
     id_to_name: dict[str, str] | None = None,
 ) -> pd.DataFrame:
@@ -55,13 +56,22 @@ def run_universe_search(
             text=text,
             category=category,
         )
-        raw = execute_search(
-            search_plan=plan,
-            chunk_percentage=chunk_percentage,
-            requests_per_minute=requests_per_minute,
-            basket_filtered_entities=True,
-        )
-        for document in deduplicate_documents(raw):
+        execute_kwargs: dict[str, Any] = {
+            "search_plan": plan,
+            "chunk_percentage": chunk_percentage,
+            "requests_per_minute": requests_per_minute,
+            "basket_filtered_entities": True,
+        }
+        if document_limit_per_query is not None:
+            execute_kwargs["overwrite_chunks_per_basket"] = min(
+                1000,
+                max(1, document_limit_per_query * 3),
+            )
+        raw = execute_search(**execute_kwargs)
+        documents = deduplicate_documents(raw)
+        if document_limit_per_query is not None:
+            documents = documents[:document_limit_per_query]
+        for document in documents:
             doc_id = document.get("id", "")
             headline = document.get("headline", "")
             timestamp = document.get("timestamp", "")

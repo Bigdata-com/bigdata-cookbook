@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Execute migrated cookbooks and regenerate companion HTML exports (full defaults).
+# Execute migrated cookbooks and regenerate companion HTML exports.
+# Expects notebook SOURCE cells to already hold desired defaults (see restore_full_defaults.py).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-LOG_DIR="$ROOT/logs/html-refresh"
-MAX_PARALLEL="${MAX_PARALLEL:-3}"
-TIMEOUT="${NOTEBOOK_TIMEOUT:-7200}"
+LOG_DIR="$ROOT/logs/html-refresh-full"
+MAX_PARALLEL="${MAX_PARALLEL:-2}"
+TIMEOUT="${NOTEBOOK_TIMEOUT:-14400}"
 
 mkdir -p "$LOG_DIR"
 
@@ -73,6 +74,8 @@ run_one() {
       --ExecutePreprocessor.timeout="$TIMEOUT" \
       --ExecutePreprocessor.kernel_name=python3 \
       --NbConvertApp.validate_notebook=False
+
+    .venv-html/bin/python "$ROOT/scripts/fix_notebook_schema.py" "$notebook"
 
     .venv-html/bin/python -m jupyter nbconvert --to html "$notebook"
 

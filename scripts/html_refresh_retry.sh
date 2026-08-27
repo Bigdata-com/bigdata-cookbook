@@ -66,6 +66,8 @@ run_one() {
       --ExecutePreprocessor.kernel_name=python3 \
       --NbConvertApp.validate_notebook=False
 
+    .venv-html/bin/python "$ROOT/scripts/fix_notebook_schema.py" "$notebook"
+
     .venv-html/bin/python -m jupyter nbconvert --to html "$notebook"
 
     echo "=== RETRY DONE $(date -Iseconds) $dir ==="
