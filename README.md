@@ -1,38 +1,63 @@
 # Bigdata Cookbook
 
-A comprehensive collection of financial analysis tools and report generators built on the Bigdata API and research tools. This repository contains ready-to-use notebooks for thematic screening, narrative mining, and various sector-specific analyses including pricing power, AI disruption risks, and regulatory issues in the technology sector.
+Turn unstructured financial news, filings, and transcripts into investment-ready intelligence. This repository is a library of **ready-to-run notebooks and workflows** built on [Bigdata.com](https://bigdata.com)—thematic screeners, sovereign and crypto analysis, credit and risk monitors, narrative miners, daily digests, and agent integrations for research teams, portfolio managers, and strategists.
+
+Each cookbook is self-contained: open the notebook, point it at your universe or theme, and produce scores, dashboards, briefs, and reports you can share with stakeholders.
 
 ## Features
 
-- **Client-Ready**: Each project is self-contained with its own dependencies and documentation
-- **Easy Setup**: Uses Docker for containerized deployment or uv for fast, reliable dependency management
-- **Comprehensive Analysis**: Combines multiple data sources for robust insights
-- **Professional Output**: Generates Excel reports, HTML visualizations, and structured data
-- **Modular Design**: Each project can be run independently
+- **Client-ready**: Self-contained projects with their own setup guides
+- **Fast to try**: Docker or local install; many notebooks include a browsable HTML preview on GitHub
+- **Institutional depth**: Thematic scoring, risk taxonomies, narrative summaries, and exportable reports
+- **Broad coverage**: Equities, sovereigns, crypto, credit, macro, M&A, and sector themes
+- **Composable**: Use one cookbook on its own or combine outputs across your research stack
+
+## Preview on GitHub
+
+Many cookbooks include a static HTML export next to the notebook so you can **browse charts and results on GitHub** without running cells:
+
+| Cookbook | Preview |
+|----------|---------|
+| [AI Cost Cutting](./AI_Cost_Cutting_Market_Analysis/AI_Cost_Cutting_Market_Analysis.html) | Provider vs. adopter map for AI cost-cutting narratives |
+| [AI Revenue Generation](./AI_Revenue_Generation_Market_Analysis/AI_Revenue_Generation_Market_Analysis.html) | Who is selling vs. adopting AI revenue tools |
+| [Board Management Monitoring](./Board_Management_Monitoring/Board_Management_Monitoring.html) | Leadership and board activity exposure |
+| [Credit Ratings Monitoring](./Credit_Ratings_Monitoring/Credit_Ratings_Monitoring.html) | Rating actions, outlooks, and timeline views |
+| [Daily Digest Central Banks](./Daily_Digest_Central_Banks/Daily_Digest_Central_Banks.html) | What central banks are saying, ranked by impact |
+| [Daily Digest Crude Oil](./Daily_Digest_Crude_Oil/Daily_Digest_Crude_Oil.html) | Oil-market narrative digest |
+| [Election Monitor](./Election_Monitor/Trump_Reelection_Impact_Analysis.html) | Corporate positioning on electoral outcomes |
+| [Liquid Cooling Market Watch](./Liquid_Cooling_Market_Watch/Liquid_Cooling_Market_Watch.html) | Liquid cooling providers, adopters, and ecosystem |
+| [Narrative Miners](./Narrative_Miners/NarrativeMiner.html) | Theme discovery and narrative ranking |
+| [Pricing Power Analysis](./Pricing_Power_Analysis/Pricing%20Power.html) | Pricing power signals across a company universe |
+| [Report Generator AI Threats](./Report_Generator_AI_Threats/Report%20Generator_%20AI%20Disruption%20Risk.html) | AI disruption risk by company |
+| [Report Generator Regulatory Issues](./Report_Generator_Regulatory_Issues_in_Tech/Report%20Generator_%20Regulatory%20Issues.html) | Regulatory exposure in tech |
+| [Report Generator Tariffs](./Report_Generator_Specialized_Report_Tariffs/Report_Generator_Specialized_Report_Tariffs.html) | Tariff risk and mitigation narratives |
+| [Rising Bond Spread Risks](./Rising_Bond_Spread_Risks/Rising_Bond_Spread_Risks.html) | Western Europe sovereign spillover from bond spreads |
+| [Risk Analyzer](./Risk_Analyzer/Risk_Analyzer.html) | Corporate exposure to a defined risk scenario |
+| [Screener for Crypto](./Screener_for_Crypto/Screener_for_Crypto.html) | Institutional adoption themes across major cryptos |
+| [Thematic Screener](./Thematic_Screener/ThematicScreener.html) | Legacy thematic screener (reference) |
+| [Tracking Inflation Drivers](./Tracking_Inflation_Drivers/Tracking_Inflation_Drivers.html) | Inflation driver taxonomy and narrative scores |
 
 ## Projects
 
 ### 🔍 [Thematic Screener CLI](./Thematic_Screener_CLI/)
-**REST-based thematic screening (CLI, MCP, derivative-hop notebooks)**
+**Screen any theme across a company universe—in the terminal, via MCP, or in client notebooks**
 
-- Screen a CSV company universe via Bigdata.com REST API and `bigdata-smart-batching`
-- Exposure or derivatives taxonomy (`--taxonomy-style derivatives`); risk-analyzer export mode
-- Client notebooks for TSX oil and EU parcel-tariff derivative screens
+- Rank companies by exposure to an investment theme or derivative narrative
+- Export heatmaps and scored universes for portfolio and sector work
+- Example client workflows for commodity and tariff derivative screens
 
-### 🔍 [Thematic Screener](./Thematic_Screener/) *(deprecated)*
-**Legacy SDK notebook — use Thematic Screener CLI instead**
+### 🔍 [Thematic Screener](./Thematic_Screener/)
+**Classic notebook workflow for thematic identification and scoring** *(legacy reference; prefer [Thematic Screener CLI](./Thematic_Screener_CLI/))*
 
 - Thematic identification and categorization across multiple sectors
 - Automated screening based on thematic criteria
 - Theme tracking and evolution analysis
 - Investment opportunity identification through thematic lenses
 
-> **Deprecated:** Relied on the removed `bigdata-research-tools` SDK and platform watchlists. Kept for reference only.
-
 ### 📊 [Pricing Power Analysis](./Pricing_Power_Analysis/)
 **Automated Analysis of Pricing Power Narratives and Competitive Positioning**
 
-- Assesses competitive positioning across company watchlists
+- Assesses competitive positioning across your company universe
 - Provides sector-wide comparative analysis
 - Tracks temporal evolution of pricing narratives
 - Implements confidence scoring system for pricing power signals
@@ -73,10 +98,24 @@ A comprehensive collection of financial analysis tools and report generators bui
 **Single-Ticker Company Sentiment Dashboard**
 
 - Turns one company stock ticker into a complete sentiment dashboard
-- Qualitative sentiment tearsheet (executive summary, bullish/risk drivers, outlook, ranked evidence) via Bigdata.com MCP
-- Quantitative daily time series of sentiment, sentiment pressure, and abnormal media attention via the REST Entity Sentiment API
-- Current sentiment snapshot with direction gauge (Bullish / Neutral / Bearish)
-- Self-contained notebook — change only the `TICKER` and re-run
+- Qualitative tearsheet: executive summary, bullish and risk drivers, outlook, ranked evidence
+- Quantitative sentiment time series, pressure, and abnormal media attention
+- At-a-glance direction gauge (Bullish / Neutral / Bearish)
+- Change the ticker and re-run for any single name
+
+### 🎙️ [Earnings Call Tone Analyzer](./Earnings_Call_Tone_Analyzer/)
+**Score management tone from earnings calls at scale**
+
+- Pull the latest earnings transcripts for your coverage list
+- LLM-based tone scoring with quarter-over-quarter comparability
+- Portfolio-wide tone trends for idea generation and risk monitoring
+
+### 📰 [News Monitor (Edge MRVR)](./News_Monitor_MAS/)
+**Fresh, entity-scoped news with relevance, sentiment, and novelty scores**
+
+- Monitor breaking stories across a defined company universe
+- Structured outputs ready for alerts, dashboards, or downstream research
+- Enrich with full document text when you need the underlying article
 
 ### 👥 [Board Management Monitoring](./Board_Management_Monitoring/)
 **Automated Analysis of Board Member and Management Activity Exposure**
@@ -114,13 +153,11 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Interactive visualizations creating HTML reports with charts for rating timeline analysis
 
 ### 📉 [Credit Factor Analysis](./Credit_Factor_Analysis/)
-**Screen a universe on credit-news sentiment, drill into catalysts, and write a grounded narrative**
+**Find deteriorating credit names, explain the catalysts, and draft a grounded narrative**
 
-- Rank a portfolio or sector list with `bigdata_screen_credit_factor` (worst credit-news names first)
-- Drill into a deteriorating name with `bigdata_get_credit_factor` to see event-type catalysts
-- Retrieve supporting news via `bigdata_search` and synthesize a credit narrative with `gpt-5.6-terra`
-- Talks to the Bigdata.com Remote MCP server over Streamable HTTP (`BIGDATA_API_KEY`)
-- Swap the coverage list and horizon (`daily` / `weekly` / `monthly`) to reuse the notebook as-is
+- Rank a portfolio or sector on credit-news sentiment
+- Drill into the names that moved and see event-type drivers
+- Pull supporting news and synthesize an analyst-ready credit story
 
 ### 💰 [AI Cost Cutting Market Analysis](./AI_Cost_Cutting_Market_Analysis/)
 **Automated Analysis of AI Cost Cutting Providers and Users**
@@ -174,6 +211,13 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Multiple export formats including JSON and Excel for further analysis
 - Source attribution with full metadata including URLs, headlines, and publication dates
 
+### ☀️ [Morning Brief](./morning_brief_cli/)
+**Start the day with a portfolio morning brief across five research lenses**
+
+- Earnings and guidance, macro and policy, analyst sentiment, M&A and corporate actions, supply chain and operations
+- One command produces shareable Markdown and HTML briefs with sourced evidence
+- Built for PM morning meetings, sector pods, and coverage-team standups
+
 ### 🧾 [Specialized Report Tariffs](./Report_Generator_Specialized_Report_Tariffs/)
 **Automated Analysis of Trade Tariff Risks and Corporate Mitigation Strategies**
 
@@ -183,30 +227,27 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Exports structured CSVs for further analysis
 
 ### 📉 [Rising Bond Spread Risks](./Rising_Bond_Spread_Risks/)
-**Analyzing Spillover Risks from Rising Bond Spreads in Western Europe**
+**Quantify sovereign spillover risk as Western European bond spreads widen**
 
-- Risk taxonomy generation with LLM-powered mind mapping
-- Country-level risk scoring across bond spread sub-scenarios
-- Rolling sentiment indicators and volume tracking
-- Interactive dashboards with AI-powered narrative summaries
+- Score Western European countries on bond-spillover and contagion narratives
+- Compare relative exposure across the region with standardized risk metrics
+- Rolling sentiment, volume spikes, and AI-written peak-risk narratives per country
+- Interactive country dashboards for committee packs and sovereign research
 
 ### 🪙 [Screener for Crypto](./Screener_for_Crypto/)
-**Automated Cryptocurrency Thematic Screening and Analysis Tool**
+**Identify cryptocurrencies aligned with institutional adoption before the crowd**
 
-- Automated theme taxonomy generation using LLM to break down complex investment themes
-- Systematic cryptocurrency screening against specific thematic criteria
-- Cross-crypto comparison enabling portfolio-level thematic assessment
-- Interactive visualizations with heatmaps, bar charts, and scatter plots
-- Structured output generating Excel reports and HTML visualizations for investment intelligence
+- Screen major digital assets against institutional adoption themes (KYC/AML, custody, regulation, enterprise use)
+- Rank cryptos by thematic exposure with heatmaps and composite scores
+- Purpose-built for crypto wire intelligence and early trend detection
+- Interactive visualizations for portfolio and research presentations
 
 ### 🔧 [Build Your Own MCP](./Build_Your_Own_MCP/)
-**MCP Server Integration for Bigdata Research Tools**
+**Connect Bigdata.com research workflows to Cursor, Claude, and other MCP clients**
 
-- Integration of Bigdata research tools with MCP (Model Context Protocol) server
-- Watchlist creation and management through MCP interface
-- Thematic screening of companies via MCP tools
-- Compatible with Cursor, Claude Desktop, and other MCP clients
-- Enables AI agents to interact with Bigdata platform for research and analysis
+- Expose search and screening as tools your AI assistant can call
+- Example grounded dashboards and HTML assets for client-ready deliverables
+- A starting point for custom agent and automation workflows
 
 ### 📌 [MCP Dashboard Demo](./MCP_Dashboard_Demo/)
 **Illustration: MCP-grounded dashboard (frozen snapshot)**
@@ -251,6 +292,13 @@ A comprehensive collection of financial analysis tools and report generators bui
 - End-to-end: Unity Catalog setup → Vector Search → MCP → deploy to Model Serving with the AI Playground / Review App
 - Cited, cross-source answers separating proprietary signal from public market intelligence
 
+### ❄️ [Snowflake Agent to Bigdata](./Snowflake_Agent_To_Bigdata/)
+**Snowflake Intelligence demo combining live Snowflake data with Bigdata.com MCP**
+
+- Cortex Agent (`SNOWFLAKE_BIGDATA_AGENT`) over portfolio SQL, internal research search, and Bigdata.com MCP tools
+- Search financial news and filings, resolve securities, and pull company tearsheets from one chat UI
+- End-to-end Snowflake setup guide: External Access Integration, MCP connector, demo data, and agent deployment
+
 ### 🔍 [Large Scale Search](./Search_Large_Scale/)
 **High-Performance Portfolio Search Tool**
 
@@ -271,29 +319,19 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Automated report generation with deal tables, summaries, and source links
 
 ### 📦 [Smart Batching](./Smart_Batching/)
-**Optimized Semantic Search with Intelligent Query Planning and Large-Scale Execution**
+**Run thematic search across thousands of companies efficiently**
 
-- **Two-Step System**: Planning phase creates optimized baskets, execution phase performs search with proportional sampling
-- **Query Optimization**: Reduces API queries by 96-99% (varies by topic specificity) through intelligent company grouping
-  - Niche topics: Up to 99.85% reduction (e.g., "Customer Trust Erosion": 17 queries vs 11,357 naive)
-  - Specialized topics: 96-97% reduction (e.g., "Higher ESG Compliance Costs": 435 queries)
-- **Large-Scale Search Execution**: Follows Search_Large_Scale pattern with:
-  - Parallel processing using ThreadPoolExecutor for high-throughput searches
-  - Multi-layered rate limiting (sliding window algorithm + concurrency semaphore)
-  - Automatic retry with exponential backoff for robust error handling
-  - Proportional sampling to retrieve percentage of results while preserving distribution
-- **Volume-Based Batching**: Automatic granularity determination and basket creation maximizing efficiency
-- **Production Ready**: Comprehensive error handling, logging, and plan persistence for reuse
-- **Scalable**: Efficiently handles universes with 10,000+ companies
+- Intelligent query planning that groups similar companies and themes
+- Large-universe execution with parallel search and robust retries
+- Proportional sampling so results stay representative at scale
+- Reusable search plans for recurring screens and monitors
 
 ### 🔍 [Batch Search API](./Batch_Search_API/)
-**One Batch Job for Large-Scale Search Across Full Universes**
+**One batch job to search an entire universe asynchronously**
 
-- Scale to full universes (e.g. Global All-Cap, 10,000+ companies) without client-side rate limits or thousands of round-trips
-- Single batch job: submit one JSONL file with all queries; the service runs them asynchronously and returns one result file
-- No client-side rate limiting: no QPS management, connection pools, or thousands of round-trips
-- Entity-level post-processing: deduplicate chunks, assign to query entities only, aggregate score and volume per entity
-- Sector–country heatmap: optional bottom-up macro view by sector and country (e.g. G12)
+- Submit all queries in a single job and receive one consolidated result file
+- Entity-level scores and volumes for ranking and heatmaps
+- Optional sector–country views for macro-style screens
 
 ### 📚 [Bigdata.com API Examples](./API_Tutorials/)
 **Notebook and script examples for key Bigdata.com APIs**
@@ -314,10 +352,9 @@ A comprehensive collection of financial analysis tools and report generators bui
 - OpenAI API key (for advanced features)
 
 #### For Local Installation
-- Python 3.8 or higher
+- Python 3.11+ recommended
 - [uv](https://github.com/astral-sh/uv) package manager
-- Bigdata API access
-- OpenAI API key (for advanced features)
+- Bigdata.com and OpenAI API keys (see each project's `.env.example`)
 
 #### Clone repository
 
@@ -344,6 +381,7 @@ Each project has its own detailed README with specific installation and usage in
 bigdata-cookbook/
 ├── Pricing_Power_Analysis/                          # Pricing power analysis
 │   ├── Pricing Power.ipynb
+│   ├── Pricing Power.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
@@ -352,13 +390,15 @@ bigdata-cookbook/
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
-├── Report_Generator_Regulatory_Isses_in_Tech/        # Regulatory analysis
+├── Report_Generator_Regulatory_Issues_in_Tech/        # Regulatory analysis
 │   ├── Report Generator_ Regulatory Issues.ipynb
+│   ├── Report Generator_ Regulatory Issues.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
 ├── Risk_Analyzer/                                    # Risk analysis tool
 │   ├── Risk_Analyzer.ipynb
+│   ├── Risk_Analyzer.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
@@ -374,6 +414,7 @@ bigdata-cookbook/
 │   └── README.md
 ├── Narrative_Miners/                                 # Narrative analysis tool
 │   ├── NarrativeMiner.ipynb
+│   ├── NarrativeMiner.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
@@ -381,23 +422,34 @@ bigdata-cookbook/
 │   ├── company_sentiment_dashboard.ipynb
 │   ├── requirements.txt
 │   └── README.md
+├── Earnings_Call_Tone_Analyzer/                      # Earnings call tone scoring CLI
+│   ├── pyproject.toml
+│   └── README.md
+├── News_Monitor_MAS/                                 # Edge MRVR news monitor
+│   ├── pyproject.toml
+│   └── README.md
 ├── Board_Management_Monitoring/                      # Board monitoring tool
 │   ├── Board_Management_Monitoring.ipynb
+│   ├── Board_Management_Monitoring.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
 ├── Liquid_Cooling_Market_Watch/                      # Liquid cooling analysis
 │   ├── Liquid_Cooling_Market_Watch.ipynb
+│   ├── Liquid_Cooling_Market_Watch.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
-├── Election_Monitor/                               # Elecion Monitoring tool
-│   ├── Trump_Reelection_Impact_Analisys.ipynb
+├── Election_Monitor/                                 # Election monitoring tool
+│   ├── Trump_Reelection_Impact_Analysis.ipynb
+│   ├── Trump_Reelection_Impact_Analysis.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
 ├── Credit_Ratings_Monitoring/                       # Credit rating event monitoring
 │   ├── Credit_Ratings_Monitoring.ipynb
+│   ├── Credit_Ratings_Monitoring.html
+│   ├── report/
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
@@ -408,21 +460,25 @@ bigdata-cookbook/
 │   └── README.md
 ├── AI_Cost_Cutting_Market_Analysis/                # AI cost cutting analysis
 │   ├── AI_Cost_Cutting_Market_Analysis.ipynb
+│   ├── AI_Cost_Cutting_Market_Analysis.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
 ├── AI_Revenue_Generation_Market_Analysis/          # AI revenue generation analysis
 │   ├── AI_Revenue_Generation_Market_Analysis.ipynb
+│   ├── AI_Revenue_Generation_Market_Analysis.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
 ├── Tracking_Inflation_Drivers/                     # Inflation analysis tool
 │   ├── Tracking_Inflation_Drivers.ipynb
+│   ├── Tracking_Inflation_Drivers.html
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
 ├── Daily_Digest_Central_Banks/                      # Central bank monitoring
 │   ├── Daily_Digest_Central_Banks.ipynb
+│   ├── Daily_Digest_Central_Banks.html
 │   ├── src/
 │   ├── assets/
 │   ├── report/
@@ -431,6 +487,7 @@ bigdata-cookbook/
 │   └── README.md
 ├── Daily_Digest_Crude_Oil/                          # Crude oil market analysis
 │   ├── Daily_Digest_Crude_Oil.ipynb
+│   ├── Daily_Digest_Crude_Oil.html
 │   ├── src/
 │   ├── assets/
 │   ├── report/
@@ -443,14 +500,20 @@ bigdata-cookbook/
 │   │   └── data/
 │   ├── requirements.txt
 │   └── README.md
+├── morning_brief_cli/                               # Portfolio morning brief generator
+│   ├── pyproject.toml
+│   └── README.md
 ├── Report_Generator_Specialized_Report_Tariffs/      # Tariffs risk report generator
 │   ├── Report_Generator_Specialized_Report_Tariffs.ipynb
+│   ├── Report_Generator_Specialized_Report_Tariffs.html
 │   ├── src/
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   └── README.md
 ├── Rising_Bond_Spread_Risks/                        # Bond spread spillover analysis
 │   ├── Rising_Bond_Spread_Risks.ipynb
+│   ├── Rising_Bond_Spread_Risks.html
+│   ├── data/western_europe_countries_banks.csv
 │   ├── src/
 │   ├── requirements.txt
 │   ├── Dockerfile
@@ -458,6 +521,8 @@ bigdata-cookbook/
 │   └── README.md
 ├── Screener_for_Crypto/                             # Cryptocurrency thematic screening
 │   ├── Screener_for_Crypto.ipynb
+│   ├── Screener_for_Crypto.html
+│   ├── data/top_15_cryptos.csv
 │   ├── src/
 │   ├── requirements.txt
 │   ├── Dockerfile
@@ -485,6 +550,12 @@ bigdata-cookbook/
 │   ├── research_client.py
 │   ├── requirements.txt
 │   ├── static/
+│   └── README.md
+├── Google_ADK_With_BigData/                         # Google ADK + Bigdata + local FAISS demo
+│   └── README.md
+├── Databricks_Agent_To_Bigdata/                     # Databricks + Bigdata MCP agent
+│   └── README.md
+├── Snowflake_Agent_To_Bigdata/                      # Snowflake Intelligence + Bigdata MCP demo
 │   └── README.md
 ├── Search_Large_Scale/                              # Large-scale portfolio search
 │   ├── large_search.ipynb
@@ -518,29 +589,16 @@ bigdata-cookbook/
 
 ## Requirements
 
-### Core Dependencies
-- `bigdata-client>=2.17.0` - Bigdata API client
-- `bigdata-research-tools>=0.17.3` - Research analysis tools
-- `nest-asyncio>=1.6.0` - Async compatibility
-- `matplotlib>=3.0.0` - Data visualization
-- `numpy>=1.20.0` - Numerical computing
-- `pandas>=1.3.0` - Data manipulation
-- `jupyter>=1.0.0` - Notebook environment
-
-### Optional Dependencies
-- `seaborn>=0.11.0` - Statistical visualizations
-- `plotly>=5.0.0` - Interactive plots
-- `ipython>=7.0.0` - Enhanced Python shell
+Each project lists its own dependencies in `requirements.txt` or `pyproject.toml`. Setup details and credentials are in every project README.
 
 ## Usage
 
-Each project follows a similar workflow:
+Typical flow across cookbooks:
 
-1. **Setup**: Install dependencies and configure credentials
-2. **Data Collection**: Fetch relevant data from Bigdata platform
-3. **Analysis**: Run the analysis pipeline
-4. **Reporting**: Generate Excel and HTML reports
-5. **Visualization**: Create charts and insights
+1. **Choose a workflow** that matches your question (theme, risk, credit, macro, etc.)
+2. **Configure** your universe, dates, and theme in the notebook
+3. **Run** the pipeline to retrieve, label, and score unstructured content
+4. **Share** Excel, CSV, HTML, or dashboard outputs with your team
 
 ## Support
 
