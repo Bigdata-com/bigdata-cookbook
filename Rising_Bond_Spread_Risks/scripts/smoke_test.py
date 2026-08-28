@@ -44,11 +44,19 @@ def _check_no_sdk_imports() -> None:
 
 
 def _check_luna_defaults() -> None:
-    from src.openai_utils import DEFAULT_LLM_MODEL, sampling_params_for_model
+    from src.openai_utils import (
+        DEFAULT_LLM_MODEL,
+        completion_token_params_for_model,
+        sampling_params_for_model,
+    )
 
     assert DEFAULT_LLM_MODEL == "gpt-5.6-luna"
     assert sampling_params_for_model("gpt-5.6-luna", temperature=0.0) == {}
     assert sampling_params_for_model("gpt-4o-mini", temperature=0.0) == {"temperature": 0.0}
+    assert completion_token_params_for_model("gpt-5.6-luna", 50) == {
+        "max_completion_tokens": 50
+    }
+    assert completion_token_params_for_model("gpt-4o-mini", 50) == {"max_tokens": 50}
 
     from src.simple_labeler import SimpleLabeler
     from src.report_generator import SummaryGenerator

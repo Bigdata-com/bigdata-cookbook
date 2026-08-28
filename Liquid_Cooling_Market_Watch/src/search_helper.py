@@ -35,7 +35,10 @@ def run_universe_search(
     end_date: str,
     scope: str = "all",
     chunk_percentage: float = 0.05,
-    requests_per_minute: int = 350,
+    # Conservative default: package plan_search defaults to 450 RPM / 40 workers
+    # and will 429 under concurrent HTML-refresh load.
+    requests_per_minute: int = 80,
+    max_workers: int = 4,
     id_to_name: dict[str, str] | None = None,
 ) -> pd.DataFrame:
     """Search a company universe for each query text; return chunk-level rows."""
@@ -54,6 +57,8 @@ def run_universe_search(
             volume_query_mode="iterative",
             text=text,
             category=category,
+            requests_per_minute=requests_per_minute,
+            max_workers=max_workers,
         )
         raw = execute_search(
             search_plan=plan,
