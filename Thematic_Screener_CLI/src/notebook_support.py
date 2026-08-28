@@ -64,10 +64,9 @@ def preview_quote(text: object, words: int = QUOTE_PREVIEW_WORDS) -> str:
     return " ".join(tokens[:words]) + f" {QUOTE_TRUNCATION_MARKER}"
 
 
-def display_figure(fig: Figure) -> Figure:
-    """Render a Matplotlib figure in Jupyter and HTML exports."""
+def display_figure(fig: Figure) -> None:
+    """Render a Matplotlib figure once in Jupyter and HTML exports."""
     from IPython.display import display
 
     display(fig)
     plt.close(fig)
-    return fig
