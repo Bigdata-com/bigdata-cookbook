@@ -1,11 +1,14 @@
 """Make Plotly notebook outputs render on GitHub.
 
-GitHub's notebook viewer does not execute Plotly JavaScript. It only shows
-static ``image/png`` (or SVG). This script:
+GitHub's notebook viewer does not execute JavaScript. When a cell output has
+both ``text/html`` and ``image/png``, GitHub prefers HTML and shows a blank
+Plotly chart. Working GitHub examples use **PNG-only** outputs.
 
+This script:
 1. Embeds a kaleido PNG into each ``application/vnd.plotly.v1+json`` output.
-2. Drops orphan Plotly HTML-only outputs (no figure JSON / PNG) that blank out
-   GitHub and bloat notebooks with an inlined plotly.js bundle.
+2. Drops orphan Plotly HTML-only outputs (no figure JSON / PNG).
+3. Strips ``text/html`` and Plotly JSON from PNG-backed outputs so GitHub
+   selects ``image/png``.
 """
 
 from __future__ import annotations
@@ -73,9 +76,28 @@ def is_orphan_plotly_html(output: dict[str, Any]) -> bool:
     return bool(html) and _is_plotly_html(html)
 
 
-def fix_notebook(nb: nbformat.NotebookNode) -> tuple[int, int]:
+def reduce_to_png_only(output: dict[str, Any]) -> bool:
+    """Keep only image/png so GitHub does not prefer blank Plotly HTML."""
+    if output.get("output_type") != "display_data":
+        return False
+    data = output.get("data")
+    if not isinstance(data, dict) or not data.get("image/png"):
+        return False
+    if set(data.keys()) == {"image/png"}:
+        return False
+    # Only touch Plotly-backed outputs; leave pandas HTML tables alone.
+    html = _as_text(data.get("text/html"))
+    if PLOTLY_JSON not in data and not _is_plotly_html(html):
+        return False
+    output["data"] = {"image/png": data["image/png"]}
+    output["metadata"] = {}
+    return True
+
+
+def fix_notebook(nb: nbformat.NotebookNode) -> tuple[int, int, int]:
     embedded = 0
     removed = 0
+    reduced = 0
     for cell in nb.cells:
         if cell.get("cell_type") != "code":
             continue
@@ -87,18 +109,20 @@ def fix_notebook(nb: nbformat.NotebookNode) -> tuple[int, int]:
                 continue
             if isinstance(output, dict) and embed_png_in_output(output):
                 embedded += 1
+            if isinstance(output, dict) and reduce_to_png_only(output):
+                reduced += 1
             kept.append(output)
         cell["outputs"] = kept
-    return embedded, removed
+    return embedded, removed, reduced
 
 
 def fix_notebook_file(notebook_path: Path) -> None:
     nb = nbformat.read(notebook_path, as_version=4)
-    embedded, removed = fix_notebook(nb)
+    embedded, removed, reduced = fix_notebook(nb)
     nbformat.write(nb, notebook_path)
     print(
         f"fixed plotly github render: {notebook_path} "
-        f"(png_embedded={embedded}, orphan_html_removed={removed})"
+        f"(png_embedded={embedded}, orphan_html_removed={removed}, png_only={reduced})"
     )
 
 
