@@ -113,6 +113,15 @@ A comprehensive collection of financial analysis tools and report generators bui
 - Timeline analysis generating chronological reports showing rating evolution over time
 - Interactive visualizations creating HTML reports with charts for rating timeline analysis
 
+### 📉 [Credit Factor Analysis](./Credit_Factor_Analysis/)
+**Screen a universe on credit-news sentiment, drill into catalysts, and write a grounded narrative**
+
+- Rank a portfolio or sector list with `bigdata_screen_credit_factor` (worst credit-news names first)
+- Drill into a deteriorating name with `bigdata_get_credit_factor` to see event-type catalysts
+- Retrieve supporting news via `bigdata_search` and synthesize a credit narrative with `gpt-5.6-terra`
+- Talks to the Bigdata.com Remote MCP server over Streamable HTTP (`BIGDATA_API_KEY`)
+- Swap the coverage list and horizon (`daily` / `weekly` / `monthly`) to reuse the notebook as-is
+
 ### 💰 [AI Cost Cutting Market Analysis](./AI_Cost_Cutting_Market_Analysis/)
 **Automated Analysis of AI Cost Cutting Providers and Users**
 
@@ -389,6 +398,11 @@ bigdata-cookbook/
 │   └── README.md
 ├── Credit_Ratings_Monitoring/                       # Credit rating event monitoring
 │   ├── Credit_Ratings_Monitoring.ipynb
+│   ├── src/
+│   ├── requirements.txt
+│   └── README.md
+├── Credit_Factor_Analysis/                          # Credit-news factor screen + narrative
+│   ├── Credit_Factor_Analysis.ipynb
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
