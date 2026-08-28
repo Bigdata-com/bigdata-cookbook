@@ -121,8 +121,9 @@ Credit_Ratings_Monitoring/
 │   ├── summary_generator.py           # Report generation and summarization
 │   └── visuals.py                     # Visualization and HTML report generation
 ├── report/                            # Generated analysis reports
+│   ├── credit_ratings_monitor.csv
 │   ├── tesla_inc_credit_ratings_report.html
-│   └── tesla_inc_credit_ratings_timeline.html
+│   └── tesla_credit_ratings_timeline.html
 └── .venv/                             # Virtual environment (created during setup)
 ```
 

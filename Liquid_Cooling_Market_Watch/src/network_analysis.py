@@ -168,7 +168,6 @@ def provider_adopter_net(df_filtered_adopters,
 
     # Check if the graph is empty
     if G.number_of_nodes() == 0 or G.number_of_edges() == 0:
-        print("The graph is empty. Please check the data and conditions.")
         return None
     
     if interactive:
