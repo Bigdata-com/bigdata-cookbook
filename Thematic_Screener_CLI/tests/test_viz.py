@@ -122,6 +122,60 @@ def test_mindmap_renders_every_leaf() -> None:
     assert "Discount retail trade-down" in rendered
 
 
+def test_exposure_mindmap_renders_branch_leaves() -> None:
+    root = Node.model_validate(
+        {
+            "node": 1,
+            "label": "Supply Chain Reshaping",
+            "summary": "Theme root.",
+            "search_query": "",
+            "children": [
+                {
+                    "node": 2,
+                    "label": "Reshoring",
+                    "summary": "Manufacturing relocation.",
+                    "search_query": "",
+                    "children": [
+                        _leaf(5, "Nearshoring to Mexico"),
+                        _leaf(6, "US fab expansion"),
+                    ],
+                },
+                {
+                    "node": 3,
+                    "label": "Supplier diversification",
+                    "summary": "Multi-source procurement.",
+                    "search_query": "",
+                    "children": [_leaf(7, "Dual sourcing semiconductors")],
+                },
+            ],
+        }
+    )
+
+    figure = viz.plot_mindmap(root)
+    rendered = {text.get_text() for text in figure.axes[0].texts}
+
+    assert "Nearshoring to Mexico" in rendered
+    assert "Dual sourcing semiconductors" in rendered
+
+
+def test_exposure_charts_render_without_hop_column() -> None:
+    frame = pd.DataFrame(
+        {
+            "sentence_id": ["0", "1", "2"],
+            "company_name": ["Apple", "Apple", "NVIDIA"],
+            "label": ["Nearshoring", "Nearshoring", "Dual sourcing"],
+            "timestamp": [
+                "2025-07-01T00:00:00",
+                "2025-08-11T00:00:00",
+                "2026-01-05T00:00:00",
+            ],
+        }
+    )
+
+    for builder in (viz.plot_top_pathways, viz.plot_top_companies, viz.plot_evidence_timeline):
+        assert builder(frame).axes, f"{builder.__name__} produced no axes"
+
+
 def test_charts_render_from_labeled_evidence() -> None:
     evidence_df = viz.attach_hop_column(_labeled_frame(), _tree())
 

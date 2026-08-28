@@ -15,6 +15,7 @@ import pandas as pd
 from matplotlib.figure import Figure
 
 from src.derivative_taxonomy import leaf_branch_map, leaves_by_derivative_branch
+from src.helpers import get_leaf_labels
 from src.prompts import DERIVATIVE_BRANCH_LABELS
 
 HOP_COLORS: dict[str, str] = {
@@ -22,6 +23,14 @@ HOP_COLORS: dict[str, str] = {
     DERIVATIVE_BRANCH_LABELS[1]: "#4c9ac9",
     DERIVATIVE_BRANCH_LABELS[2]: "#e8963c",
 }
+EXPOSURE_BRANCH_COLORS: tuple[str, ...] = (
+    "#12496b",
+    "#4c9ac9",
+    "#e8963c",
+    "#6a994e",
+    "#bc4749",
+    "#7b6ba8",
+)
 UNMAPPED_COLOR = "#b0b7bd"
 GRID_COLOR = "#dce1e5"
 TEXT_COLOR = "#243038"
@@ -34,6 +43,25 @@ INDIRECT_HOPS: tuple[str, ...] = tuple(DERIVATIVE_BRANCH_LABELS[1:])
 
 def _hop_color(hop: str) -> str:
     return HOP_COLORS.get(hop, UNMAPPED_COLOR)
+
+
+def _branch_color(index: int) -> str:
+    return EXPOSURE_BRANCH_COLORS[index % len(EXPOSURE_BRANCH_COLORS)]
+
+
+def _exposure_branch_groups(root: Any) -> list[tuple[str, list[str]]]:
+    """Map each top-level branch to the leaf labels beneath it."""
+    if not root.children:
+        return []
+    groups: list[tuple[str, list[str]]] = []
+    for branch in root.children:
+        leaves = get_leaf_labels(branch) if branch.children else [branch.label]
+        groups.append((branch.label, leaves))
+    return groups
+
+
+def _has_derivative_branches(root: Any) -> bool:
+    return any(leaves_by_derivative_branch(root).values())
 
 
 def _style_axes(ax: Any, *, xgrid: bool = False, ygrid: bool = False) -> None:
@@ -111,6 +139,82 @@ def _wrap(text: str, width: int = 34) -> str:
 
 
 def plot_mindmap(root: Any) -> Figure:
+    """Draw a mindmap for derivative or exposure taxonomies."""
+    if _has_derivative_branches(root):
+        return _plot_derivative_mindmap(root)
+    return _plot_exposure_mindmap(root)
+
+
+def _plot_exposure_mindmap(root: Any) -> Figure:
+    """Draw an exposure-style mindmap: theme, branches, and leaf pathways."""
+    grouped = _exposure_branch_groups(root)
+    if not grouped:
+        return _empty_figure("No taxonomy branches to display.")
+
+    total_leaves = sum(len(leaves) for leaves in (_leaves for _, _leaves in grouped))
+    fig, ax = plt.subplots(figsize=(13, max(4.5, 0.62 * total_leaves + 1.4)))
+    ax.axis("off")
+
+    row = 0.0
+    branch_anchors: list[tuple[float, str, str]] = []
+    for branch_index, (branch, leaves) in enumerate(grouped):
+        color = _branch_color(branch_index)
+        leaf_rows = [row + index for index in range(len(leaves))]
+        branch_center = sum(leaf_rows) / len(leaf_rows)
+        branch_anchors.append((branch_center, branch, color))
+
+        for leaf_row, leaf in zip(leaf_rows, leaves, strict=True):
+            ax.plot([1.55, 2.0], [branch_center, leaf_row], color=color, linewidth=1.1, alpha=0.55)
+            ax.text(
+                2.05,
+                leaf_row,
+                leaf,
+                va="center",
+                ha="left",
+                fontsize=10,
+                color=TEXT_COLOR,
+            )
+        ax.text(
+            1.5,
+            branch_center,
+            _wrap(branch, 28),
+            va="center",
+            ha="right",
+            fontsize=11,
+            fontweight="bold",
+            color="white",
+            bbox={"boxstyle": "round,pad=0.45", "facecolor": color, "edgecolor": "none"},
+        )
+        row += len(leaves) + 0.6
+
+    theme_center = sum(center for center, _, _ in branch_anchors) / len(branch_anchors)
+    for branch_center, _, color in branch_anchors:
+        ax.plot(
+            [0.62, 0.95],
+            [theme_center, branch_center],
+            color=color,
+            linewidth=1.4,
+            alpha=0.7,
+        )
+    ax.text(
+        0.6,
+        theme_center,
+        _wrap(root.label, 22),
+        va="center",
+        ha="right",
+        fontsize=12,
+        fontweight="bold",
+        color="white",
+        bbox={"boxstyle": "round,pad=0.5", "facecolor": TEXT_COLOR, "edgecolor": "none"},
+    )
+
+    ax.set_xlim(-0.3, 4.6)
+    ax.set_ylim(row, -1.2)
+    fig.tight_layout()
+    return fig
+
+
+def _plot_derivative_mindmap(root: Any) -> Figure:
     """Draw the derivative mindmap: theme, three hops, and their exposure pathways."""
     grouped = {
         branch: leaves
@@ -219,14 +323,27 @@ def plot_top_pathways(evidence_df: pd.DataFrame, top_n: int = 12) -> Figure:
     if evidence_df.empty or "label" not in evidence_df.columns:
         return _empty_figure("No labeled evidence to rank by pathway.")
 
-    counts = (
-        evidence_df.groupby(["label", HOP_COLUMN], dropna=False)
-        .size()
-        .reset_index(name="quotes")
-        .sort_values("quotes", ascending=False)
-        .head(top_n)
-        .iloc[::-1]
-    )
+    if HOP_COLUMN in evidence_df.columns:
+        counts = (
+            evidence_df.groupby(["label", HOP_COLUMN], dropna=False)
+            .size()
+            .reset_index(name="quotes")
+            .sort_values("quotes", ascending=False)
+            .head(top_n)
+            .iloc[::-1]
+        )
+        bar_colors = [_hop_color(hop) for hop in counts[HOP_COLUMN]]
+    else:
+        counts = (
+            evidence_df.groupby("label")
+            .size()
+            .reset_index(name="quotes")
+            .sort_values("quotes", ascending=False)
+            .head(top_n)
+            .iloc[::-1]
+        )
+        bar_colors = [_branch_color(index) for index in range(len(counts))]
+
     if counts.empty:
         return _empty_figure("No labeled evidence to rank by pathway.")
 
@@ -235,7 +352,7 @@ def plot_top_pathways(evidence_df: pd.DataFrame, top_n: int = 12) -> Figure:
     bars = ax.barh(
         list(positions),
         counts["quotes"],
-        color=[_hop_color(hop) for hop in counts[HOP_COLUMN]],
+        color=bar_colors,
         height=0.68,
     )
     ax.bar_label(bars, padding=4, fontsize=9, color=TEXT_COLOR)
@@ -244,7 +361,8 @@ def plot_top_pathways(evidence_df: pd.DataFrame, top_n: int = 12) -> Figure:
     ax.set_xlabel("Evidence quotes", fontsize=10, color=TEXT_COLOR)
     ax.set_xlim(0, counts["quotes"].max() * 1.12)
     _style_axes(ax, xgrid=True)
-    _add_hop_legend(ax, counts[HOP_COLUMN].dropna().unique())
+    if HOP_COLUMN in counts.columns:
+        _add_hop_legend(ax, counts[HOP_COLUMN].dropna().unique())
     fig.tight_layout()
     return fig
 
@@ -277,6 +395,29 @@ def plot_top_companies(
     evidence_df = _select_hops(evidence_df, hops)
     if evidence_df.empty or "company_name" not in evidence_df.columns:
         return _empty_figure("No labeled evidence to rank by company.")
+
+    if HOP_COLUMN not in evidence_df.columns:
+        counts = (
+            evidence_df.groupby("company_name")
+            .size()
+            .reset_index(name="quotes")
+            .sort_values("quotes", ascending=True)
+            .tail(top_n)
+        )
+        fig, ax = plt.subplots(figsize=(11, max(3.5, 0.44 * len(counts) + 1.5)))
+        bars = ax.barh(
+            counts["company_name"],
+            counts["quotes"],
+            color=_branch_color(0),
+            height=0.7,
+        )
+        ax.bar_label(bars, padding=4, fontsize=9, color=TEXT_COLOR)
+        ax.set_xlabel("Evidence quotes", fontsize=10, color=TEXT_COLOR)
+        ax.set_xlim(0, counts["quotes"].max() * 1.12 if len(counts) else 1)
+        ax.tick_params(axis="y", labelsize=9)
+        _style_axes(ax, xgrid=True)
+        fig.tight_layout()
+        return fig
 
     matrix = (
         evidence_df.pivot_table(
@@ -388,7 +529,7 @@ def plot_company_hop_matrix(
 
 
 def plot_evidence_timeline(evidence_df: pd.DataFrame) -> Figure:
-    """Track how evidence accumulates month by month across the three hops."""
+    """Track how evidence accumulates month by month."""
     if evidence_df.empty or "timestamp" not in evidence_df.columns:
         return _empty_figure("No timestamped evidence to plot.")
 
@@ -396,23 +537,31 @@ def plot_evidence_timeline(evidence_df: pd.DataFrame) -> Figure:
     dated["month"] = pd.to_datetime(
         dated["timestamp"], errors="coerce", format="mixed"
     ).dt.to_period("M")
-    dated = dated.dropna(subset=["month", HOP_COLUMN])
+    dated = dated.dropna(subset=["month"])
     if dated.empty:
         return _empty_figure("No timestamped evidence to plot.")
 
-    series = (
-        dated.groupby(["month", HOP_COLUMN]).size().unstack(fill_value=0).sort_index()
-    )
-    hops = [hop for hop in DERIVATIVE_BRANCH_LABELS if hop in series.columns]
-    months = [str(period) for period in series.index]
-    positions = list(range(len(months)))
+    if HOP_COLUMN in dated.columns:
+        series = (
+            dated.groupby(["month", HOP_COLUMN]).size().unstack(fill_value=0).sort_index()
+        )
+        hops = [hop for hop in DERIVATIVE_BRANCH_LABELS if hop in series.columns]
+        months = [str(period) for period in series.index]
+        positions = list(range(len(months)))
 
-    fig, ax = plt.subplots(figsize=(12, 4.2))
-    bottom = [0.0] * len(series)
-    for hop in hops:
-        values = series[hop].tolist()
-        ax.bar(positions, values, bottom=bottom, color=_hop_color(hop), label=hop, width=0.68)
-        bottom = [base + value for base, value in zip(bottom, values, strict=True)]
+        fig, ax = plt.subplots(figsize=(12, 4.2))
+        bottom = [0.0] * len(series)
+        for hop in hops:
+            values = series[hop].tolist()
+            ax.bar(positions, values, bottom=bottom, color=_hop_color(hop), label=hop, width=0.68)
+            bottom = [base + value for base, value in zip(bottom, values, strict=True)]
+        ax.legend(loc="upper left", frameon=False, fontsize=9, labelcolor=TEXT_COLOR)
+    else:
+        monthly = dated.groupby("month").size().sort_index()
+        months = [str(period) for period in monthly.index]
+        positions = list(range(len(months)))
+        fig, ax = plt.subplots(figsize=(12, 4.2))
+        ax.bar(positions, monthly.tolist(), color=_branch_color(0), width=0.68)
 
     ax.set_ylabel("Evidence quotes", fontsize=10, color=TEXT_COLOR)
     ax.set_xticks(positions)
@@ -421,6 +570,5 @@ def plot_evidence_timeline(evidence_df: pd.DataFrame) -> Figure:
     for tick in ax.get_xticklabels():
         tick.set_horizontalalignment("right")
     _style_axes(ax, ygrid=True)
-    ax.legend(loc="upper left", frameon=False, fontsize=9, labelcolor=TEXT_COLOR)
     fig.tight_layout()
     return fig
