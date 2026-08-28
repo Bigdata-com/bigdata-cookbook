@@ -16,7 +16,7 @@ import requests
 
 DEFAULT_BASE_URL = os.getenv("BIGDATA_API_BASE_URL", "https://api.bigdata.com")
 UNIVERSE_ID_ALIASES = ("RP_ENTITY_ID", "RP_COMPANY_ID")
-UNIVERSE_NAME_ALIASES = ("COMPANY_NAME", "NAME", "COMPANY")
+UNIVERSE_NAME_ALIASES = ("COMPANY_NAME", "NAME", "COMPANY", "ENTITY_NAME")
 
 
 class BigdataRestClient:
@@ -110,3 +110,11 @@ def load_universe(universe_path: str | Path) -> pd.DataFrame:
 
 def company_ids_from_universe(universe: pd.DataFrame) -> list[str]:
     return universe["RP_ENTITY_ID"].tolist()
+
+
+def load_crypto_universe(universe_path: str | Path) -> tuple[list[str], dict[str, str]]:
+    """Load a cryptocurrency universe CSV with ``RP_ENTITY_ID`` + ``ENTITY_NAME``."""
+    universe = load_universe(universe_path)
+    entity_ids = company_ids_from_universe(universe)
+    entity_names = dict(zip(universe["RP_ENTITY_ID"], universe["COMPANY_NAME"]))
+    return entity_ids, entity_names

@@ -15,15 +15,16 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from src.bigdata_rest import BigdataRestClient  # noqa: E402
+from src.bigdata_rest import BigdataRestClient, load_crypto_universe  # noqa: E402
 from src.openai_utils import sampling_params_for_model  # noqa: E402
 from src.search_entities import post_process_dataframe, search_by_entities  # noqa: E402
 
 LLM_MODEL = "gpt-5.6-luna"
 MAIN_THEME = "Crypto Institutional Adoption"
 FOCUS = "KYC and AML themes"
-ENTITY_IDS = ["D69946"]
-ENTITY_NAMES = {"D69946": "Coinbase Global Inc."}
+ENTITY_IDS, ENTITY_NAMES = load_crypto_universe(ROOT / "data" / "top_15_cryptos.csv")
+ENTITY_IDS = [ENTITY_IDS[0]]
+ENTITY_NAMES = {ENTITY_IDS[0]: ENTITY_NAMES[ENTITY_IDS[0]]}
 START_DATE = "2025-01-01"
 END_DATE = "2025-01-31"
 DOCUMENT_LIMIT = 5
