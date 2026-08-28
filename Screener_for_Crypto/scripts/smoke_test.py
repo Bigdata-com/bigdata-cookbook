@@ -23,11 +23,9 @@ LLM_MODEL = "gpt-5.6-luna"
 MAIN_THEME = "Crypto Institutional Adoption"
 FOCUS = "KYC and AML themes"
 ENTITY_IDS, ENTITY_NAMES = load_crypto_universe(ROOT / "data" / "top_15_cryptos.csv")
-ENTITY_IDS = [ENTITY_IDS[0]]
-ENTITY_NAMES = {ENTITY_IDS[0]: ENTITY_NAMES[ENTITY_IDS[0]]}
 START_DATE = "2025-01-01"
-END_DATE = "2025-01-31"
-DOCUMENT_LIMIT = 5
+END_DATE = "2025-09-08"
+DOCUMENT_LIMIT = 10
 N_THEMES = 2
 MAX_ROWS_TO_LABEL = 3
 
