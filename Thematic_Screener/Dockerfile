@@ -17,26 +17,28 @@ RUN apk update && apk add --no-cache \
     graphviz
 
 # Create non-root user 'bigdata' and necessary directories
-RUN adduser --disabled-password bigdata 
+RUN adduser --disabled-password bigdata
 
 # Remove setuid and setgid permissions for extra security
 RUN find / -perm +6000 -type f -exec chmod a-s {} \; || true
 
-# Copy requirements file before installing dependencies
-COPY requirements.txt .
-
-# Install Python dependencies && Install JupyterLab
 ENV PIP_ROOT_USER_ACTION=ignore
+
+# Build context must be the cookbook root (see README).
+# Installs Thematic_Screener_CLI pipeline deps; notebook delegates to that package.
+COPY Thematic_Screener_CLI/requirements.txt /tmp/cli-requirements.txt
+COPY Thematic_Screener/requirements.txt /tmp/thematic-requirements.txt
+
 RUN python -m pip install --upgrade pip \
-  && python -m pip install --no-cache-dir -r requirements.txt \
-  && python -m pip install --no-cache-dir jupyterlab
+  && python -m pip install --no-cache-dir -r /tmp/cli-requirements.txt \
+  && python -m pip install --no-cache-dir jupyterlab matplotlib
 
 # Switch to non-root user
 USER bigdata
-WORKDIR /app
+WORKDIR /cookbook/Thematic_Screener
 
 # Expose JupyterLab port
 EXPOSE 8888
 
 # Set the default command to start JupyterLab
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"] 
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]

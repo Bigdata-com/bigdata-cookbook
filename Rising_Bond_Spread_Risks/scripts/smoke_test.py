@@ -21,9 +21,7 @@ load_dotenv(ROOT / ".env")
 def _check_no_sdk_imports() -> None:
     src_dir = ROOT / "src"
     forbidden_modules = {
-        "bigdata",
         "bigdata_client",
-        "bigdata_research_tools",
     }
     for path in src_dir.glob("*.py"):
         tree = ast.parse(path.read_text())

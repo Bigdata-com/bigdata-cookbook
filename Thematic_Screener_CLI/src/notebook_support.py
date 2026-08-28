@@ -12,6 +12,9 @@ import io
 import logging
 from collections.abc import Iterator
 
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+
 QUOTE_PREVIEW_WORDS = 14
 QUOTE_TRUNCATION_MARKER = "…"
 
@@ -59,3 +62,11 @@ def preview_quote(text: object, words: int = QUOTE_PREVIEW_WORDS) -> str:
     if len(tokens) <= words:
         return " ".join(tokens)
     return " ".join(tokens[:words]) + f" {QUOTE_TRUNCATION_MARKER}"
+
+
+def display_figure(fig: Figure) -> None:
+    """Render a Matplotlib figure once in Jupyter and HTML exports."""
+    from IPython.display import display
+
+    display(fig)
+    plt.close(fig)

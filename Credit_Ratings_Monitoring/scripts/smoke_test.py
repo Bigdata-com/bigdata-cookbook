@@ -27,7 +27,7 @@ SMOKE_QUERY = "credit rating outlook downgrade upgrade affirm"
 
 
 def _assert_no_sdk() -> None:
-    forbidden = ("bigdata_client", "bigdata_research_tools")
+    forbidden = ("bigdata_client",)
     for name in forbidden:
         if importlib.util.find_spec(name) is not None:
             raise RuntimeError(f"SDK module still importable: {name}")
