@@ -528,6 +528,69 @@ def plot_company_hop_matrix(
     return fig
 
 
+def plot_company_pathway_matrix(
+    scoring_df: pd.DataFrame,
+    top_n: int = 25,
+) -> Figure:
+    """Heatmap of companies x exposure pathways from the scoring grid."""
+    if scoring_df.empty or "company_name" not in scoring_df.columns:
+        return _empty_figure("No company scoring data to plot.")
+
+    value_columns = [
+        column
+        for column in scoring_df.columns
+        if column not in {"company_name", "Composite Score"}
+    ]
+    if not value_columns:
+        return _empty_figure("No pathway columns in scoring grid.")
+
+    ranked = scoring_df.sort_values(
+        "Composite Score" if "Composite Score" in scoring_df.columns else value_columns[0],
+        ascending=False,
+    )
+    matrix = ranked.set_index("company_name")[value_columns].head(top_n)
+    if matrix.empty:
+        return _empty_figure("No company scoring data to plot.")
+
+    fig, ax = plt.subplots(
+        figsize=(max(9.0, 0.55 * len(value_columns) + 2.5), max(4.0, 0.38 * len(matrix) + 1.6))
+    )
+    image = ax.imshow(matrix.to_numpy(), cmap="Blues", aspect="auto")
+
+    ax.set_xticks(range(len(value_columns)))
+    ax.set_xticklabels(
+        [_wrap(label, 18) for label in value_columns],
+        fontsize=9,
+        rotation=45,
+        ha="right",
+    )
+    ax.set_yticks(range(len(matrix)))
+    ax.set_yticklabels(matrix.index, fontsize=9)
+
+    peak = int(matrix.to_numpy().max()) if matrix.size else 0
+    for row_index in range(len(matrix)):
+        for col_index in range(len(value_columns)):
+            value = int(matrix.iat[row_index, col_index])
+            if value == 0:
+                continue
+            ax.text(
+                col_index,
+                row_index,
+                value,
+                ha="center",
+                va="center",
+                fontsize=8,
+                color="white" if peak and value > peak * 0.55 else TEXT_COLOR,
+            )
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.tick_params(length=0, colors=TEXT_COLOR)
+    fig.colorbar(image, ax=ax, shrink=0.7, label="Evidence quotes")
+    fig.tight_layout()
+    return fig
+
+
 def plot_evidence_timeline(evidence_df: pd.DataFrame) -> Figure:
     """Track how evidence accumulates month by month."""
     if evidence_df.empty or "timestamp" not in evidence_df.columns:

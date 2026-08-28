@@ -176,6 +176,23 @@ def test_exposure_charts_render_without_hop_column() -> None:
         assert builder(frame).axes, f"{builder.__name__} produced no axes"
 
 
+def test_company_pathway_matrix_renders_scoring_grid() -> None:
+    scoring_df = pd.DataFrame(
+        {
+            "company_name": ["Apple", "NVIDIA"],
+            "Nearshoring": [3, 0],
+            "Dual sourcing": [1, 4],
+            "Composite Score": [4, 4],
+        }
+    )
+
+    figure = viz.plot_company_pathway_matrix(scoring_df)
+    rendered = {text.get_text() for text in figure.axes[0].texts}
+
+    assert "3" in rendered
+    assert "4" in rendered
+
+
 def test_charts_render_from_labeled_evidence() -> None:
     evidence_df = viz.attach_hop_column(_labeled_frame(), _tree())
 
