@@ -10,6 +10,18 @@ import re
 from functools import reduce
 import sys
 
+
+def show_plotly_figure(fig: go.Figure) -> None:
+    """Show Plotly as PNG so GitHub's notebook viewer can render the chart.
+
+    GitHub prefers ``text/html`` over ``image/png`` and will not execute Plotly
+    JS, so multi-mime outputs appear blank. PNG-only matches working GitHub
+    examples (``fig.show(\"png\")``). Use the companion ``.html`` export for
+    interactive charts.
+    """
+    fig.show(renderer="png")
+
+
 def lookup_sector_information(df_filtered, bigdata_credentials):
     """Enrich rows with sector/industry/name via REST knowledge-graph lookup."""
     entity_key_to_sector = {}
@@ -223,7 +235,7 @@ def top_companies_sector(df_filtered, bigdata_credentials, sector_column):
     )
 
     # Show the interactive plot
-    fig.show()
+    show_plotly_figure(fig)
     
 ## Obtain volume exposure to a theme and identify a basket of companies
 def identify_basket_of_companies(df, dfs_labels,df_names,bigdata_credentials, sector_column,basket_size, start_date, end_date):
@@ -402,7 +414,7 @@ def plot_confidence_bar_chart(basket_df, title_theme, df_names, legend_labels):
     fig.update_yaxes(showticklabels=False, row=1, col=2)
 
     # Show the plot
-    fig.show()
+    show_plotly_figure(fig)
     
 ## Plot net exposure and chunk text over time
 def track_basket_sectors_over_time(df,df_names, companies_list,sector_column, sectors_list = []):
@@ -495,7 +507,7 @@ def track_basket_sectors_over_time(df,df_names, companies_list,sector_column, se
         )
 
         # Show the plot
-        fig.show()
+        show_plotly_figure(fig)
 
 def top_companies_time(df_filtered):
     # Convert timestamp to datetime and extract daily period
@@ -567,7 +579,7 @@ def top_companies_time(df_filtered):
     fig.update_layout(height=2000, width=2000, title_text="Daily Document Volume by Top 4 Entities", showlegend=False)
 
     # Show the plot
-    fig.show()
+    show_plotly_figure(fig)
 
 ### display topic network        
 def obtain_company_topic_links(df,labels, topic_blacklist, bigdata):
@@ -813,7 +825,7 @@ def generate_plotly_network_chart(G, legend=[], interactive=True):
         )
         fig.update_xaxes(visible=False)
         fig.update_yaxes(visible=False)
-        fig.show()
+        show_plotly_figure(fig)
     
     else:
         # Static matplotlib version

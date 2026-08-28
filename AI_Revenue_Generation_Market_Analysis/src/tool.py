@@ -8,6 +8,17 @@ import plotly.graph_objects as go
 from IPython.display import display, HTML
 
 
+def show_plotly_figure(fig: go.Figure) -> None:
+    """Show Plotly as PNG so GitHub's notebook viewer can render the chart.
+
+    GitHub prefers ``text/html`` over ``image/png`` and will not execute Plotly
+    JS, so multi-mime outputs appear blank. PNG-only matches working GitHub
+    examples (``fig.show(\"png\")``). Use the companion ``.html`` export for
+    interactive charts.
+    """
+    fig.show(renderer="png")
+
+
 def add_line_breaks(text, max_length=80):
     """
     Add line breaks to text for better readability in hover
@@ -491,7 +502,7 @@ def plot_confidence_bar_chart(basket_df, title_theme, df_names, legend_labels,
 
         fig.update_yaxes(showticklabels=False, row=1, col=2)
 
-        fig.show()
+        show_plotly_figure(fig)
 
     else:
         # Create static matplotlib version
@@ -938,7 +949,7 @@ def track_basket_sectors_weekly_complete_hover_labeled(df, df_names, companies_l
                 margin=dict(t=100, b=100)
             )
 
-            fig.show()
+            show_plotly_figure(fig)
 
             # Add space between plots
             if i < len(sectors_list) - 1:
@@ -1383,7 +1394,7 @@ def top_companies_time(df_filtered, interactive=True):
         fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
 
         # Show the unified plot
-        fig.show()
+        show_plotly_figure(fig)
         
     else:
         # Static matplotlib version
@@ -1591,7 +1602,7 @@ def plot_media_attention_over_time(df1, df2=None, df1_label="Dataset 1", df2_lab
         fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
         fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
         
-        fig.show()
+        show_plotly_figure(fig)
         
     else:
         # Create static matplotlib version

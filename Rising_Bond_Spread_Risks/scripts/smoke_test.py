@@ -44,11 +44,19 @@ def _check_no_sdk_imports() -> None:
 
 
 def _check_luna_defaults() -> None:
-    from src.openai_utils import DEFAULT_LLM_MODEL, sampling_params_for_model
+    from src.openai_utils import (
+        DEFAULT_LLM_MODEL,
+        completion_token_params_for_model,
+        sampling_params_for_model,
+    )
 
     assert DEFAULT_LLM_MODEL == "gpt-5.6-luna"
     assert sampling_params_for_model("gpt-5.6-luna", temperature=0.0) == {}
     assert sampling_params_for_model("gpt-4o-mini", temperature=0.0) == {"temperature": 0.0}
+    assert completion_token_params_for_model("gpt-5.6-luna", 50) == {
+        "max_completion_tokens": 50
+    }
+    assert completion_token_params_for_model("gpt-4o-mini", 50) == {"max_tokens": 50}
 
     from src.simple_labeler import SimpleLabeler
     from src.report_generator import SummaryGenerator
@@ -97,22 +105,23 @@ def _optional_live_search() -> None:
         print("SKIP live search: BIGDATA_API_KEY not set")
         return
 
-    from src.bigdata_rest import company_ids_from_universe, load_universe
+    from src.bigdata_rest import load_sovereign_universe
     from src.search_helper import run_universe_search
 
-    universe = load_universe(ROOT.parent / "Thematic_Screener_CLI" / "40_companies.csv")
-    universe = universe.loc[
-        universe["COMPANY_NAME"].isin(["NVIDIA Corp.", "Microsoft Corp.", "Amazon.com Inc."])
-    ]
-    ids = company_ids_from_universe(universe)
+    countries_df, _banks_df, _dict_country_bank, _id_to_country = load_sovereign_universe(
+        ROOT / "data" / "western_europe_countries_banks.csv"
+    )
+    countries_df = countries_df.loc[countries_df["ENTITY_NAME"] == "Germany"]
+    ids = countries_df["RP_ENTITY_ID"].tolist()
+    id_to_name = dict(zip(countries_df["RP_ENTITY_ID"], countries_df["ENTITY_NAME"]))
     df = run_universe_search(
         company_ids=ids,
-        queries=["corporate bond spread widening AI capex"],
+        queries=["rising sovereign bond spreads refinancing risk"],
         start_date="2026-01-01",
         end_date="2026-02-01",
         scope="news",
         chunk_percentage=0.01,
-        id_to_name=dict(zip(universe["RP_ENTITY_ID"], universe["COMPANY_NAME"])),
+        id_to_name=id_to_name,
     )
     print(f"live search rows: {len(df)}")
 
