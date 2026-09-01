@@ -200,6 +200,38 @@ def test_charts_render_from_labeled_evidence() -> None:
         assert builder(evidence_df).axes, f"{builder.__name__} produced no axes"
 
 
+def test_theme_and_exposure_timeseries_charts_render() -> None:
+    dates = pd.date_range("2026-08-01", periods=10)
+    volume = pd.DataFrame(
+        {
+            "date": dates,
+            "documents": range(10),
+            "documents_30d_mean": [3.0] * 10,
+            "attention_zscore": [0.5] * 10,
+            "sentiment": [-0.1] * 10,
+        }
+    )
+    aggregate = pd.DataFrame(
+        {
+            "date": dates,
+            "exposure_score": [0.2] * 10,
+            "exposure_score_7d": [1.0] * 10,
+            "company_breadth_7d": [3.0] * 10,
+        }
+    )
+    companies = pd.DataFrame(
+        {
+            "date": [dates[0], dates[1]],
+            "company_name": ["Bank A", "Retailer B"],
+            "exposure_score": [0.5, 0.3],
+        }
+    )
+
+    assert viz.plot_theme_attention_timeseries(volume).axes
+    assert viz.plot_exposure_score_timeseries(aggregate).axes
+    assert viz.plot_top_company_exposure_timeseries(companies).axes
+
+
 def test_indirect_hops_excludes_the_direct_hop() -> None:
     assert DERIVATIVE_BRANCH_LABELS[0] not in viz.INDIRECT_HOPS
     assert set(viz.INDIRECT_HOPS) == set(DERIVATIVE_BRANCH_LABELS[1:])

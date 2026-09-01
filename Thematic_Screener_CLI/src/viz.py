@@ -635,3 +635,133 @@ def plot_evidence_timeline(evidence_df: pd.DataFrame) -> Figure:
     _style_axes(ax, ygrid=True)
     fig.tight_layout()
     return fig
+
+
+def plot_theme_attention_timeseries(volume_df: pd.DataFrame) -> Figure:
+    """Plot daily theme volume, abnormal attention, and sentiment."""
+    if volume_df.empty or "date" not in volume_df.columns:
+        return _empty_figure("No theme-attention time series to plot.")
+
+    dated = volume_df.sort_values("date")
+    fig, axes = plt.subplots(3, 1, figsize=(12, 8.5), sharex=True)
+    axes[0].plot(
+        dated["date"],
+        dated["documents"],
+        color=_branch_color(0),
+        linewidth=1.2,
+        label="Daily documents",
+    )
+    if "documents_30d_mean" in dated.columns:
+        axes[0].plot(
+            dated["date"],
+            dated["documents_30d_mean"],
+            color=UNMAPPED_COLOR,
+            linewidth=1.4,
+            label="Prior 30-day mean",
+        )
+    axes[0].set_ylabel("Documents")
+    axes[0].legend(frameon=False, loc="upper left")
+
+    axes[1].axhline(0, color=GRID_COLOR, linewidth=1)
+    axes[1].plot(
+        dated["date"],
+        dated["attention_zscore"],
+        color=_branch_color(2),
+        linewidth=1.2,
+    )
+    axes[1].set_ylabel("Attention z-score")
+
+    axes[2].axhline(0, color=GRID_COLOR, linewidth=1)
+    axes[2].plot(
+        dated["date"],
+        dated["sentiment"],
+        color=_branch_color(4),
+        linewidth=1.2,
+    )
+    axes[2].set_ylabel("Sentiment")
+    axes[2].set_xlabel("Publication date")
+
+    for ax in axes:
+        _style_axes(ax, ygrid=True)
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    return fig
+
+
+def plot_exposure_score_timeseries(aggregate_df: pd.DataFrame) -> Figure:
+    """Plot daily and rolling company-exposure scores and breadth."""
+    if aggregate_df.empty or "date" not in aggregate_df.columns:
+        return _empty_figure("No aggregate exposure time series to plot.")
+
+    dated = aggregate_df.sort_values("date")
+    fig, axes = plt.subplots(2, 1, figsize=(12, 6.5), sharex=True)
+    axes[0].bar(
+        dated["date"],
+        dated["exposure_score"],
+        color=_branch_color(1),
+        alpha=0.45,
+        label="Daily exposure score",
+    )
+    axes[0].plot(
+        dated["date"],
+        dated["exposure_score_7d"],
+        color=_branch_color(0),
+        linewidth=1.6,
+        label="7-day rolling sum",
+    )
+    axes[0].set_ylabel("Exposure score")
+    axes[0].legend(frameon=False, loc="upper left")
+
+    axes[1].plot(
+        dated["date"],
+        dated["company_breadth_7d"],
+        color=_branch_color(2),
+        linewidth=1.5,
+    )
+    axes[1].set_ylabel("7-day avg. companies")
+    axes[1].set_xlabel("Publication date")
+
+    for ax in axes:
+        _style_axes(ax, ygrid=True)
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    return fig
+
+
+def plot_top_company_exposure_timeseries(
+    company_daily_df: pd.DataFrame,
+    top_n: int = 8,
+) -> Figure:
+    """Plot seven-day rolling exposure scores for the leading companies."""
+    if company_daily_df.empty or "company_name" not in company_daily_df.columns:
+        return _empty_figure("No company exposure time series to plot.")
+
+    leaders = (
+        company_daily_df.groupby("company_name")["exposure_score"]
+        .sum()
+        .nlargest(top_n)
+        .index
+    )
+    selected = company_daily_df[company_daily_df["company_name"].isin(leaders)]
+    matrix = (
+        selected.pivot_table(
+            index="date",
+            columns="company_name",
+            values="exposure_score",
+            aggfunc="sum",
+            fill_value=0,
+        )
+        .sort_index()
+        .rolling(7, min_periods=1)
+        .sum()
+    )
+    fig, ax = plt.subplots(figsize=(12, 5.2))
+    for company in matrix.columns:
+        ax.plot(matrix.index, matrix[company], linewidth=1.4, label=company)
+    ax.set_ylabel("7-day exposure score")
+    ax.set_xlabel("Publication date")
+    _style_axes(ax, ygrid=True)
+    ax.legend(frameon=False, fontsize=8, ncol=2)
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    return fig
