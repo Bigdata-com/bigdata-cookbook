@@ -2,6 +2,7 @@ import os
 import time
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import numpy as np
@@ -17,6 +18,17 @@ from contextlib import contextmanager
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
+
+def show_plotly_figure(fig: go.Figure) -> None:
+    """Show Plotly as PNG so GitHub's notebook viewer can render the chart.
+
+    GitHub prefers ``text/html`` over ``image/png`` and will not execute Plotly
+    JS, so multi-mime outputs appear blank. PNG-only matches working GitHub
+    examples (``fig.show(\"png\")``). Use the companion ``.html`` export for
+    interactive charts.
+    """
+    fig.show(renderer="png")
+
 
 @contextmanager
 def timer(operation_name: str):

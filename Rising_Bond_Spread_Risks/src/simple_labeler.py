@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
+import logging
 import os
 
 import pandas as pd
 from openai import OpenAI
 
-from .openai_utils import DEFAULT_LLM_MODEL, sampling_params_for_model
+from .openai_utils import (
+    DEFAULT_LLM_MODEL,
+    completion_token_params_for_model,
+    sampling_params_for_model,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class SimpleLabeler:
-    """Basic labeler using OpenAI structured outputs."""
+    """Basic labeler using OpenAI chat completions."""
 
     def __init__(
         self,
@@ -22,6 +29,7 @@ class SimpleLabeler:
         self.model = model
         self.temperature = temperature
         self.client = OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+        self._logged_errors = 0
 
     def get_labels(
         self,
@@ -51,16 +59,26 @@ class SimpleLabeler:
                 response = self.client.chat.completions.create(
                     model=self.model,
                     messages=[{"role": "user", "content": prompt}],
-                    max_tokens=50,
+                    # Luna may consume completion budget on reasoning; keep headroom.
+                    **completion_token_params_for_model(self.model, 256),
                     **sampling_params_for_model(
                         self.model,
                         temperature=self.temperature,
                     ),
                 )
-                label = response.choices[0].message.content.strip().lower()
+                content = response.choices[0].message.content or ""
+                label = content.strip().lower()
                 if label not in labels and label not in ["unassigned", "unclear"]:
-                    label = "unassigned"
-            except Exception:
+                    # Allow exact label match when model returns a multi-word taxonomy key
+                    matched = next(
+                        (candidate for candidate in labels if candidate.lower() == label),
+                        None,
+                    )
+                    label = matched if matched is not None else "unassigned"
+            except Exception as exc:
+                if self._logged_errors < 5:
+                    logger.error("OpenAI labeling failed for model=%s: %s", self.model, exc)
+                    self._logged_errors += 1
                 label = "unassigned"
             results.append({"label": label})
         return pd.DataFrame(results)

@@ -48,8 +48,8 @@ The Screener for Crypto tool helps investors and analysts:
    
    Edit `.env` with your credentials:
    ```env
-   BIGDATA_USERNAME=your_bigdata_username
-   BIGDATA_PASSWORD=your_bigdata_password
+   BIGDATA_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
    OPENAI_API_KEY=your_openai_api_key
    ```
 
@@ -75,8 +75,8 @@ The Screener for Crypto tool helps investors and analysts:
 
 2. **Set up environment variables**:
    ```bash
-   export BIGDATA_USERNAME="your_username"
-   export BIGDATA_PASSWORD="your_password"
+   export BIGDATA_API_KEY="your_api_key_here"
+   export OPENAI_API_KEY="your_openai_api_key_here"
    export OPENAI_API_KEY="your_api_key"
    ```
 

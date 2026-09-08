@@ -110,3 +110,56 @@ def load_universe(universe_path: str | Path) -> pd.DataFrame:
 
 def company_ids_from_universe(universe: pd.DataFrame) -> list[str]:
     return universe["RP_ENTITY_ID"].tolist()
+
+
+def load_sovereign_universe(
+    universe_path: str | Path,
+) -> tuple[pd.DataFrame, pd.DataFrame, dict[str, str], dict[str, str]]:
+    """Load Western European countries and their central banks from CSV.
+
+    Returns country rows, bank rows, a ``country -> bank name`` map, and an
+    ``entity_id -> country name`` map covering both countries and banks.
+    """
+    raw = pd.read_csv(universe_path)
+    required = {
+        "COUNTRY_NAME",
+        "COUNTRY_RP_ENTITY_ID",
+        "BANK_NAME",
+        "BANK_RP_ENTITY_ID",
+    }
+    missing = required - set(raw.columns)
+    if missing:
+        raise ValueError(f"Sovereign universe CSV missing columns: {sorted(missing)}")
+
+    countries = pd.DataFrame(
+        {
+            "RP_ENTITY_ID": raw["COUNTRY_RP_ENTITY_ID"].astype(str).str.strip(),
+            "ENTITY_NAME": raw["COUNTRY_NAME"].astype(str).str.strip(),
+        }
+    )
+    banks = pd.DataFrame(
+        {
+            "RP_ENTITY_ID": raw["BANK_RP_ENTITY_ID"].astype(str).str.strip(),
+            "ENTITY_NAME": raw["BANK_NAME"].astype(str).str.strip(),
+        }
+    )
+    dict_country_bank = dict(
+        zip(
+            raw["COUNTRY_NAME"].astype(str).str.strip(),
+            raw["BANK_NAME"].astype(str).str.strip(),
+        )
+    )
+    country_id_to_country = dict(
+        zip(
+            raw["COUNTRY_RP_ENTITY_ID"].astype(str).str.strip(),
+            raw["COUNTRY_NAME"].astype(str).str.strip(),
+        )
+    )
+    bank_id_to_country = dict(
+        zip(
+            raw["BANK_RP_ENTITY_ID"].astype(str).str.strip(),
+            raw["COUNTRY_NAME"].astype(str).str.strip(),
+        )
+    )
+    id_to_country = {**country_id_to_country, **bank_id_to_country}
+    return countries, banks, dict_country_bank, id_to_country

@@ -7,6 +7,9 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 from collections import defaultdict, Counter
 import warnings
+
+from .tool import show_plotly_figure
+
 warnings.filterwarnings('ignore')
 
 def lookup_sector_information(df, bigdata_cred):
@@ -197,7 +200,6 @@ def provider_adopter_net_implementation(df_filtered_adopters,
 
     # Check if the graph is empty
     if G.number_of_nodes() == 0 or G.number_of_edges() == 0:
-        print("The graph is empty. Please check the data and conditions.")
         return None
     
     if interactive:
@@ -359,7 +361,7 @@ def provider_adopter_net_implementation(df_filtered_adopters,
         if dash:
             return fig
         else:
-            fig.show()
+            show_plotly_figure(fig)
             return fig
     
     else:

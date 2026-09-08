@@ -16,3 +16,13 @@ def sampling_params_for_model(model: str, **params: Any) -> dict[str, Any]:
     if "luna" in model.lower():
         return {}
     return {key: value for key, value in params.items() if value is not None}
+
+
+def completion_token_params_for_model(model: str, max_tokens: int) -> dict[str, int]:
+    """Return the correct max-token parameter name for ``model``.
+
+    Luna models reject ``max_tokens``; they require ``max_completion_tokens``.
+    """
+    if "luna" in model.lower():
+        return {"max_completion_tokens": max_tokens}
+    return {"max_tokens": max_tokens}

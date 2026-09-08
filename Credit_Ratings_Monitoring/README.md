@@ -26,15 +26,15 @@ This project provides comprehensive credit rating monitoring capabilities for fi
    cd "Credit_Ratings_Monitoring"
    ```
 
-2. **Set up credentials**:
+2. **Set up credentials** ([Bigdata.com API key](https://docs.bigdata.com/api-reference/authentication)):
    - Copy the example environment file:
      ```bash
      cp .env.example .env
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -86,8 +86,8 @@ This project provides comprehensive credit rating monitoring capabilities for fi
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -121,8 +121,9 @@ Credit_Ratings_Monitoring/
 │   ├── summary_generator.py           # Report generation and summarization
 │   └── visuals.py                     # Visualization and HTML report generation
 ├── report/                            # Generated analysis reports
+│   ├── credit_ratings_monitor.csv
 │   ├── tesla_inc_credit_ratings_report.html
-│   └── tesla_inc_credit_ratings_timeline.html
+│   └── tesla_credit_ratings_timeline.html
 └── .venv/                             # Virtual environment (created during setup)
 ```
 

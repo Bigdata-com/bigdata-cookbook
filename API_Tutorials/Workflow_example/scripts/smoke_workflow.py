@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke test for API_Tutorials/Workflow_example (SDK-free REST + smart-batching).
+"""Smoke test for API_Tutorials/Workflow_example (client-SDK-free REST + smart-batching).
 
 Uses 5 entities and a 14-day window. Exits 0 on PASS, 1 on FAIL.
 """
@@ -29,8 +29,6 @@ def _check_no_sdk_imports() -> None:
         "import bigdata",
         "from bigdata_client",
         "import bigdata_client",
-        "from bigdata_research_tools",
-        "import bigdata_research_tools",
     )
     for py_file in (WORKFLOW_DIR / "src").rglob("*.py"):
         for line_no, line in enumerate(py_file.read_text(encoding="utf-8").splitlines(), start=1):

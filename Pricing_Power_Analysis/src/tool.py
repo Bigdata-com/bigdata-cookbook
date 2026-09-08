@@ -1,6 +1,3 @@
-import base64
-import json
-
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -12,16 +9,14 @@ from IPython.display import display, HTML
 
 
 def show_plotly_figure(fig: go.Figure) -> None:
-    """Display Plotly interactively and embed PNG for static viewers (e.g. GitHub)."""
-    png_bytes = pio.to_image(fig, format="png", scale=2)
-    display(
-        {
-            "application/vnd.plotly.v1+json": json.loads(fig.to_json()),
-            "text/html": pio.to_html(fig, include_plotlyjs="cdn", full_html=False),
-            "image/png": base64.b64encode(png_bytes).decode("ascii"),
-        },
-        raw=True,
-    )
+    """Show Plotly as PNG so GitHub's notebook viewer can render the chart.
+
+    GitHub prefers ``text/html`` over ``image/png`` and will not execute Plotly
+    JS, so multi-mime outputs appear blank. PNG-only matches working GitHub
+    examples (``fig.show(\"png\")``). Use the companion ``.html`` export for
+    interactive charts.
+    """
+    fig.show(renderer="png")
 
 
 def add_line_breaks(text, max_length=80):

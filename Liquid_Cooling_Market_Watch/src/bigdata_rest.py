@@ -128,3 +128,33 @@ def load_universe(universe_path: str | Path) -> pd.DataFrame:
 
 def company_ids_from_universe(universe: pd.DataFrame) -> list[str]:
     return universe["RP_ENTITY_ID"].tolist()
+
+
+def enrich_universe_with_sectors(
+    client: BigdataRestClient,
+    universe: pd.DataFrame,
+) -> pd.DataFrame:
+    """Attach Knowledge Graph ``sector`` values to a company universe.
+
+    Uses ``POST /v1/knowledge-graph/entities/id``. Missing sectors become
+    ``\"Unknown\"``.
+    """
+    out = universe.copy()
+    entity_ids = [str(eid).strip() for eid in out["RP_ENTITY_ID"].tolist() if str(eid).strip()]
+    if not entity_ids:
+        out["SECTOR"] = "Unknown"
+        return out
+
+    sector_by_id: dict[str, str] = {}
+    batch_size = 100
+    for i in range(0, len(entity_ids), batch_size):
+        batch = entity_ids[i : i + batch_size]
+        for entity in client.get_entities_by_id(batch):
+            entity_id = str(entity.get("id") or "").strip()
+            if not entity_id:
+                continue
+            sector = entity.get("sector")
+            sector_by_id[entity_id] = str(sector).strip() if sector else "Unknown"
+
+    out["SECTOR"] = out["RP_ENTITY_ID"].map(sector_by_id).fillna("Unknown")
+    return out

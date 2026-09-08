@@ -17,6 +17,26 @@ warnings.filterwarnings('ignore', category=FutureWarning, module='pandas')
 UNIFIED_VISUALS_AVAILABLE = False
 
 
+def show_plotly_figure(fig: go.Figure) -> None:
+    """Show Plotly as PNG so GitHub's notebook viewer can render the chart.
+
+    GitHub prefers ``text/html`` over ``image/png`` and will not execute Plotly
+    JS, so multi-mime outputs appear blank. PNG-only matches working GitHub
+    examples (``fig.show(\"png\")``). Use the companion ``.html`` export for
+    interactive charts.
+    """
+    fig.show(renderer="png")
+
+
+def _display_figure(fig: object) -> None:
+    """Display a Plotly figure as PNG, or fall back for matplotlib figures."""
+    if isinstance(fig, go.Figure):
+        show_plotly_figure(fig)
+        return
+    display(fig)
+    plt.close()
+
+
 def create_entity_theme_heatmap(df, theme_columns, interactive=True):
     """
     Creates a heatmap showing thematic exposure scores for each entity.
@@ -276,8 +296,12 @@ def create_themes_summary_bar_chart(df, theme_columns, interactive=True):
         fig = go.Figure()
 
         # Create custom color scale that never goes to white
-        normalized_values = np.array(sorted_values)
-        normalized_values = (normalized_values - normalized_values.min()) / (normalized_values.max() - normalized_values.min())
+        normalized_values = np.array(sorted_values, dtype=float)
+        value_range = normalized_values.max() - normalized_values.min()
+        if value_range == 0:
+            normalized_values = np.ones_like(normalized_values)
+        else:
+            normalized_values = (normalized_values - normalized_values.min()) / value_range
         # Scale to range 0.3 to 1.0 to avoid white colors
         color_values = 0.3 + (normalized_values * 0.7)
 
@@ -314,8 +338,12 @@ def create_themes_summary_bar_chart(df, theme_columns, interactive=True):
         plt.figure(figsize=(15, 8))
         
         # Create custom color scale (dark red to orange-red)
-        normalized_values = np.array(sorted_values)
-        normalized_values = (normalized_values - normalized_values.min()) / (normalized_values.max() - normalized_values.min())
+        normalized_values = np.array(sorted_values, dtype=float)
+        value_range = normalized_values.max() - normalized_values.min()
+        if value_range == 0:
+            normalized_values = np.ones_like(normalized_values)
+        else:
+            normalized_values = (normalized_values - normalized_values.min()) / value_range
         # Scale to range 0.3 to 1.0 to avoid white colors
         color_values = 0.3 + (normalized_values * 0.7)
         
@@ -369,10 +397,11 @@ def display_figures(df_entity, interactive=True, n_entities=10):
 
     # Display figures based on type
     for fig in figures:
-        if interactive and hasattr(fig, 'show'):
-            fig.show()
+        if interactive and isinstance(fig, go.Figure):
+            show_plotly_figure(fig)
         else:
-            plt.show()
+            display(fig)
+            plt.close()
 
 
 # Removed duplicate function - use display_risk_figures below with config parameter
@@ -487,7 +516,7 @@ def display_entity_dashboard(df_entity, dashboard_type="thematic", interactive=T
             # Standard display
             for title, fig in zip(figure_titles, figures):
                 print(f"\n{title}:")
-                fig.show()
+                show_plotly_figure(fig)
         else:
             # Non-interactive fallback
             for i, (fig, title) in enumerate(zip(figures, figure_titles)):
@@ -537,15 +566,11 @@ def display_risk_figures(df_entity, interactive=True, n_entities=10, config=None
     ]
     
     for i, fig in enumerate(figures):
-        if hasattr(fig, 'update_layout') and i < len(risk_titles):
+        if isinstance(fig, go.Figure) and i < len(risk_titles):
             fig.update_layout(title=risk_titles[i])
-            fig.show()
         else:
             print(f"Risk Analysis Chart {i+1}:")
-            if hasattr(fig, 'show'):
-                fig.show()
-            else:
-                display(fig)
+        _display_figure(fig)
 
 
 def create_risk_exposure_dashboard(df_entity, n_entities=10, interactive=True):
@@ -612,15 +637,11 @@ def display_risk_figures_cookbooks(df_entity, interactive=True, n_entities=10, c
             """
             display(HTML(styled_html))
     else:
-        # Standard display
+        # Standard display (Plotly → PNG for GitHub; matplotlib → display)
         for i, (fig, title) in enumerate(zip(figures, risk_titles)):
-            if hasattr(fig, 'update_layout'):
+            if isinstance(fig, go.Figure):
                 fig.update_layout(title=title)
-            
-            if hasattr(fig, 'show'):
-                fig.show()
-            else:
-                display(fig)
+            _display_figure(fig)
 
 
 def display_thematic_figures(df_entity, interactive=True, n_entities=10, config=None):

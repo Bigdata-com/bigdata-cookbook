@@ -27,15 +27,15 @@ This project provides comprehensive AI revenue generation ecosystem analysis too
    cd "AI_Revenue_Generation_Market_Analysis"
    ```
 
-2. **Set up credentials**:
+2. **Set up credentials** ([Bigdata.com API key](https://docs.bigdata.com/api-reference/authentication)):
    - Copy the example environment file:
      ```bash
      cp .env.example .env
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -87,8 +87,8 @@ This project provides comprehensive AI revenue generation ecosystem analysis too
      ```
    - Edit the `.env` file and add your credentials:
      ```
-     BIGDATA_USERNAME=your_username
-     BIGDATA_PASSWORD=your_password
+     BIGDATA_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
      OPENAI_API_KEY=your_openai_api_key
      ```
 

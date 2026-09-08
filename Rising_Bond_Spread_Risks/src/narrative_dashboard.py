@@ -1,4 +1,5 @@
 from .report_generator import SummaryGenerator
+from .visualization_tool import show_plotly_figure
 import pandas as pd
 
 def get_narrative_windows(daily_df: pd.DataFrame, raw_df: pd.DataFrame, sentiment_col: str = 'avg_sent_smoothed', min_max: str = 'min', lookback_days: int = 30):
@@ -141,7 +142,7 @@ def display_dashboard(df: pd.DataFrame, entity: str, sentiment_col: str, narrati
         }
     ))
     fig_gauge.update_layout(height=300, margin=dict(t=80, b=40, l=0, r=0))
-    fig_gauge.show()
+    show_plotly_figure(fig_gauge)
 
     # Time series plot
     fig, ax1 = plt.subplots(figsize=(14, 6))

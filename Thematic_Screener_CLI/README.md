@@ -51,12 +51,19 @@ Copy `.env.example` to `.env` and set your API keys:
 cp .env.example .env
 ```
 
-Required environment variables:
+Environment variables:
 
 | Variable | Purpose |
 |----------|---------|
 | `OPENAI_API_KEY` | Label generation, sentence labeling, company summaries |
 | `BIGDATA_API_KEY` | Search planning and document retrieval |
+| `SNOWFLAKE_ACCOUNT` | Snowflake account for current macro-event discovery |
+| `SNOWFLAKE_USER` | Snowflake user for current macro-event discovery |
+| `SNOWFLAKE_PASSWORD` | Snowflake password for current macro-event discovery |
+| `SNOWFLAKE_WAREHOUSE` | Snowflake warehouse for current macro-event discovery |
+
+The `SNOWFLAKE_*` variables are required only by the trending themes notebook described below.
+Keep all values in `.env`; never place credentials in a notebook.
 
 Run commands from this directory so `.env` is found automatically.
 
@@ -72,9 +79,28 @@ platforms (Temu, Shein, AliExpress) through 1st / 2nd / 3rd hops. It writes to
 `runs/eu_parcel_tariff_derivatives/` and uses `RETRIEVAL_DEPTH = 0.1` because that universe is
 several times larger than the TSX book.
 
+`notebooks/03_trending_themes_screener.ipynb` starts from the rolling last 24 hours of ranked
+macro events in Snowflake, consolidates them with OpenAI, grounds and ranks candidate themes with
+[Bigdata.com](https://bigdata.com), and selects the first candidate. The exposure screen uses a
+**one-year demo lookback** ending on the as-of date — that is a reporting window, not an estimated
+theme onset. The universe is `us_ml_caps.csv`. In addition to the standard taxonomy, evidence,
+JSON, and Excel artifacts, it writes:
+
+- `macro_events.json`, `theme_candidates.json`, and `candidate_grounding.json`
+- `theme_volume_daily.csv` with daily documents, chunks, sentiment, and abnormal attention
+- `company_exposure_daily.csv` with the point-in-time company/theme mapping
+- `exposure_aggregate_daily.csv` with daily and seven-day exposure measures
+
+This is a daily snapshot with a one-year retrospective view of the selected theme. A historical
+point-in-time backtest must archive and rerun discovery, prompts, taxonomies, and exposures for
+each historical as-of date; using today's selected taxonomy across history is not equivalent.
+
 ```bash
 uv sync --group jupyter
 uv run jupyter lab notebooks/01_derivative_thematic_screener.ipynb
+
+# Trending themes workflow
+uv run jupyter lab notebooks/03_trending_themes_screener.ipynb
 ```
 
 The notebook writes to `runs/tsx_oil_derivatives/`, the same layout the CLI uses, so a session

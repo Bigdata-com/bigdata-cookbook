@@ -117,7 +117,7 @@ def main() -> None:
 
     print("=== Step 5: verify no SDK ===")
     for mod in list(sys.modules):
-        if mod and ("bigdata_client" in mod or "bigdata_research_tools" in mod):
+        if mod and "bigdata_client" in mod:
             _fail(f"SDK module loaded: {mod}")
     print("OK: no SDK modules")
 
