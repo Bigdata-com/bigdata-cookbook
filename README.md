@@ -101,6 +101,7 @@ Many cookbooks include a static HTML export next to the notebook so you can **br
 - Qualitative tearsheet: executive summary, bullish and risk drivers, outlook, ranked evidence
 - Quantitative sentiment time series, pressure, and abnormal media attention
 - At-a-glance direction gauge (Bullish / Neutral / Bearish)
+- Grounded Q&A over the tearsheet via traditional RAG (OpenAI chat completions)
 - Change the ticker and re-run for any single name
 
 ### 🎙️ [Earnings Call Tone Analyzer](./Earnings_Call_Tone_Analyzer/)
@@ -450,11 +451,6 @@ bigdata-cookbook/
 │   ├── Credit_Ratings_Monitoring.ipynb
 │   ├── Credit_Ratings_Monitoring.html
 │   ├── report/
-│   ├── src/
-│   ├── requirements.txt
-│   └── README.md
-├── Credit_Factor_Analysis/                          # Credit-news factor screen + narrative
-│   ├── Credit_Factor_Analysis.ipynb
 │   ├── src/
 │   ├── requirements.txt
 │   └── README.md
