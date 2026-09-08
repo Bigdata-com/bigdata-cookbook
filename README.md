@@ -101,7 +101,7 @@ Many cookbooks include a static HTML export next to the notebook so you can **br
 - Qualitative tearsheet: executive summary, bullish and risk drivers, outlook, ranked evidence
 - Quantitative sentiment time series, pressure, and abnormal media attention
 - At-a-glance direction gauge (Bullish / Neutral / Bearish)
-- Change the ticker and re-run for any single name
+- Grounded Q&A over the tearsheet via traditional RAG (OpenAI chat completions)
 
 ### 🎙️ [Earnings Call Tone Analyzer](./Earnings_Call_Tone_Analyzer/)
 **Score management tone from earnings calls at scale**
