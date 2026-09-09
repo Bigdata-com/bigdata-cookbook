@@ -18,7 +18,6 @@ from src.mindmap.theme_prompts import compose_themes_system_prompt_base
 from src.openai_compat import DEFAULT_LLM_MODEL, sampling_params_for_model
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-
 MODEL_NAME = DEFAULT_LLM_MODEL
 
 TEMPERATURE = 0.01  # Deterministic as possible
