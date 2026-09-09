@@ -41,16 +41,23 @@ A Notebook demonstrating high-performance portfolio search tool built on the Big
    uv pip install jupyterlab
    ```
 
-4. **Set Your API Key**:
+4. **Set Your API Key(s)**:
 
-   Create a `.env` file in the project directory:
+   Copy the example env file and fill in credentials:
+   ```bash
+   cp .env.example .env
+   ```
+
+   For the single-key notebook (`large_search.ipynb`):
    ```
    BIGDATA_API_KEY=your-api-key-here
    ```
 
-   Or export it as an environment variable:
-   ```bash
-   export BIGDATA_API_KEY="your-api-key-here"
+   For the multi-key throughput demo (`large_search_multi_key.ipynb`):
+   ```
+   BIGDATA_API_KEY1=your-api-key-1
+   BIGDATA_API_KEY2=your-api-key-2
+   BIGDATA_API_KEY3=your-api-key-3
    ```
 
 5. **Start JupyterLab**:
@@ -89,6 +96,31 @@ TOPICS = [
    - Execute parallel searches across all ticker+topic combinations
    - Store results in SQLite database
    - Query and analyze results
+
+### Multi-Key Throughput Demo (1,500 req/min)
+
+Open **`large_search_multi_key.ipynb`** to demonstrate ~1,425 requests/minute aggregate throughput from a **single IP** using 3 API keys.
+
+Each Bigdata.com API key has an independent **500 req/min** quota. The multi-key notebook routes requests via round-robin across 3 keys, each capped at **475 req/min** (5% safety margin), for a combined **1,425 req/min** ceiling.
+
+| Parameter | Single-key (`large_search.ipynb`) | Multi-key (`large_search_multi_key.ipynb`) |
+|-----------|-----------------------------------|--------------------------------------------|
+| API keys | 1 (`BIGDATA_API_KEY`) | 3 (`BIGDATA_API_KEY1`–`3`) |
+| Rate limit | 460 req/min | 475 req/min per key (1,425 aggregate) |
+| Search workers | 10 | 36 (~12 per key) |
+| Entity workers | 10 | 30 |
+| Output directory | `output/` | `output_multi_key/` |
+| Entity cache | `output/entity_cache.csv` | Shared (same file) |
+
+Expected performance (~97 tickers × 26 topics ≈ 2,500 queries):
+
+| Metric | Single-key | Multi-key |
+|--------|------------|-----------|
+| Total API requests | ~2,620 | ~2,620 |
+| Wall-clock time | ~5–7 min | ~1.5–2.5 min |
+| Effective throughput | ~460 req/min | ~1,400–1,425 req/min |
+
+The notebook prints a **Performance Summary** with total requests, wall-clock time, effective req/min, and per-key distribution (~33% each).
 
 ---
 
@@ -257,11 +289,14 @@ See the [Quick Start](#quick-start) section above for installation instructions 
 
 | File | Description |
 |------|-------------|
-| `large_search.ipynb` | Main notebook with complete workflow |
+| `large_search.ipynb` | Single-key notebook (~460 req/min) |
+| `large_search_multi_key.ipynb` | Multi-key throughput demo (~1,425 req/min) |
+| `.env.example` | Example environment variables for both notebooks |
 | `requirements.txt` | Python dependencies |
 | `README.md` | This documentation |
 | `static/` | Architecture diagrams |
-| `output/` | Generated output files (gitignored) |
+| `output/` | Single-key notebook output (gitignored) |
+| `output_multi_key/` | Multi-key notebook output (gitignored) |
 
 ---
 

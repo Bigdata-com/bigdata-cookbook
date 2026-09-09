@@ -19,7 +19,7 @@ output.md
 
 # Output directory (single pattern covers repo root and subdirs)
 **/output/
-
+**/output_multi_key/
 # Virtual environments (uv / local tooling)
 .venv/
 
