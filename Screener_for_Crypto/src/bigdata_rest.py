@@ -50,8 +50,14 @@ def trace_cookbook_execution(
     ``BIGDATA_API_KEY`` from the environment when ``api_key`` is None and no
     ``session`` is given; returns silently if no key is available anywhere.
     Pass ``session`` (an already-authenticated ``requests.Session``) to reuse
-    an existing client's session instead of opening a new one.
+    an existing client's session instead of opening a new one. Set
+    ``BIGDATA_DISABLE_TRACING=1`` (or "true"/"yes", case-insensitive) in the
+    environment to opt out entirely — checked before the once-per-name guard
+    and before any network call, so test entry points can safely import any
+    module without emitting telemetry.
     """
+    if os.getenv("BIGDATA_DISABLE_TRACING", "").strip().lower() in ("1", "true", "yes"):
+        return
     if cookbook_name in _traced_cookbooks:
         return
     _traced_cookbooks.add(cookbook_name)

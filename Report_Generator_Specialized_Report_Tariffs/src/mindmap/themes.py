@@ -16,15 +16,9 @@ import pandas as pd
 import plotly.express as px
 from src.mindmap.theme_prompts import compose_themes_system_prompt_base
 from src.openai_compat import DEFAULT_LLM_MODEL, sampling_params_for_model
-from src.bigdata_rest import trace_cookbook_execution
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
-# Cookbook execution tracing (ADS-400), fired at import time. Deliberately NOT
-# placed in src/report_generator.py: scripts/smoke_test.py also imports
-# GenerateReport from there and must never emit telemetry. This module
-# (src.mindmap.themes, for print_tree) is imported by the notebook only.
-trace_cookbook_execution("ReportGeneratorSpecializedReportTariffs")
 MODEL_NAME = DEFAULT_LLM_MODEL
 
 TEMPERATURE = 0.01  # Deterministic as possible

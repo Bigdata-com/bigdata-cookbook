@@ -7,6 +7,7 @@ the network.
 
 from __future__ import annotations
 
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -135,7 +136,16 @@ class ModuleLevelTraceCookbookExecutionTests(unittest.TestCase):
         self.assertEqual(len(session.calls), 1)
 
     def test_no_key_no_session_does_not_raise_and_does_not_post(self) -> None:
-        with patch.object(bigdata_rest.os, "getenv", return_value=None):
+        # Only BIGDATA_API_KEY is missing; other getenv lookups (like the
+        # BIGDATA_DISABLE_TRACING opt-out check) see their real/default value.
+        real_getenv = bigdata_rest.os.getenv
+
+        def fake_getenv(key, default=None):
+            if key == "BIGDATA_API_KEY":
+                return None
+            return real_getenv(key, default)
+
+        with patch.object(bigdata_rest.os, "getenv", side_effect=fake_getenv):
             trace_cookbook_execution("ModuleTestD")  # must not raise
         # Guard still consumes the name even though nothing was sent.
         self.assertIn("ModuleTestD", bigdata_rest._traced_cookbooks)
@@ -149,6 +159,44 @@ class ModuleLevelTraceCookbookExecutionTests(unittest.TestCase):
             fake_requests_module.Session.return_value = fake_session
             trace_cookbook_execution("ModuleTestE", api_key="test-key")  # must not raise
         fake_session.post.assert_called_once()
+
+
+class DisableTracingOptOutTests(unittest.TestCase):
+    """BIGDATA_DISABLE_TRACING must stop tracing before the guard and before
+    any network call, for both the method and the module-level function."""
+
+    def setUp(self) -> None:
+        bigdata_rest._traced_cookbooks.clear()
+
+    def test_method_does_not_post_when_disabled(self) -> None:
+        session = FakeSession()
+        client = make_client(session)
+        with patch.dict(os.environ, {"BIGDATA_DISABLE_TRACING": "1"}):
+            client.trace_cookbook_execution("OptOutTestA")
+        self.assertEqual(session.calls, [])
+        # Opt-out returns before the guard: the name is not marked as traced.
+        self.assertNotIn("OptOutTestA", bigdata_rest._traced_cookbooks)
+
+    def test_module_function_does_not_post_when_disabled(self) -> None:
+        session = FakeSession()
+        with patch.dict(os.environ, {"BIGDATA_DISABLE_TRACING": "1"}):
+            trace_cookbook_execution("OptOutTestB", session=session)
+        self.assertEqual(session.calls, [])
+        self.assertNotIn("OptOutTestB", bigdata_rest._traced_cookbooks)
+
+    def test_case_insensitive_and_alt_truthy_values(self) -> None:
+        session = FakeSession()
+        for value in ("1", "true", "True", "TRUE", "yes", "Yes"):
+            bigdata_rest._traced_cookbooks.clear()
+            with patch.dict(os.environ, {"BIGDATA_DISABLE_TRACING": value}):
+                trace_cookbook_execution("OptOutTestC", session=session)
+            self.assertEqual(session.calls, [], f"value={value!r} should disable tracing")
+
+    def test_falsy_or_unset_value_does_not_disable(self) -> None:
+        session = FakeSession()
+        with patch.dict(os.environ, {"BIGDATA_DISABLE_TRACING": "0"}):
+            trace_cookbook_execution("OptOutTestD", session=session)
+        self.assertEqual(len(session.calls), 1)
 
 
 if __name__ == "__main__":

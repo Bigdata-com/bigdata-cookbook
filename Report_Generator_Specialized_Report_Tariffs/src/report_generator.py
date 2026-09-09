@@ -12,6 +12,7 @@ from src.search.content_retrieval import DataRetriever
 from src.label.label_process import LabelProcessor
 from src.summary.summary import TopicSummarizerSector, TopicSummarizerCompany
 from src.response.company_response import CompanyResponseProcessor
+from src.bigdata_rest import trace_cookbook_execution
 
 _intialization_sent = False
 
@@ -306,3 +307,9 @@ def notebook_initialized(bigdata=None):
     pass
 
 notebook_initialized()
+
+# Cookbook execution tracing (ADS-400): fires at import time, replacing the
+# dead notebook_initialized() call above. scripts/smoke_test.py also imports
+# from this module, but BIGDATA_DISABLE_TRACING=1 (set at the top of every
+# smoke_test.py) makes this a no-op there.
+trace_cookbook_execution("ReportGeneratorSpecializedReportTariffs")
