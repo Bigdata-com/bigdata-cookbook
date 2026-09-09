@@ -1,4 +1,5 @@
 from src.token_manager import TokenManager
+from src.bigdata_rest import trace_cookbook_execution
 from datetime import datetime
 from openai import OpenAI
 import os
@@ -304,4 +305,9 @@ def prepare_html_for_display(html):
 
 def notebook_initialized() -> None:
     """No-op: SDK tracking removed (use REST / smart-batching)."""
-    return None     
+    return None
+
+
+# Cookbook execution tracing (ADS-400): fires at import time. notebook_initialized()
+# above is dead (never called); this is the real hook now.
+trace_cookbook_execution("TrackingInflationDrivers")     
