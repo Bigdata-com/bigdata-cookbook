@@ -24,6 +24,61 @@ API key setup: [docs.bigdata.com — authentication](https://docs.bigdata.com/ap
 
 ---
 
+## Tracing
+
+The SDK's import-time `notebook_initialized()` hook sent a `BigdataCookbookExecution` event to Mixpanel. That event is restored over REST — not reimplemented per project.
+
+| Old | New |
+|-----|-----|
+| `bigdata_client` import-time `notebook_initialized()` hook | `BigdataRestClient(..., cookbook_name=...)` |
+
+**The whole integration is one keyword argument:**
+
+```python
+bigdata_client = BigdataRestClient(api_key=BIGDATA_API_KEY, cookbook_name="MyCookbook")
+```
+
+For cookbooks that never construct a `BigdataRestClient` (smart-batching only — see [`Thematic_Screener_CLI`](Thematic_Screener_CLI/)), call the module-level function directly, at import time, from whichever module every entry point (notebook, CLI, MCP server) actually imports:
+
+```python
+from src.bigdata_rest import trace_cookbook_execution
+
+trace_cookbook_execution("MyCookbook")
+```
+
+- Endpoint is `POST /track-events` — **not** under `/v1` (`/v1/track-events` 404s).
+- Fires at most once per cookbook name per process.
+- Failures are swallowed (missing key, network error, non-2xx) — telemetry must never break a notebook. Timeout capped at 5s.
+- Set `BIGDATA_DISABLE_TRACING=1` (or `true` / `yes`, case-insensitive) to opt out entirely, checked before anything else runs. Every `scripts/smoke_test.py` sets this at the very top, before any project import, so test runs never emit telemetry.
+- **`cookbook_name` must match the value already used in Mixpanel for that cookbook — not the folder name.** `Election_Monitor` sends `cookbook_name="TrumpReelectionImpactAnalysis"`, not `"Election_Monitor"`. Changing an existing cookbook's value splits its Mixpanel history; agree any rename with the dashboard owners first.
+
+| Folder | `cookbook_name` |
+|--------|------------------|
+| `AI_Cost_Cutting_Market_Analysis` | `AICostCuttingMarketAnalysis` |
+| `AI_Revenue_Generation_Market_Analysis` | `AIRevenueGenerationMarketAnalysis` |
+| `Board_Management_Monitoring` | `BoardManagementMonitoring` |
+| `Credit_Ratings_Monitoring` | `CreditRatingsMonitoring` |
+| `Daily_Digest_Central_Banks` | `DailyDigestCentralBank` |
+| `Daily_Digest_Crude_Oil` | `DailyDigestCrudeOil` |
+| `Election_Monitor` | `TrumpReelectionImpactAnalysis` |
+| `Liquid_Cooling_Market_Watch` | `LiquidCoolingMarketWatch` |
+| `Narrative_Miners` | `NarrativeMiner` |
+| `Pricing_Power_Analysis` | `PricingPower` |
+| `Report_Generator_AI_Threats` | `ReportGeneratorAIDisruptionRisk` |
+| `Report_Generator_Regulatory_Issues_in_Tech` | `ReportGeneratorRegulatoryIssues` |
+| `Report_Generator_Specialized_Report_Tariffs` | `ReportGeneratorSpecializedReportTariffs` |
+| `Rising_Bond_Spread_Risks` | `RisingBondSpreadRiskAnalysis` |
+| `Risk_Analyzer` | `RiskAnalyzer` |
+| `Screener_for_Crypto` | `ScreenerForCrypto` |
+| `Thematic_Screener` | `ThematicScreener` |
+| `Tracking_Inflation_Drivers` | `TrackingInflationDrivers` |
+| `Build_Your_Own_MCP` | `BuildYourOwnMCP` |
+| `Earnings_Call_Tone_Analyzer` | `EarningsCallToneAnalyzer` |
+
+`BuildYourOwnMCP` and `EarningsCallToneAnalyzer` have no historical Mixpanel data — these two are genuinely new series, not continuations of an existing one.
+
+---
+
 ## Company universes (replace watchlists)
 
 The SDK used platform **watchlists**. Migrated cookbooks use **CSV files** with at least:

@@ -108,7 +108,7 @@ class GenerateReport:
         self.document_limit_transcripts = document_limit_transcripts
         self.batch_size = batch_size
         self.chunk_percentage = chunk_percentage
-        self.rest_client = BigdataRestClient()
+        self.rest_client = BigdataRestClient(cookbook_name="ReportGeneratorRegulatoryIssues")
         self.openai_model = resolve_model(llm_model)
 
 

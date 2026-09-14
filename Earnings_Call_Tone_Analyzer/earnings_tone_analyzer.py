@@ -317,7 +317,7 @@ class ToneAnalyzer:
     OAI_OUTPUT_COST_PER_M = 1.25  # $/1M output tokens
 
     def __init__(self, company_concurrency: int = COMPANY_MAX_CONCURRENT):
-        self.bd = BigdataRestClient(api_key=BIGDATA_API_KEY)
+        self.bd = BigdataRestClient(api_key=BIGDATA_API_KEY, cookbook_name="EarningsCallToneAnalyzer")
         self.oai = AsyncOpenAI(api_key=OPENAI_KEY)
         self.bd_limiter = RateLimiter(BIGDATA_RPM)
         self.bd_sem = asyncio.Semaphore(BIGDATA_MAX_CONCURRENT)

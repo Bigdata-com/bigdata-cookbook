@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+os.environ.setdefault("BIGDATA_DISABLE_TRACING", "1")  # ADS-400: smoke tests must never emit telemetry
 import sys
 from pathlib import Path
 
