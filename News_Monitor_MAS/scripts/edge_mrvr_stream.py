@@ -11,7 +11,7 @@ a healthy connection (reset if silent for >60s).
 
 Important: streaming applies only the **dataset definition filters**. Entity
 universe and ``rp_provider_id=MRVR`` must be baked into the dataset (this script
-creates that dataset). Ad-hoc filters used by historical ``pull`` are not sent
+creates that dataset). Ad-hoc filters used by analytics ``pull`` are not sent
 on the stream.
 
 Examples::

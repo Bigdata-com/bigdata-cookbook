@@ -45,7 +45,7 @@ uv run python scripts/edge_mrvr_stories.py pull \
 
 ## Real-time streaming
 
-Historical `pull` uses the analytics JSON API. Edge also supports a **live NDJSON stream** on a different host:
+`pull` / `feed` use the analytics JSON API (request/response over a time window — including a rolling last-N-minutes). Edge also supports a **live NDJSON stream** on a different host:
 
 ```text
 GET https://feed-edge.ravenpack.com/1.0/json/{dataset_id}?keep_alive=t
@@ -53,7 +53,7 @@ GET https://feed-edge.ravenpack.com/1.0/json/{dataset_id}?keep_alive=t
 
 - Response is **HTTP 200** and stays open; records are JSON objects separated by `\n`.
 - ``keep_alive=t`` emits a bare newline after ~30s of silence (reset the connection if silent >60s).
-- Streaming uses the **dataset’s baked-in filters only**. Create the dataset with `rp_provider_id=MRVR` and your `rp_entity_id` universe (the sample script does this). Filters passed only on historical query calls are **not** applied to the feed.
+- Streaming uses the **dataset’s baked-in filters only**. Create the dataset with `rp_provider_id=MRVR` and your `rp_entity_id` universe (the sample script does this). Filters passed only on analytics query calls are **not** applied to the feed.
 
 ### Sample script
 
