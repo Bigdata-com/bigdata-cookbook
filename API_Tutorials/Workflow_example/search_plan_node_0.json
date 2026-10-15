@@ -1,31 +1,216 @@
 {
-  "chunk_upper_bound_estimate": 98,
+  "chunk_upper_bound_estimate": 2816,
   "baskets": [
     {
-      "basket_id": "basket_0_low_20210101_20210114",
+      "basket_id": "basket_0_medium_20210101_20210401",
       "companies": [
         "9417FE",
-        "D8442A",
+        "A6213D",
         "1BC12C",
-        "001F1B"
+        "17EDA5",
+        "D8442A",
+        "CFF15D",
+        "49BBBC",
+        "DD3BB1",
+        "4F9926",
+        "CEC128"
       ],
-      "expected_chunks": 98,
+      "expected_chunks": 817,
       "period_start": "2021-01-01",
-      "period_end": "2021-01-14",
+      "period_end": "2021-04-01",
+      "volume_bucket": "medium",
+      "query": {
+        "auto_enrich_filters": false,
+        "filters": {
+          "timestamp": {
+            "start": "2021-01-01T00:00:00Z",
+            "end": "2021-04-01T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "9417FE",
+              "A6213D",
+              "1BC12C",
+              "17EDA5",
+              "D8442A",
+              "CFF15D",
+              "49BBBC",
+              "DD3BB1",
+              "4F9926",
+              "CEC128"
+            ],
+            "search_in": "BODY"
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          },
+          "content_diversification": {
+            "enabled": true
+          }
+        },
+        "max_chunks": 817,
+        "text": "Companies will face production delays due to semiconductor supply shortages disrupting global production."
+      }
+    },
+    {
+      "basket_id": "basket_1_medium_20210402_20210629",
+      "companies": [
+        "9417FE",
+        "A6213D",
+        "1BC12C",
+        "17EDA5",
+        "D8442A",
+        "CFF15D",
+        "49BBBC",
+        "DD3BB1",
+        "4F9926",
+        "CEC128"
+      ],
+      "expected_chunks": 751,
+      "period_start": "2021-04-02",
+      "period_end": "2021-06-29",
+      "volume_bucket": "medium",
+      "query": {
+        "auto_enrich_filters": false,
+        "filters": {
+          "timestamp": {
+            "start": "2021-04-02T00:00:00Z",
+            "end": "2021-06-29T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "9417FE",
+              "A6213D",
+              "1BC12C",
+              "17EDA5",
+              "D8442A",
+              "CFF15D",
+              "49BBBC",
+              "DD3BB1",
+              "4F9926",
+              "CEC128"
+            ],
+            "search_in": "BODY"
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          },
+          "content_diversification": {
+            "enabled": true
+          }
+        },
+        "max_chunks": 751,
+        "text": "Companies will face production delays due to semiconductor supply shortages disrupting global production."
+      }
+    },
+    {
+      "basket_id": "basket_2_medium_20210630_20210630",
+      "companies": [
+        "9417FE",
+        "A6213D",
+        "1BC12C",
+        "17EDA5",
+        "D8442A",
+        "CFF15D",
+        "49BBBC",
+        "DD3BB1",
+        "4F9926",
+        "CEC128"
+      ],
+      "expected_chunks": 33,
+      "period_start": "2021-06-30",
+      "period_end": "2021-06-30",
+      "volume_bucket": "medium",
+      "query": {
+        "auto_enrich_filters": false,
+        "filters": {
+          "timestamp": {
+            "start": "2021-06-30T00:00:00Z",
+            "end": "2021-06-30T23:59:59Z"
+          },
+          "entity": {
+            "any_of": [
+              "9417FE",
+              "A6213D",
+              "1BC12C",
+              "17EDA5",
+              "D8442A",
+              "CFF15D",
+              "49BBBC",
+              "DD3BB1",
+              "4F9926",
+              "CEC128"
+            ],
+            "search_in": "BODY"
+          }
+        },
+        "ranking_params": {
+          "source_boost": 1,
+          "freshness_boost": 0,
+          "reranker": {
+            "enabled": false
+          },
+          "content_diversification": {
+            "enabled": true
+          }
+        },
+        "max_chunks": 33,
+        "text": "Companies will face production delays due to semiconductor supply shortages disrupting global production."
+      }
+    },
+    {
+      "basket_id": "basket_3_low_20210101_20210630",
+      "companies": [
+        "E09E2B",
+        "ECDC73",
+        "351EC3",
+        "EC210B",
+        "09DE1F",
+        "SUZM4J",
+        "E68C3D",
+        "69345C",
+        "39BFF6",
+        "A4BCDE",
+        "790C34",
+        "12DE76",
+        "E7D47B",
+        "CDFCC9"
+      ],
+      "expected_chunks": 961,
+      "period_start": "2021-01-01",
+      "period_end": "2021-06-30",
       "volume_bucket": "low",
       "query": {
         "auto_enrich_filters": false,
         "filters": {
           "timestamp": {
             "start": "2021-01-01T00:00:00Z",
-            "end": "2021-01-14T23:59:59Z"
+            "end": "2021-06-30T23:59:59Z"
           },
           "entity": {
             "any_of": [
-              "9417FE",
-              "D8442A",
-              "1BC12C",
-              "001F1B"
+              "E09E2B",
+              "ECDC73",
+              "351EC3",
+              "EC210B",
+              "09DE1F",
+              "SUZM4J",
+              "E68C3D",
+              "69345C",
+              "39BFF6",
+              "A4BCDE",
+              "790C34",
+              "12DE76",
+              "E7D47B",
+              "CDFCC9"
             ],
             "search_in": "BODY"
           }
@@ -40,59 +225,49 @@
             "enabled": true
           }
         },
-        "max_chunks": 98,
+        "max_chunks": 961,
         "text": "Companies will face production delays due to semiconductor supply shortages disrupting global production."
       }
     },
     {
-      "basket_id": "basket_1_very_low_20210101_20210114",
+      "basket_id": "basket_4_low_20210101_20210630",
       "companies": [
-        "00067A",
-        "002A99",
-        "00326D",
-        "003B70",
-        "004073",
-        "0041F3",
-        "006697",
-        "00865A",
-        "008CE5",
-        "009397",
-        "00D6B5",
-        "00E601",
-        "00F26A",
-        "00FC70",
-        "011DEF",
-        "01316B"
+        "D6AAF0",
+        "0B57D7",
+        "33AD83",
+        "507AE7",
+        "7E1D5D",
+        "CE96E7",
+        "EB5E78",
+        "4AC91D",
+        "30A565",
+        "CC6FF5",
+        "808319"
       ],
-      "expected_chunks": 0,
+      "expected_chunks": 254,
       "period_start": "2021-01-01",
-      "period_end": "2021-01-14",
-      "volume_bucket": "very_low",
+      "period_end": "2021-06-30",
+      "volume_bucket": "low",
       "query": {
         "auto_enrich_filters": false,
         "filters": {
           "timestamp": {
             "start": "2021-01-01T00:00:00Z",
-            "end": "2021-01-14T23:59:59Z"
+            "end": "2021-06-30T23:59:59Z"
           },
           "entity": {
             "any_of": [
-              "00067A",
-              "002A99",
-              "00326D",
-              "003B70",
-              "004073",
-              "0041F3",
-              "006697",
-              "00865A",
-              "008CE5",
-              "009397",
-              "00D6B5",
-              "00E601",
-              "00F26A",
-              "00FC70",
-              "011DEF",
-              "01316B"
+              "D6AAF0",
+              "0B57D7",
+              "33AD83",
+              "507AE7",
+              "7E1D5D",
+              "CE96E7",
+              "EB5E78",
+              "4AC91D",
+              "30A565",
+              "CC6FF5",
+              "808319"
             ],
             "search_in": "BODY"
           }
@@ -107,17 +282,17 @@
             "enabled": true
           }
         },
-        "max_chunks": 100,
+        "max_chunks": 254,
         "text": "Companies will face production delays due to semiconductor supply shortages disrupting global production."
       }
     }
   ],
   "planning_metadata": {
-    "total_companies": 20,
-    "companies_with_chunks": 4,
-    "companies_very_low": 16,
-    "comention_queries": 2,
-    "baskets_created": 2,
+    "total_companies": 35,
+    "companies_with_chunks": 35,
+    "companies_very_low": 0,
+    "comention_queries": 1,
+    "baskets_created": 5,
     "uses_smart_batching": true,
     "adaptive_time_splitting": true
   }
