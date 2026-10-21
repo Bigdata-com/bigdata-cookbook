@@ -95,7 +95,18 @@ def test_http_500_does_not_raise() -> None:
 def test_no_key_no_session_does_not_raise_and_does_not_post(monkeypatch) -> None:
     monkeypatch.delenv("BIGDATA_API_KEY", raising=False)
     trace_cookbook_execution("TSTestG")  # must not raise
-    assert "TSTestG" in tracing._traced_cookbooks
+    # No key was available, so the cookbook must not be marked as traced:
+    # a later call once the key is set still needs to fire.
+    assert "TSTestG" not in tracing._traced_cookbooks
+
+
+def test_fires_once_key_becomes_available(monkeypatch) -> None:
+    """Import-time call before .env is loaded, then the call after load_dotenv."""
+    monkeypatch.delenv("BIGDATA_API_KEY", raising=False)
+    trace_cookbook_execution("TSTestK")
+    session = FakeSession()
+    trace_cookbook_execution("TSTestK", session=session)
+    assert len(session.calls) == 1
 
 
 def test_disable_tracing_opt_out(monkeypatch) -> None:

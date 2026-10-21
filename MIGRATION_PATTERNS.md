@@ -48,7 +48,7 @@ trace_cookbook_execution("MyCookbook")
 
 - Endpoint is `POST /track-events` — **not** under `/v1` (`/v1/track-events` 404s).
 - Fires at most once per cookbook name per process.
-- Failures are swallowed (missing key, network error, non-2xx) — telemetry must never break a notebook. Timeout capped at 5s.
+- Failures are swallowed (missing key, network error, non-2xx) — telemetry must never break a notebook. The POST is synchronous with `timeout=5`, which `requests` applies to connect and read separately (DNS lookup is not covered), so an unreachable API can delay the calling cell by more than 5s.
 - Set `BIGDATA_DISABLE_TRACING=1` (or `true` / `yes`, case-insensitive) to opt out entirely, checked before anything else runs. Every `scripts/smoke_test.py` sets this at the very top, before any project import, so test runs never emit telemetry.
 - **`cookbook_name` must match the value already used in Mixpanel for that cookbook — not the folder name.** `Election_Monitor` sends `cookbook_name="TrumpReelectionImpactAnalysis"`, not `"Election_Monitor"`. Changing an existing cookbook's value splits its Mixpanel history; agree any rename with the dashboard owners first.
 

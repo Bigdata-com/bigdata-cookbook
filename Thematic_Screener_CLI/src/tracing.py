@@ -58,7 +58,6 @@ def trace_cookbook_execution(
         return
     if cookbook_name in _traced_cookbooks:
         return
-    _traced_cookbooks.add(cookbook_name)
 
     if session is None:
         key = api_key or os.getenv("BIGDATA_API_KEY")
@@ -66,6 +65,8 @@ def trace_cookbook_execution(
             return
         session = requests.Session()
         session.headers.update({"X-API-KEY": key, "Content-Type": "application/json"})
+
+    _traced_cookbooks.add(cookbook_name)
 
     properties: dict[str, Any] = {"cookbook_name": cookbook_name}
     for prop_key, package in (

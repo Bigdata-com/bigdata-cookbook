@@ -48,15 +48,14 @@ from src.prompts import (
     TAXONOMY_STYLE_DERIVATIVES,
     TAXONOMY_STYLE_EXPOSURE,
 )
-from src.tracing import trace_cookbook_execution
 
 logger = logging.getLogger(__name__)
 
-# Cookbook execution tracing (ADS-400), fired at import time: the notebook,
-# cli.py, and mcp_server.py (via mcp_workflow.py) all funnel through this
-# module, so it is the one shared chokepoint. See src/tracing.py for why this
-# cookbook needs its own copy instead of BigdataRestClient(cookbook_name=...).
-trace_cookbook_execution("ThematicScreener")
+# Cookbook execution tracing (ADS-400) is fired from cli.py's and
+# mcp_workflow.py's _load_environment(), after .env is loaded, not from this
+# module's import — both entry points import this module before calling
+# load_dotenv(). See src/tracing.py for why this cookbook needs its own copy
+# instead of BigdataRestClient(cookbook_name=...).
 
 _THEMATIC_PROFILE = get_profile(AnalysisMode.THEMATIC_SCREENER)
 

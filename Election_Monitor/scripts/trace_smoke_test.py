@@ -47,10 +47,18 @@ def make_client(session: FakeSession) -> BigdataRestClient:
     return client
 
 
-class TraceCookbookExecutionTests(unittest.TestCase):
+class TracingEnabledTestCase(unittest.TestCase):
+    """Run with tracing enabled even if BIGDATA_DISABLE_TRACING is exported (e.g. in CI)."""
+
     def setUp(self) -> None:
         bigdata_rest._traced_cookbooks.clear()
+        env = patch.dict(os.environ)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop("BIGDATA_DISABLE_TRACING", None)
 
+
+class TraceCookbookExecutionTests(TracingEnabledTestCase):
     def test_posts_to_track_events_path(self) -> None:
         session = FakeSession()
         client = make_client(session)
@@ -106,11 +114,8 @@ class TraceCookbookExecutionTests(unittest.TestCase):
         self.assertEqual(len(session.calls), 1)
 
 
-class ModuleLevelTraceCookbookExecutionTests(unittest.TestCase):
+class ModuleLevelTraceCookbookExecutionTests(TracingEnabledTestCase):
     """Tests for the module-level trace_cookbook_execution (ADS-400 refactor)."""
-
-    def setUp(self) -> None:
-        bigdata_rest._traced_cookbooks.clear()
 
     def test_posts_via_provided_session(self) -> None:
         session = FakeSession()
@@ -147,8 +152,9 @@ class ModuleLevelTraceCookbookExecutionTests(unittest.TestCase):
 
         with patch.object(bigdata_rest.os, "getenv", side_effect=fake_getenv):
             trace_cookbook_execution("ModuleTestD")  # must not raise
-        # Guard still consumes the name even though nothing was sent.
-        self.assertIn("ModuleTestD", bigdata_rest._traced_cookbooks)
+        # No key was available, so the name must not be consumed: a later
+        # call once the key is set still needs to fire.
+        self.assertNotIn("ModuleTestD", bigdata_rest._traced_cookbooks)
 
     def test_network_error_without_session_does_not_raise(self) -> None:
         from unittest.mock import MagicMock
@@ -161,12 +167,9 @@ class ModuleLevelTraceCookbookExecutionTests(unittest.TestCase):
         fake_session.post.assert_called_once()
 
 
-class DisableTracingOptOutTests(unittest.TestCase):
+class DisableTracingOptOutTests(TracingEnabledTestCase):
     """BIGDATA_DISABLE_TRACING must stop tracing before the guard and before
     any network call, for both the method and the module-level function."""
-
-    def setUp(self) -> None:
-        bigdata_rest._traced_cookbooks.clear()
 
     def test_method_does_not_post_when_disabled(self) -> None:
         session = FakeSession()

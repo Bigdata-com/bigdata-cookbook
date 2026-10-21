@@ -29,6 +29,7 @@ from src.retrieval_budget import DEFAULT_RETRIEVAL_PRESETS
 from src.run_context import RunContext
 from src.screener import _company_evidence_block, _company_summary_system_prompt
 from src.search_query import has_exposure_meta_language
+from src.tracing import trace_cookbook_execution
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_RUNS_ROOT = PROJECT_ROOT / "runs"
@@ -154,6 +155,7 @@ def _utc_now() -> str:
 
 def _load_environment() -> None:
     load_dotenv(PROJECT_ROOT / ".env", override=False)
+    trace_cookbook_execution("ThematicScreener")
 
 
 def _context(run_id: str | None) -> RunContext:
