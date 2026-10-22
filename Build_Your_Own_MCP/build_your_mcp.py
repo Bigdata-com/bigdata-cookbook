@@ -38,7 +38,7 @@ mcp = FastMCP("Demo", stateless_http=True, json_response=True, host="0.0.0.0")
 load_dotenv(".env")
 
 # Initialize clients
-REST_CLIENT = BigdataRestClient()
+REST_CLIENT = BigdataRestClient(cookbook_name="BuildYourOwnMCP")
 OPENAI_CLIENT = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 

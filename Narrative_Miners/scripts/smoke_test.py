@@ -7,6 +7,7 @@ Uses 4 companies, a 14-day window, and low API limits.
 from __future__ import annotations
 
 import os
+os.environ.setdefault("BIGDATA_DISABLE_TRACING", "1")  # ADS-400: smoke tests must never emit telemetry
 import sys
 from datetime import date, timedelta
 from enum import Enum

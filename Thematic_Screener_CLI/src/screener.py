@@ -51,6 +51,12 @@ from src.prompts import (
 
 logger = logging.getLogger(__name__)
 
+# Cookbook execution tracing (ADS-400) is fired from cli.py's and
+# mcp_workflow.py's _load_environment(), after .env is loaded, not from this
+# module's import — both entry points import this module before calling
+# load_dotenv(). See src/tracing.py for why this cookbook needs its own copy
+# instead of BigdataRestClient(cookbook_name=...).
+
 _THEMATIC_PROFILE = get_profile(AnalysisMode.THEMATIC_SCREENER)
 
 DEFAULT_MAIN_THEME = _THEMATIC_PROFILE.default_main_theme

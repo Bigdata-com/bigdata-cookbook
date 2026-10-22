@@ -37,7 +37,7 @@ def search_topics(
         Chunk-level DataFrame with columns: query, document_id, headline,
         timestamp, url, source_name, text, relevance, sentiment.
     """
-    client = BigdataRestClient()
+    client = BigdataRestClient(cookbook_name="DailyDigestCentralBank")
     rows = []
 
     filters: dict = {

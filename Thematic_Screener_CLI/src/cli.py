@@ -37,6 +37,7 @@ from src.modes import AnalysisMode, get_profile
 from src.prompts import TAXONOMY_STYLE_DERIVATIVES, TAXONOMY_STYLE_EXPOSURE
 from src.retrieval_budget import build_retrieval_preset_rows, format_retrieval_budget_report
 from src.run_context import RunContext
+from src.tracing import trace_cookbook_execution
 
 logger = logging.getLogger("screener.cli")
 
@@ -56,6 +57,7 @@ def _load_environment() -> None:
         raise SystemExit("BIGDATA_API_KEY is not set; add it to your .env or environment")
 
     logger.info("Loaded environment from %s", env_path)
+    trace_cookbook_execution("ThematicScreener")
 
 
 def _make_context(args: argparse.Namespace) -> RunContext:

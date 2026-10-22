@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from contextlib import contextmanager
 
+from .bigdata_rest import trace_cookbook_execution
+
 # SDK query building removed — use search_helper.run_universe_search instead.
 # Functions that built SDK query objects (build_source_filter, build_queries_for_monitoring)
 # raise NotImplementedError with migration guidance.
@@ -1381,4 +1383,6 @@ def plot_top_sources(df, person_name="Person", top_n=5, interactive=True):
         plt.tight_layout()
         plt.show()
 
-# SDK removed - no tracking         
+# Cookbook execution tracing (ADS-400): fires at import time, mirroring the
+# retired SDK's notebook_initialized() hook that used to live here.
+trace_cookbook_execution("BoardManagementMonitoring")

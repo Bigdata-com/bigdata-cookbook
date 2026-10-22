@@ -14,7 +14,7 @@ def get_entity_ids(entity_names: list[str]) -> tuple[list[str], list[str], list[
     Returns:
         Tuple of (entity_ids, matched_names, company_objects)
     """
-    client = BigdataRestClient()
+    client = BigdataRestClient(cookbook_name="CreditRatingsMonitoring")
     entity_name_to_keys = {}
     company_objects = []
     

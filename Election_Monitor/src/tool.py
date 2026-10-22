@@ -1159,5 +1159,5 @@ def transform_to_reference_format(df_second):
     
     return df_transformed
 
-# SDK removed - no tracking
+# Cookbook execution tracing now lives in BigdataRestClient, see ADS-400.
 

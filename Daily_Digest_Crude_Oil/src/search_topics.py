@@ -25,7 +25,7 @@ def search_topics(
     Returns:
         DataFrame with search results.
     """
-    client = BigdataRestClient()
+    client = BigdataRestClient(cookbook_name="DailyDigestCrudeOil")
     rows = []
 
     for topic_text in topics:
@@ -85,7 +85,7 @@ def search_by_keywords(
         'source_name', 'url', and daily_keyword_count maps
         {day_str: {keyword: document_count}}.
     """
-    client = BigdataRestClient()
+    client = BigdataRestClient(cookbook_name="DailyDigestCrudeOil")
     doc_type = _DOC_TYPE_BY_SCOPE.get(str(scope).lower(), "NEWS")
 
     periods = pd.date_range(start=start_date, end=end_date, freq=freq)

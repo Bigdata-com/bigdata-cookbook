@@ -6,6 +6,8 @@ from IPython.display import display
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+from .bigdata_rest import trace_cookbook_execution
+
 
 def load_results(file_path, source_type):
     """
@@ -770,5 +772,6 @@ def display_sample_data(news_df, transcripts_df, filings_df):
     print("\n======= SAMPLE SEC FILING NARRATIVES =======")
     display(filings_df[['Date', 'Headline', 'Label', 'Chunk Text']].head(3))
 
-# MIGRATION NOTE: Tracking removed during bigdata-client SDK deprecation.
-# This project now uses REST API + bigdata-smart-batching.     
+# Cookbook execution tracing (ADS-400): fires at import time, mirroring the
+# retired SDK's notebook_initialized() hook that used to live here.
+trace_cookbook_execution("NarrativeMiner")
