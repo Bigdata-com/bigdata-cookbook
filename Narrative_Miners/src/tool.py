@@ -28,12 +28,22 @@ def load_results(file_path, source_type):
     return df
 
 
+def _with_datetime_dates(df):
+    """Copy a frame and parse Date. CSV reload leaves Date as text, which cannot be resampled."""
+    if df is None or df.empty or "Date" not in df.columns:
+        return df
+    dated = df.copy()
+    dated["Date"] = pd.to_datetime(dated["Date"], errors="coerce", utc=True).dt.tz_localize(None)
+    return dated.dropna(subset=["Date"])
+
+
 def prepare_narrative_data(df, freq='W'):
     """
     Prepare narrative data for visualization by creating time series of narrative counts,
     converting to z-scores, and applying smoothing.
     Uses unique Sentence ID counts per Date/Label to avoid duplication.
     """
+    df = _with_datetime_dates(df)
     # Group by Date, Label and count unique Sentence IDs
     date_label_counts = df.groupby(['Date', 'Label'])['Sentence ID'].nunique().reset_index()
     date_label_counts.columns = ['Date', 'Label', 'Count']
@@ -65,6 +75,7 @@ def calculate_source_scores(df):
     Calculate overall narrative scores (z-scores) across all narratives by source.
     Uses unique Sentence ID counts per Date to avoid duplication.
     """
+    df = _with_datetime_dates(df)
     # Count of unique Sentence IDs per date
     date_counts = df.groupby('Date')['Sentence ID'].nunique()
     weekly_counts = date_counts.resample('W').sum().fillna(0)
@@ -763,20 +774,26 @@ def subtheme_counts(df):
     return df["Label"].value_counts()
 
 
+def _format_date_range(df: pd.DataFrame) -> str:
+    """Return ``YYYY-MM-DD to YYYY-MM-DD`` or ``n/a`` when dates are missing."""
+    if df is None or df.empty or "Date" not in df.columns:
+        return "n/a"
+    dates = pd.to_datetime(df["Date"], errors="coerce").dropna()
+    if dates.empty:
+        return "n/a"
+    return f"{dates.min().strftime('%Y-%m-%d')} to {dates.max().strftime('%Y-%m-%d')}"
+
+
 def create_source_summary(news_df, transcripts_df, filings_df):
     """Create a summary dataframe of the dataset sizes"""
+    frames = [news_df, transcripts_df, filings_df]
     source_summary = pd.DataFrame({
         'Source Type': ['News Media', 'Earnings Calls', 'SEC Filings'],
-        'Record Count': [len(news_df), len(transcripts_df), len(filings_df)],
-        'Date Range': [
-            f"{news_df['Date'].min().strftime('%Y-%m-%d')} to {news_df['Date'].max().strftime('%Y-%m-%d')}",
-            f"{transcripts_df['Date'].min().strftime('%Y-%m-%d')} to {transcripts_df['Date'].max().strftime('%Y-%m-%d')}",
-            f"{filings_df['Date'].min().strftime('%Y-%m-%d')} to {filings_df['Date'].max().strftime('%Y-%m-%d')}"
-        ],
+        'Record Count': [len(df) if df is not None else 0 for df in frames],
+        'Date Range': [_format_date_range(df) for df in frames],
         'Unique Sub-Themes': [
-            news_df['Label'].nunique(),
-            transcripts_df['Label'].nunique(),
-            filings_df['Label'].nunique()
+            df['Label'].nunique() if df is not None and not df.empty and 'Label' in df.columns else 0
+            for df in frames
         ]
     })
     return source_summary
@@ -784,14 +801,24 @@ def create_source_summary(news_df, transcripts_df, filings_df):
 
 def display_sample_data(news_df, transcripts_df, filings_df):
     """Display sample data from each source"""
+    sample_cols = ['Date', 'Headline', 'Label', 'Chunk Text']
+
     print("\n======= SAMPLE NEWS NARRATIVES =======")
-    display(news_df[['Date', 'Headline', 'Label', 'Chunk Text']].head(3))
+    display(news_df[sample_cols].head(3) if news_df is not None and not news_df.empty else news_df)
 
     print("\n======= SAMPLE EARNINGS CALL NARRATIVES =======")
-    display(transcripts_df[['Date', 'Headline', 'Label', 'Chunk Text']].head(3))
+    display(
+        transcripts_df[sample_cols].head(3)
+        if transcripts_df is not None and not transcripts_df.empty
+        else transcripts_df
+    )
 
     print("\n======= SAMPLE SEC FILING NARRATIVES =======")
-    display(filings_df[['Date', 'Headline', 'Label', 'Chunk Text']].head(3))
+    display(
+        filings_df[sample_cols].head(3)
+        if filings_df is not None and not filings_df.empty
+        else filings_df
+    )
 
 # Cookbook execution tracing (ADS-400): fires at import time, mirroring the
 # retired SDK's notebook_initialized() hook that used to live here.

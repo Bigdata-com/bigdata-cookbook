@@ -6,6 +6,7 @@ leaves for REST search while keeping parent sub-theme mapping for rollups.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -160,6 +161,19 @@ def print_tree(node: Node, indent: int = 0) -> None:
     print(f"{prefix}- {node.label}{query_note}")
     for child in node.children:
         print_tree(child, indent + 1)
+
+
+def save_mindmap(root: Node, path: str | Path) -> Path:
+    """Write a mindmap so a later run can reuse the same sub-themes and search labels."""
+    destination = Path(path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(root.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    return destination
+
+
+def load_mindmap(path: str | Path) -> Node:
+    """Load a mindmap previously written by ``save_mindmap``."""
+    return Node.model_validate_json(Path(path).read_text(encoding="utf-8"))
 
 
 def mindmap_to_main_narratives(root: Node) -> list[dict[str, Any]]:
