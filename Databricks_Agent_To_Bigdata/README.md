@@ -15,6 +15,36 @@ via Unity AI Gateway, the Mosaic AI Agent Framework, and MLflow 3.**
 
 ---
 
+## Use the Marketplace MCP
+
+As of **October 28, 2026**, the Bigdata.com MCP is available in the Databricks Marketplace.
+**Prefer that listing** for new setups. The connection built in
+[`03_bigdata_mcp_setup.ipynb`](./03_bigdata_mcp_setup.ipynb) (API key, direct connection, and
+the Unity AI Gateway registration) is the earlier approach.
+
+In your workspace, open **Marketplace**, search for `bigdata`, and install **Bigdata.com MCP**.
+
+![Bigdata.com MCP in the Databricks Marketplace](./static/05-bigdata-mcp-in-marketplace.png)
+
+The Marketplace MCP authenticates with **OAuth 2.0**. Create a client ID and client secret at
+[platform.bigdata.com/oauth-clients](https://platform.bigdata.com/oauth-clients). When you
+register the client, set the redirect URL to your workspace's Databricks OAuth callback:
+
+```text
+https://<your-databricks-workspace-host>/login/oauth/http.html
+```
+
+Example:
+
+```text
+https://dbc-123456-c5.cloud.databricks.com/login/oauth/http.html
+```
+
+Replace the host with your own workspace URL (the value in the browser address bar, such as
+`dbc-123456-c5.cloud.databricks.com`). The path stays `/login/oauth/http.html`.
+
+---
+
 ## Why this matters
 
 Your analysts already have proprietary data in the lakehouse and a firehose of external market
@@ -109,7 +139,11 @@ The agent picks the right tool per sub-question, then synthesizes a single cited
 - Permission to create a catalog, a Vector Search endpoint, and Model Serving endpoints.
 - The **Databricks CLI** configured (`databricks auth login`) for secrets and — on the
   governed path — the MCP Service registration.
-- A **Bigdata.com API key** — [platform.bigdata.com/api-keys](https://platform.bigdata.com/api-keys).
+- A **Bigdata.com OAuth 2.0 client** (client ID and secret) for the Marketplace MCP —
+  [platform.bigdata.com/oauth-clients](https://platform.bigdata.com/oauth-clients). See
+  [Use the Marketplace MCP](#use-the-marketplace-mcp).
+- A **Bigdata.com API key**, only if you follow the earlier connection in
+  `03_bigdata_mcp_setup.ipynb` — [platform.bigdata.com/api-keys](https://platform.bigdata.com/api-keys).
 
 ---
 
@@ -229,6 +263,9 @@ add `"OPENAI_API_KEY": "{{secrets/bigdata/openai_api_key}}"` to the `environment
 
 ## Two ways to connect Bigdata.com (choose in `agent.py`)
 
+Prefer the [Marketplace MCP](#use-the-marketplace-mcp) (OAuth 2.0) for new setups. The two
+paths below are the earlier connection documented in `03_bigdata_mcp_setup.ipynb`.
+
 `agent.py` has a single switch, `USE_MCP_SERVICE`:
 
 - **`False` — Direct** (default, simplest). The agent connects straight to
@@ -316,6 +353,7 @@ tearsheets, credit and ownership screeners):
 - [Bigdata.com](https://bigdata.com) · [API docs](https://docs.bigdata.com/) · [MCP reference](https://docs.bigdata.com/mcp-reference/introduction)
 - [MCP tool: find_securities](https://docs.bigdata.com/mcp-reference/tools/find-companies) (replaces `find_companies`)
 - [Developer platform / API keys](https://platform.bigdata.com/api-keys)
+- [OAuth clients](https://platform.bigdata.com/oauth-clients) (Marketplace MCP)
 
 ### Databricks
 - [Build AI agents on Databricks (hub)](https://docs.databricks.com/aws/en/agents)
