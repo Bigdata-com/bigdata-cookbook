@@ -2,16 +2,16 @@
 
 ## Automated Narrative Analysis and Mining Tool
 
-**MIGRATION NOTE**: This project has been migrated from `bigdata-client` and `bigdata-research-tools` (including the deprecated `NarrativeMiner` workflow) to REST API + `bigdata-smart-batching`. The notebook retains legacy imports with a migration banner; Python modules in `src/` are fully migrated.
+**MIGRATION NOTE**: This project has been migrated from `bigdata-client` and `bigdata-research-tools` (including the deprecated `NarrativeMiner` workflow) to REST API + `bigdata-smart-batching`. An LLM mindmap expands a main theme into sub-themes with 2–3 search labels each; search runs on those leaves and all counts roll up at the **sub-theme** level.
 
 This project provides comprehensive narrative analysis and mining capabilities for financial and investment research. It's designed for analysts, portfolio managers, and investment professionals to systematically extract, analyze, and track narrative patterns across various data sources and market segments.
 
 ## Features
 
-- **Narrative extraction** and pattern recognition from unstructured data using REST search
-- **Sentiment analysis** and narrative sentiment tracking via OpenAI
-- **Narrative evolution** and temporal analysis
-- **Automated narrative scoring** and ranking systems
+- **LLM mindmap** — expand a main theme (e.g. "AI Bubble") into sub-themes and searchable claim labels
+- **Narrative extraction** from unstructured data using REST search on mindmap leaves
+- **Sub-theme-level counts** — charts, summaries, and insights aggregate by sub-theme (not by leaf label)
+- **Narrative evolution** and temporal analysis across news, transcripts, and filings
 
 ## Installation and Usage
 
@@ -35,7 +35,6 @@ This project provides comprehensive narrative analysis and mining capabilities f
    - Edit the `.env` file and add your credentials:
      ```
      BIGDATA_API_KEY=your_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
      OPENAI_API_KEY=your_openai_api_key
      ```
 
@@ -80,7 +79,7 @@ OPENAI_API_KEY=your_openai_api_key_here
    uv pip install jupyterlab
    ```
 
-   **Note**: Dependencies no longer include `bigdata-client` or `bigdata-research-tools`. Instead, use `bigdata-smart-batching` for search and OpenAI for labeling.
+   **Note**: Dependencies no longer include `bigdata-client` or `bigdata-research-tools`. Instead, use `bigdata-smart-batching` for search and OpenAI for mindmap generation.
 
 4. **Set up credentials**:
    - Copy the example environment file:
@@ -107,7 +106,13 @@ OPENAI_API_KEY=your_openai_api_key_here
    - Follow the setup instructions in the notebook
    - Run cells sequentially to perform the analysis
 
+## Workflow
 
+1. Set `main_theme` (default: `"AI Bubble"`)
+2. LLM generates a mindmap: theme → sub-themes → 2–3 search labels each → `main_narratives`
+3. REST search runs on flattened search labels across news / transcripts / filings
+4. Each hit maps to its parent sub-theme (`Label` column)
+5. Visualizations, summaries, and exports report counts at **sub-theme** level
 
 ## Project Structure
 
@@ -119,19 +124,22 @@ Narrative_Miners/
 ├── requirements.txt          # Python dependencies
 ├── .env.example             # Example environment variables
 ├── src/
-│   └── tool.py              # Core narrative mining functionality
+│   ├── mindmap.py           # LLM mindmap generation + plot helpers
+│   ├── search_helper.py     # REST search via bigdata-smart-batching
+│   ├── llm_helpers.py       # Model defaults / luna-safe sampling
+│   ├── bigdata_rest.py      # REST client + universe helpers
+│   └── tool.py              # Visualization and analysis helpers
+├── scripts/
+│   └── smoke_test.py        # Short mindmap + search smoke test
 ├── output/                  # Generated analysis outputs
-│   ├── ai_bubble_narrative_analysis.xlsx
-│   ├── ai_bubble_filings.xlsx
-│   ├── ai_bubble_transcripts.xlsx
-│   └── ai_bubble_news.xlsx
 └── .venv/                   # Virtual environment (created during setup)
 ```
 
 ## Key Components
 
 - **NarrativeMiner.ipynb**: Main analysis notebook containing the narrative mining workflow
-- **src/tool.py**: Core Python module with narrative extraction and analysis functions
+- **src/mindmap.py**: LLM mindmap generation (`main_theme` → sub-themes → search labels)
+- **src/tool.py**: Visualization and analysis helpers (counts by `Label` / sub-theme)
 - **output/**: Directory containing Excel files with analysis results across different data sources
 
 ## Output Files
@@ -146,5 +154,6 @@ The analysis generates several Excel files in the `output/` directory:
 
 - Ensure all credentials are properly configured in the `.env` file before running
 - The notebook should be run sequentially from top to bottom
+- Change `main_theme` in the parameters cell to analyze a different narrative
 - Large datasets may require significant processing time
 - Results are automatically saved to the `output/` directory

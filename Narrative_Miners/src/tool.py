@@ -28,12 +28,22 @@ def load_results(file_path, source_type):
     return df
 
 
+def _with_datetime_dates(df):
+    """Copy a frame and parse Date. CSV reload leaves Date as text, which cannot be resampled."""
+    if df is None or df.empty or "Date" not in df.columns:
+        return df
+    dated = df.copy()
+    dated["Date"] = pd.to_datetime(dated["Date"], errors="coerce", utc=True).dt.tz_localize(None)
+    return dated.dropna(subset=["Date"])
+
+
 def prepare_narrative_data(df, freq='W'):
     """
     Prepare narrative data for visualization by creating time series of narrative counts,
     converting to z-scores, and applying smoothing.
     Uses unique Sentence ID counts per Date/Label to avoid duplication.
     """
+    df = _with_datetime_dates(df)
     # Group by Date, Label and count unique Sentence IDs
     date_label_counts = df.groupby(['Date', 'Label'])['Sentence ID'].nunique().reset_index()
     date_label_counts.columns = ['Date', 'Label', 'Count']
@@ -65,6 +75,7 @@ def calculate_source_scores(df):
     Calculate overall narrative scores (z-scores) across all narratives by source.
     Uses unique Sentence ID counts per Date to avoid duplication.
     """
+    df = _with_datetime_dates(df)
     # Count of unique Sentence IDs per date
     date_counts = df.groupby('Date')['Sentence ID'].nunique()
     weekly_counts = date_counts.resample('W').sum().fillna(0)
@@ -78,8 +89,11 @@ def calculate_source_scores(df):
     return pd.Series(smoothed, index=zscore.index)
 
 
-def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, interactive=True):
+def visualize_cross_source_narratives(
+    news_df, transcripts_df, filings_df, interactive=True, main_theme="AI Bubble"
+):
     """Create a comparative visualization of narrative prevalence across sources with fixed annotation arrows"""
+    cross_title = f"{main_theme} Narrative: Media vs. Corporate Communications"
     # Prepare data for each source
     news_score = calculate_source_scores(news_df)
     transcript_score = calculate_source_scores(transcripts_df)
@@ -120,14 +134,14 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
                     color=color, linewidth=3, label=source, alpha=0.9)
         
         # Add annotations
-        ax.annotate('Peak news coverage\nof AI bubble concerns',
+        ax.annotate(f'Peak news coverage\nof {main_theme} concerns',
                    xy=(peak_news, comparison_df.loc[peak_news, 'News Media']),
                    xytext=(peak_news, comparison_df.loc[peak_news, 'News Media'] + 0.5),
                    arrowprops=dict(arrowstyle='->', color='#FF6B6B', lw=2),
                    fontsize=10, ha='center', va='bottom',
                    bbox=dict(boxstyle="round,pad=0.3", facecolor='white', edgecolor='#FF6B6B', alpha=0.8))
         
-        ax.annotate('Executives address\nbubble concerns on\nearnings calls',
+        ax.annotate(f'Executives address\n{main_theme} concerns on\nearnings calls',
                    xy=(peak_earnings, comparison_df.loc[peak_earnings, 'Earnings Calls']),
                    xytext=(peak_earnings, comparison_df.loc[peak_earnings, 'Earnings Calls'] + 0.8),
                    arrowprops=dict(arrowstyle='->', color='#4ECDC4', lw=2),
@@ -145,8 +159,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
         ax.axhline(y=0, color='#666666', linestyle='--', alpha=0.7, linewidth=1)
         
         # Customize the plot
-        ax.set_title('AI Bubble Narrative: Media vs. Corporate Communications', 
-                    fontsize=18, fontweight='bold', pad=20)
+        ax.set_title(cross_title, fontsize=18, fontweight='bold', pad=20)
         ax.set_ylabel('Narrative Intensity (z-score)', fontsize=12, fontweight='bold')
         ax.set_xlabel('Date', fontsize=12, fontweight='bold')
         
@@ -214,7 +227,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
                 dict(
                     x=peak_news,
                     y=comparison_df.loc[peak_news, 'News Media'],
-                    text="Peak news coverage<br>of AI bubble concerns",
+                    text=f"Peak news coverage<br>of {main_theme} concerns",
                     showarrow=True,
                     arrowhead=2,
                     ax=10,
@@ -230,7 +243,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
                 dict(
                     x=peak_earnings,
                     y=comparison_df.loc[peak_earnings, 'Earnings Calls'],
-                    text="Executives address<br>bubble concerns on<br>earnings calls",
+                    text=f"Executives address<br>{main_theme} concerns on<br>earnings calls",
                     showarrow=True,
                     arrowhead=2,
                     ax=90,
@@ -263,7 +276,7 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
         # Customize the layout
         fig.update_layout(
             title={
-                'text': 'AI Bubble Narrative: Media vs. Corporate Communications',
+                'text': cross_title,
                 'y': 0.95,
                 'x': 0.5,
                 'xanchor': 'center',
@@ -344,10 +357,13 @@ def visualize_cross_source_narratives(news_df, transcripts_df, filings_df, inter
         return fig
 
 
-def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filings_df, interactive=False):
+def visualize_cross_source_narratives_matplotlib(
+    news_df, transcripts_df, filings_df, interactive=False, main_theme="AI Bubble"
+):
     """
     Create a comparative visualization using matplotlib (lightweight alternative to Plotly)
     """
+    cross_title = f"{main_theme} Narrative: Media vs. Corporate Communications"
     # Prepare data for each source
     news_score = calculate_source_scores(news_df)
     transcript_score = calculate_source_scores(transcripts_df)
@@ -388,7 +404,7 @@ def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filing
     # Add annotations (only if interactive=False to keep it simple)
     if not interactive:
         # Peak news annotation
-        ax.annotate('Peak news coverage\nof AI bubble concerns',
+        ax.annotate(f'Peak news coverage\nof {main_theme} concerns',
                    xy=(peak_news, comparison_df.loc[peak_news, 'News Media']),
                    xytext=(peak_news, comparison_df.loc[peak_news, 'News Media'] + 0.5),
                    arrowprops=dict(arrowstyle='->', color='#FF6B6B', lw=2),
@@ -396,7 +412,7 @@ def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filing
                    bbox=dict(boxstyle="round,pad=0.3", facecolor='white', edgecolor='#FF6B6B', alpha=0.8))
         
         # Earnings calls annotation
-        ax.annotate('Executives address\nbubble concerns on\nearnings calls',
+        ax.annotate(f'Executives address\n{main_theme} concerns on\nearnings calls',
                    xy=(peak_earnings, comparison_df.loc[peak_earnings, 'Earnings Calls']),
                    xytext=(peak_earnings, comparison_df.loc[peak_earnings, 'Earnings Calls'] + 0.8),
                    arrowprops=dict(arrowstyle='->', color='#4ECDC4', lw=2),
@@ -415,8 +431,7 @@ def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filing
     ax.axhline(y=0, color='#666666', linestyle='--', alpha=0.7, linewidth=1)
     
     # Customize the plot
-    ax.set_title('AI Bubble Narrative: Media vs. Corporate Communications', 
-                fontsize=18, fontweight='bold', pad=20)
+    ax.set_title(cross_title, fontsize=18, fontweight='bold', pad=20)
     ax.set_ylabel('Narrative Intensity (z-score)', fontsize=12, fontweight='bold')
     ax.set_xlabel('Date', fontsize=12, fontweight='bold')
     
@@ -442,8 +457,9 @@ def visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filing
     return fig
 
 
-def visualize_news_narrative_breakdown(news_df, interactive=True):
+def visualize_news_narrative_breakdown(news_df, interactive=True, main_theme="AI Bubble"):
     """Create a stacked area chart showing the breakdown of specific narratives in news with unique colors"""
+    breakdown_title = f"Breakdown of {main_theme} Sub-Themes in News Media"
     # Prepare news narrative data
     news_narratives = prepare_narrative_data(news_df, freq='W')
 
@@ -480,8 +496,7 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
                     alpha=0.8)
         
         # Customize the plot
-        ax.set_title('Breakdown of AI Bubble Narratives in News Media', 
-                    fontsize=18, fontweight='bold', pad=20)
+        ax.set_title(breakdown_title, fontsize=18, fontweight='bold', pad=20)
         ax.set_ylabel('Narrative Prevalence (z-score)', fontsize=12, fontweight='bold')
         ax.set_xlabel('Date', fontsize=12, fontweight='bold')
         
@@ -546,7 +561,7 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
         # Customize layout
         fig.update_layout(
             title={
-                'text': 'Breakdown of AI Bubble Narratives in News Media',
+                'text': breakdown_title,
                 'y': 0.95,
                 'x': 0.5,
                 'xanchor': 'center',
@@ -616,10 +631,13 @@ def visualize_news_narrative_breakdown(news_df, interactive=True):
         return fig
 
 
-def visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False):
+def visualize_news_narrative_breakdown_matplotlib(
+    news_df, interactive=False, main_theme="AI Bubble"
+):
     """
     Create a stacked area chart showing breakdown of news narratives using matplotlib
     """
+    breakdown_title = f"Breakdown of {main_theme} Sub-Themes in News Media"
     # Prepare news narrative data
     news_narratives = prepare_narrative_data(news_df, freq='W')
     
@@ -645,8 +663,7 @@ def visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False):
                 alpha=0.8)
     
     # Customize the plot
-    ax.set_title('Breakdown of AI Bubble Narratives in News Media', 
-                fontsize=18, fontweight='bold', pad=20)
+    ax.set_title(breakdown_title, fontsize=18, fontweight='bold', pad=20)
     ax.set_ylabel('Narrative Prevalence (z-score)', fontsize=12, fontweight='bold')
     ax.set_xlabel('Date', fontsize=12, fontweight='bold')
     
@@ -669,15 +686,21 @@ def visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False):
     return fig
 
 
-def create_lightweight_plots(news_df, transcripts_df, filings_df, save_plots=True):
+def create_lightweight_plots(
+    news_df, transcripts_df, filings_df, save_plots=True, main_theme="AI Bubble"
+):
     """
     Create both plots using matplotlib and optionally save them
     """
     print("📊 Creating lightweight matplotlib plots...")
     
     # Create plots
-    fig1 = visualize_cross_source_narratives_matplotlib(news_df, transcripts_df, filings_df, interactive=False)
-    fig2 = visualize_news_narrative_breakdown_matplotlib(news_df, interactive=False)
+    fig1 = visualize_cross_source_narratives_matplotlib(
+        news_df, transcripts_df, filings_df, interactive=False, main_theme=main_theme
+    )
+    fig2 = visualize_news_narrative_breakdown_matplotlib(
+        news_df, interactive=False, main_theme=main_theme
+    )
     
     if save_plots:
         # Save plots
@@ -742,20 +765,35 @@ def extract_narrative_insights(news_df, transcripts_df, filings_df):
     }
 
 
+def subtheme_counts(df):
+    """Return unique Sentence ID counts per sub-theme (`Label` column)."""
+    if df is None or df.empty or "Label" not in df.columns:
+        return pd.Series(dtype=int)
+    if "Sentence ID" in df.columns:
+        return df.groupby("Label")["Sentence ID"].nunique().sort_values(ascending=False)
+    return df["Label"].value_counts()
+
+
+def _format_date_range(df: pd.DataFrame) -> str:
+    """Return ``YYYY-MM-DD to YYYY-MM-DD`` or ``n/a`` when dates are missing."""
+    if df is None or df.empty or "Date" not in df.columns:
+        return "n/a"
+    dates = pd.to_datetime(df["Date"], errors="coerce").dropna()
+    if dates.empty:
+        return "n/a"
+    return f"{dates.min().strftime('%Y-%m-%d')} to {dates.max().strftime('%Y-%m-%d')}"
+
+
 def create_source_summary(news_df, transcripts_df, filings_df):
     """Create a summary dataframe of the dataset sizes"""
+    frames = [news_df, transcripts_df, filings_df]
     source_summary = pd.DataFrame({
         'Source Type': ['News Media', 'Earnings Calls', 'SEC Filings'],
-        'Record Count': [len(news_df), len(transcripts_df), len(filings_df)],
-        'Date Range': [
-            f"{news_df['Date'].min().strftime('%Y-%m-%d')} to {news_df['Date'].max().strftime('%Y-%m-%d')}",
-            f"{transcripts_df['Date'].min().strftime('%Y-%m-%d')} to {transcripts_df['Date'].max().strftime('%Y-%m-%d')}",
-            f"{filings_df['Date'].min().strftime('%Y-%m-%d')} to {filings_df['Date'].max().strftime('%Y-%m-%d')}"
-        ],
-        'Unique Narratives': [
-            news_df['Label'].nunique(),
-            transcripts_df['Label'].nunique(),
-            filings_df['Label'].nunique()
+        'Record Count': [len(df) if df is not None else 0 for df in frames],
+        'Date Range': [_format_date_range(df) for df in frames],
+        'Unique Sub-Themes': [
+            df['Label'].nunique() if df is not None and not df.empty and 'Label' in df.columns else 0
+            for df in frames
         ]
     })
     return source_summary
@@ -763,14 +801,24 @@ def create_source_summary(news_df, transcripts_df, filings_df):
 
 def display_sample_data(news_df, transcripts_df, filings_df):
     """Display sample data from each source"""
+    sample_cols = ['Date', 'Headline', 'Label', 'Chunk Text']
+
     print("\n======= SAMPLE NEWS NARRATIVES =======")
-    display(news_df[['Date', 'Headline', 'Label', 'Chunk Text']].head(3))
+    display(news_df[sample_cols].head(3) if news_df is not None and not news_df.empty else news_df)
 
     print("\n======= SAMPLE EARNINGS CALL NARRATIVES =======")
-    display(transcripts_df[['Date', 'Headline', 'Label', 'Chunk Text']].head(3))
+    display(
+        transcripts_df[sample_cols].head(3)
+        if transcripts_df is not None and not transcripts_df.empty
+        else transcripts_df
+    )
 
     print("\n======= SAMPLE SEC FILING NARRATIVES =======")
-    display(filings_df[['Date', 'Headline', 'Label', 'Chunk Text']].head(3))
+    display(
+        filings_df[sample_cols].head(3)
+        if filings_df is not None and not filings_df.empty
+        else filings_df
+    )
 
 # Cookbook execution tracing (ADS-400): fires at import time, mirroring the
 # retired SDK's notebook_initialized() hook that used to live here.
