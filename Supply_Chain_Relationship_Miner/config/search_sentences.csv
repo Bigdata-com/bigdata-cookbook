@@ -1,0 +1,62 @@
+sentence_id,edge_type,source,item,query_text
+customer_concentration,SUPPLIER_TO,filings,Item 1 Customers / concentration note,"Sales to the customer accounted for approximately 15% of our net revenue for the fiscal year. The loss of this customer, or a significant reduction in its orders, would materially and adversely affect our results."
+major_customer_dependence,SUPPLIER_TO,filings,Item 1A,"A substantial portion of our revenue is derived from a small number of customers, including a named customer, which may reduce, delay, or cancel orders or seek alternative sources at any time."
+customer_supply_agreement,SUPPLIER_TO,filings,Item 1 / exhibits,We supply products to the customer under a master supply agreement that does not obligate the customer to purchase minimum volumes.
+retail_channel_customer,SUPPLIER_TO,filings,Item 1 Customers,"Our products are sold to mass retailers, including a named retailer, which represented a significant portion of our net sales. The retailer purchases inventory from us for resale."
+raw_materials_and_components,CUSTOMER_OF,filings,Item 1 Raw Materials / Manufacturing,"We purchase raw materials, components, and subassemblies from a number of suppliers, including a named supplier, under supply agreements and purchase orders."
+sole_source_dependence,CUSTOMER_OF,filings,Item 1A,"We depend on sole-source or limited-source suppliers for certain critical components, and the loss of any of them would disrupt production."
+contract_manufacturing,CUSTOMER_OF,filings,Item 1 / Item 1A,"Substantially all of our products are manufactured by third-party contract manufacturers and foundries, principally a named manufacturer, located in Asia."
+supply_agreements_and_commitments,CUSTOMER_OF,filings,Item 7 / notes / exhibits,We have entered into long-term supply agreements and unconditional purchase obligations with a named supplier that require minimum purchase commitments.
+technology_and_service_vendors,CUSTOMER_OF,filings,Item 1A,"We rely on third-party vendors for cloud infrastructure, data processing, software, and other critical services."
+ip_licensing_out,SUPPLIER_TO,filings,Item 1 Intellectual property / revenue note,"We license our patents and technology to a named licensee under a royalty-bearing license agreement, and royalty revenue from this licensee is a meaningful part of our revenue."
+ip_licensing_in,CUSTOMER_OF,filings,Item 1 Intellectual property / Item 1A,"We license key technology from a named licensor and pay royalties under the agreement. If the license were terminated, we could not sell certain products."
+joint_venture,PARTNER_WITH,filings,Item 1 / equity-method investments note,"We hold a 50% interest in a joint venture with a named partner, which we account for under the equity method. The joint venture manufactures and sells products in its region."
+collaboration_agreement,PARTNER_WITH,filings,Item 1 Collaborations / revenue note,"We entered into a collaboration agreement with a named company to jointly develop and commercialize products, under which the parties share development costs and profits."
+strategic_alliance,PARTNER_WITH,filings,Item 1 Strategic partnerships,"We have strategic alliances with leading technology companies, including a named partner, to integrate our offerings and jointly market solutions to customers."
+named_competitors,COMPETITOR_OF,filings,Item 1 Competition,The markets in which we operate are highly competitive. Our principal competitors include named companies that offer similar products and services.
+new_entrant_threat,COMPETITOR_OF,filings,Item 1A,"New competitors, including large technology companies with greater resources, have entered our markets and offer alternative products that could reduce demand for ours."
+customer_agreements_announced,SUPPLIER_TO,filings,8-K earnings release / Item 7,"During the quarter we signed new agreements with customers, including a named company, which selected our services and platform for their operations."
+distribution_through_retailers,SUPPLIER_TO,filings,Item 1 Distribution / Customers,"We distribute our products and content through retailers and online platforms, such as a named e-tailer and a named distributor."
+purchase_commitments_named_vendor,CUSTOMER_OF,filings,Item 7 commitments / notes,We entered into agreements with a named company under which we expect to pay approximately one billion dollars for equipment and services over the next several years.
+related_party_purchases,CUSTOMER_OF,filings,Proxy: related person transactions,"We purchased services from a company controlled by one of our directors or executive officers, on terms negotiated at arm's length, as a related person transaction."
+marketplace_sales_channel,PARTNER_WITH,filings,Item 1 Sales and marketing / Item 1A,"We sell our products through third-party online marketplaces and channel partners, including a named marketplace, which accounts for a significant share of our sales."
+strategic_investment,PARTNER_WITH,filings,Notes: investments / 8-K,We made a strategic investment in a named company and entered into a commercial agreement with it at the same time.
+platform_integration_partners,PARTNER_WITH,filings,Item 1 Partners / ecosystem,"Our strategic partners include leading technology companies, such as a named cloud provider, with which we integrate our solutions and go to market jointly."
+coopetition_large_peers,COMPETITOR_OF,filings,Item 1 Competition,"Our competitors, in each case relative to only some of our products, include large companies such as a named company, some of which are also our partners or customers."
+market_share_and_bids,COMPETITOR_OF,filings,Item 1 Competition / Item 7,"We compete with a named company for market share and for large contracts, and we won or lost business against it during the year."
+call_customer_win,SUPPLIER_TO,transcripts,Prepared remarks,"This quarter we signed a multi-year agreement with a major customer and began shipping to them, which will contribute to revenue growth next year."
+call_customer_concentration,SUPPLIER_TO,transcripts,Q&A: management answer,"Our largest customer accounted for roughly a fifth of our revenue this quarter, and we expect our business with them to keep growing next year."
+call_design_win,SUPPLIER_TO,transcripts,Prepared remarks / Q&A,"We secured a design win with a leading customer for their next-generation product, and volume production ramps in the second half of the year."
+call_new_customer_deals,SUPPLIER_TO,transcripts,Prepared remarks,"We closed several large new customer agreements in the quarter, including a multi-year deal with a well-known enterprise that is moving its workloads onto our platform."
+call_retail_distribution,SUPPLIER_TO,transcripts,Prepared remarks / Q&A,"We expanded distribution with our largest retail customer this quarter, and our products are now on their shelves in all of their stores."
+call_key_supplier,CUSTOMER_OF,transcripts,Prepared remarks / Q&A,"We are working closely with our key supplier to secure additional capacity and components for next year, and supply is improving."
+call_capacity_commitment,CUSTOMER_OF,transcripts,Q&A: management answer,We have locked in long-term capacity with our foundry and contract manufacturing partners to support demand through next year.
+call_supply_constraint,CUSTOMER_OF,transcripts,Q&A: management answer,"Revenue was held back by supply: we rely on a single supplier for a critical component, and we expect that constraint to ease next quarter."
+call_cloud_provider,CUSTOMER_OF,transcripts,Prepared remarks / Q&A,"We are moving our infrastructure to our primary cloud provider, which will lower our costs and improve reliability."
+call_input_costs,CUSTOMER_OF,transcripts,Q&A: management answer,"Higher prices from our main suppliers of raw materials, energy and freight weighed on gross margin this quarter."
+call_partnership,PARTNER_WITH,transcripts,Prepared remarks,We expanded our partnership with a leading company to co-develop new solutions and bring them to market together.
+call_joint_venture,PARTNER_WITH,transcripts,Prepared remarks / Q&A,Our joint venture with our partner reached first production this quarter and is now contributing to earnings.
+call_go_to_market,PARTNER_WITH,transcripts,Q&A: management answer,"Our go-to-market partnership with a large technology company is building a strong pipeline, and their sales teams now sell our solution to their customers."
+call_platform_integration,PARTNER_WITH,transcripts,Prepared remarks,We launched a new integration with a leading platform so that customers can use our products and theirs together.
+call_strategic_investment,PARTNER_WITH,transcripts,Prepared remarks,We made a strategic investment in our partner and extended our collaboration with them for several more years.
+call_competition,COMPETITOR_OF,transcripts,Q&A: management answer,We continue to take market share from our main competitor and won several deals against them this quarter.
+call_competitive_landscape,COMPETITOR_OF,transcripts,Q&A: management answer,"In most deals we compete against the same two or three large players, and we believe our offering is clearly differentiated from theirs."
+call_pricing_pressure,COMPETITOR_OF,transcripts,Q&A: management answer,"We saw more aggressive pricing from a competitor in some markets this quarter, but we chose not to follow them down."
+call_new_entrant,COMPETITOR_OF,transcripts,Q&A: management answer,"A new entrant is coming into our market with a lower-cost alternative, and we are watching them closely."
+call_competitive_displacement,COMPETITOR_OF,transcripts,Prepared remarks,"We won several large contracts that were previously held by a competitor, replacing them at key accounts."
+news_supply_contract,SUPPLIER_TO,news,Headline / body,"The company signed a multi-year agreement to supply its products to a major customer, with deliveries starting next year."
+news_partnership,PARTNER_WITH,news,Headline / body,The two companies announced a strategic partnership to jointly develop and market new products.
+news_relationship_ended,SUPPLIER_TO,news,Headline / body,The company ended its supply agreement with a long-time supplier and moved the business to a competitor.
+news_customer_order,SUPPLIER_TO,news,Headline / body,The company was selected as the supplier and received a large order from a named customer.
+news_contract_award,SUPPLIER_TO,news,Headline / body,The company was awarded a multi-year contract to provide services and technology to the customer.
+news_licensing,SUPPLIER_TO,news,Headline / body,The company signed a licensing agreement granting the other company rights to use its technology.
+news_joint_venture,PARTNER_WITH,news,Headline / body,The two companies formed a joint venture and will each hold a stake in the new business.
+news_distribution_agreement,PARTNER_WITH,news,Headline / body,The company entered a distribution agreement to sell the partner's products through its stores and online channels.
+news_integration,PARTNER_WITH,news,Headline / body,The companies announced an integration of their platforms and a collaboration on new technology.
+news_competition,COMPETITOR_OF,news,Headline / body,The company is competing head to head with its main rival for market share and customers.
+news_supplier_selected,CUSTOMER_OF,news,Headline / body,The company selected a named supplier to provide components and services for its new products.
+news_component_win,SUPPLIER_TO,news,Headline / body,"The supplier's chips and components are used in the customer's new devices, according to the company."
+news_contract_manufacturing,SUPPLIER_TO,news,Headline / body,The company outsourced the manufacturing and assembly of its products to a contract manufacturer.
+news_supply_disruption,SUPPLIER_TO,news,Headline / body,A disruption at the supplier's plant delayed shipments of parts to its main customer.
+news_press_release_agreement,PARTNER_WITH,news,Headline / body,The company today announced an agreement with a named company to deliver its solutions to customers.
+news_direct_competitor,COMPETITOR_OF,news,Headline / body,The two companies compete directly for the same customers with rival products and bids.

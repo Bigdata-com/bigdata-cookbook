@@ -1,0 +1,41 @@
+code,edge_type,category_code,category,label,definition,cues
+SUP-INP-RAW,SUPPLIER_TO,INP,Production inputs,Raw materials and commodities,"Unprocessed or commodity inputs: ores, metals, chemicals, crops, resins",supplies lithium; sources copper from; feedstock
+SUP-INP-CMP,SUPPLIER_TO,INP,Production inputs,Components and parts,"Parts, chips, modules and subassemblies built into B's product",supplier of displays; chips for; design win
+SUP-INP-PKG,SUPPLIER_TO,INP,Production inputs,Packaging and consumables,"Packaging, containers, labels, consumables used up in B's operations",packaging supplier; cans for
+SUP-INP-ENR,SUPPLIER_TO,INP,Production inputs,Energy fuel and utilities,"Electricity, gas, fuel, water, PPAs",power purchase agreement; LNG supply
+SUP-MFG-CTM,SUPPLIER_TO,MFG,Manufacturing and capital goods,Contract manufacturing,"A produces to B's design or brand: OEM, ODM, EMS, foundry, CMO/CDMO",manufactures for; foundry customer; assembles
+SUP-MFG-EQP,SUPPLIER_TO,MFG,Manufacturing and capital goods,Capital equipment and tooling,"Machinery, production tools, vehicles, aircraft, fleets bought by B",orders machines; delivers aircraft to
+SUP-GDS-RES,SUPPLIER_TO,GDS,Finished goods,Finished goods for resale,"Finished products B buys to resell: wholesale, distribution, retail",distributes; stocks; carried by retailer
+SUP-SVC-LOG,SUPPLIER_TO,SVC,Services and technology,Logistics and transport,"Freight, shipping, warehousing, last-mile delivery",ships for; 3PL provider; carrier for
+SUP-SVC-TEC,SUPPLIER_TO,SVC,Services and technology,Software cloud and IT,"Software licences, SaaS, cloud, data centres, IT services",runs on; migrated to; cloud provider
+SUP-SVC-PRO,SUPPLIER_TO,SVC,Services and technology,Outsourced and professional services,"BPO, engineering, consulting, clinical trial and other contracted services",outsourced to; services agreement
+SUP-SVC-LIC,SUPPLIER_TO,SVC,Services and technology,IP and technology licensing,"One-way licence of patents, technology or content for fees or royalties",licenses; royalty-bearing licence
+SUP-GEN-UNS,SUPPLIER_TO,GEN,General,Unspecified supply,Supply is stated but what flows is not,key supplier; vendor to; major customer
+CUS-INP-RAW,CUSTOMER_OF,INP,Production inputs,Raw materials and commodities,"Unprocessed or commodity inputs: ores, metals, chemicals, crops, resins",supplies lithium; sources copper from; feedstock
+CUS-INP-CMP,CUSTOMER_OF,INP,Production inputs,Components and parts,"Parts, chips, modules and subassemblies built into B's product",supplier of displays; chips for; design win
+CUS-INP-PKG,CUSTOMER_OF,INP,Production inputs,Packaging and consumables,"Packaging, containers, labels, consumables used up in B's operations",packaging supplier; cans for
+CUS-INP-ENR,CUSTOMER_OF,INP,Production inputs,Energy fuel and utilities,"Electricity, gas, fuel, water, PPAs",power purchase agreement; LNG supply
+CUS-MFG-CTM,CUSTOMER_OF,MFG,Manufacturing and capital goods,Contract manufacturing,"A produces to B's design or brand: OEM, ODM, EMS, foundry, CMO/CDMO",manufactures for; foundry customer; assembles
+CUS-MFG-EQP,CUSTOMER_OF,MFG,Manufacturing and capital goods,Capital equipment and tooling,"Machinery, production tools, vehicles, aircraft, fleets bought by B",orders machines; delivers aircraft to
+CUS-GDS-RES,CUSTOMER_OF,GDS,Finished goods,Finished goods for resale,"Finished products B buys to resell: wholesale, distribution, retail",distributes; stocks; carried by retailer
+CUS-SVC-LOG,CUSTOMER_OF,SVC,Services and technology,Logistics and transport,"Freight, shipping, warehousing, last-mile delivery",ships for; 3PL provider; carrier for
+CUS-SVC-TEC,CUSTOMER_OF,SVC,Services and technology,Software cloud and IT,"Software licences, SaaS, cloud, data centres, IT services",runs on; migrated to; cloud provider
+CUS-SVC-PRO,CUSTOMER_OF,SVC,Services and technology,Outsourced and professional services,"BPO, engineering, consulting, clinical trial and other contracted services",outsourced to; services agreement
+CUS-SVC-LIC,CUSTOMER_OF,SVC,Services and technology,IP and technology licensing,"One-way licence of patents, technology or content for fees or royalties",licenses; royalty-bearing licence
+CUS-GEN-UNS,CUSTOMER_OF,GEN,General,Unspecified supply,Supply is stated but what flows is not,key supplier; vendor to; major customer
+PAR-JNT-JVE,PARTNER_WITH,JNT,Joint entity,Joint venture,A and B create or hold a jointly owned entity,form a joint venture; 50/50 JV
+PAR-JNT-CON,PARTNER_WITH,JNT,Joint entity,Consortium or joint bid,"A and B bid or deliver together, without a new entity",consortium; joint bid; teaming agreement
+PAR-TEC-RND,PARTNER_WITH,TEC,Technology and R&D,Joint R&D and co-development,"Shared research or co-developed products, costs or IP",co-develop; joint research programme
+PAR-TEC-INT,PARTNER_WITH,TEC,Technology and R&D,Technology integration,Products made to work together; interoperability and certified integrations,integrates with; certified on; interoperable
+PAR-TEC-SCI,PARTNER_WITH,TEC,Technology and R&D,Clinical and scientific collaboration,"Shared trials, drug discovery or scientific programmes",collaboration agreement; co-commercialise
+PAR-COM-MKT,PARTNER_WITH,COM,Commercial,Co-marketing and co-branding,"Joint campaigns, co-branded products, loyalty tie-ups",co-branded; joint campaign
+PAR-COM-SEL,PARTNER_WITH,COM,Commercial,Co-selling and referral,"Joint go-to-market, referral or reseller ties with no title transfer",go-to-market partnership; referral
+PAR-COM-NET,PARTNER_WITH,COM,Commercial,Shared network or infrastructure,"Code-sharing, network or site sharing, roaming, shared capacity",code-share; network sharing
+PAR-STR-EQT,PARTNER_WITH,STR,Strategic,Strategic alliance with equity,An alliance tied to a stake or cross-shareholding; a stake alone is out of scope,strategic investment and partnership
+PAR-STR-GEN,PARTNER_WITH,STR,Strategic,Strategic alliance unspecified,"Partnership stated, scope not given; also mutual cross-licences",strategic partnership; alliance; MoU
+CPT-DEC-NAM,COMPETITOR_OF,DEC,Declared rivalry,Named competitor,One company names the other as a competitor,our competitors include; competes with
+CPT-DEC-ENT,COMPETITOR_OF,DEC,Declared rivalry,New entrant or emerging threat,One company names the other as entering its market,new entrant; entering our market
+CPT-MKT-SHR,COMPETITOR_OF,MKT,Market contest,Market-share contest,Share gained or lost against the named other,took share from; lost share to
+CPT-MKT-BID,COMPETITOR_OF,MKT,Market contest,Competitive bid or tender,"The two met in a named bid, tender or customer switch",won against; lost the tender to; switched from
+CPT-PRD-DIR,COMPETITOR_OF,PRD,Product competition,Competing product line,Like-for-like products or services sold to the same buyers,rival to; competes directly with
+CPT-PRD-SUB,COMPETITOR_OF,PRD,Product competition,Substitute technology,Different technology serving the same need,alternative to; replaces

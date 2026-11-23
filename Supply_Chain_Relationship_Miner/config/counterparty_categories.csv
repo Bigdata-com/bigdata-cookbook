@@ -1,0 +1,12 @@
+category,kind,accepted,note
+companies,company,yes,Knowledge Graph category of companies
+comp,company,yes,entity type COMP (SDK objects)
+organizations,institution,yes,"governments, agencies, armed forces, universities, non-profits, leagues, international bodies"
+orga,institution,yes,entity type ORGA (SDK objects)
+governments,institution,yes,in case the Knowledge Graph files them apart
+institutions,institution,yes,in case the Knowledge Graph files them apart
+places,place,no,"countries, regions, cities as places: a market, not a counterparty"
+people,person,no,
+products,product,no,
+concepts,concept,no,
+topics,topic,no,

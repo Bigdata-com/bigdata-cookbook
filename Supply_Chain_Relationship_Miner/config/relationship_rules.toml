@@ -1,0 +1,97 @@
+# The four relationship types of the Foundational Principles v2.1, one table each.
+# Rendered into the classifier prompt (skg.taxonomy.prompt_sections). Changing this file changes
+# the prompt_version, so a graph built with the old rules refuses to mix with the new ones.
+# Source: dow30_pipeline_ext/src/relationship_taxonomies.py (unchanged content).
+
+[SUPPLIER_TO]
+prefix = "SUP"
+symmetric = false
+definition = "The subject supplies goods, services, IP or energy to the object for payment, stated from the supplier's side."
+subject_rule = "the supplier. In a filing, the filer when the filer is the seller (customer-concentration notes, 'sales to X were 12% of revenue')."
+include = [
+    "named customer at or above 10% of revenue",
+    "supply, master supply or offtake agreement with a named customer",
+    "a retailer or distributor that buys inventory for resale",
+    "a one-way licence of IP for fees or royalties",
+    "contract manufacturing for the object's brand or design",
+]
+exclude = [
+    "'Customer A' or any unnamed customer (reject: unnamed_customer)",
+    "marketplace listing or consignment with no sale to the object",
+    "card acceptance, lending, underwriting, leasing (reject: financial_counterparty / lessor)",
+    "the subject only competes with or partners with the object",
+]
+terminate_cues = [
+    "contract expired or was not renewed",
+    "the customer moved the business to another supplier",
+    "supply was stopped or the customer was lost",
+]
+
+[CUSTOMER_OF]
+prefix = "CUS"
+symmetric = false
+definition = "The subject buys goods, services, IP or energy from the object, stated from the buyer's side. Same codes as SUPPLIER_TO, mirrored."
+subject_rule = "the buyer. In a filing, the filer when the filer is the buyer ('we rely on X to manufacture', 'we purchase components from X')."
+include = [
+    "named supplier of raw materials, components or energy",
+    "sole-source or limited-source supplier, named or described as one company",
+    "contract manufacturer or foundry producing the subject's products",
+    "purchase commitments or supply agreements with a named supplier",
+    "technology, cloud, logistics or outsourced-service vendor",
+    "technology licensed in from a licensor",
+]
+exclude = [
+    "a group ('various vendors', 'our suppliers') (reject: generic_group)",
+    "lenders, landlords, card networks, underwriters (reject: financial_counterparty / lessor)",
+    "acquisition of the supplier (reject: ownership_or_ma)",
+]
+terminate_cues = [
+    "the subject replaced or dual-sourced away from the supplier and ended the contract",
+    "supply agreement terminated or expired",
+    "manufacturing brought in-house from the named manufacturer",
+]
+
+[PARTNER_WITH]
+prefix = "PAR"
+symmetric = true
+definition = "The two companies work together toward a shared outcome, with no one-way paid flow: joint venture, co-development, alliance, co-marketing."
+subject_rule = "the filer, or the first company named. One canonical edge per pair (sorted)."
+include = [
+    "joint venture or jointly owned entity",
+    "collaboration with shared costs, profits or development",
+    "technology integration or certified interoperability",
+    "co-selling, co-marketing, code-sharing or shared networks",
+    "an alliance tied to an equity stake",
+]
+exclude = [
+    "a stake or investment with no stated alliance (reject: ownership_or_ma)",
+    "the word 'partner' used for a supplier or customer: classify by substance instead",
+    "lists of 'ecosystem partners' with no stated joint activity (reject: co_mention)",
+]
+terminate_cues = [
+    "collaboration or alliance agreement terminated",
+    "JV dissolved or one partner sold its interest",
+    "rights returned to one party",
+]
+
+[COMPETITOR_OF]
+prefix = "CPT"
+symmetric = true
+definition = "The two companies compete for the same buyers, and the text says so explicitly."
+subject_rule = "the filer, or the first company named. One canonical edge per pair (sorted)."
+include = [
+    "a company named as a competitor (Item 1 Competition, risk factors)",
+    "a named new entrant into the subject's market",
+    "share won or lost against a named company",
+    "a bid or tender contested with a named company",
+    "a named substitute technology",
+]
+exclude = [
+    "peer comparison ('like Coca-Cola, we face inflation') (reject: benchmark_peer)",
+    "companies listed together with no rivalry stated (reject: co_mention)",
+    "litigation alone (reject: litigation_only)",
+]
+terminate_cues = [
+    "one company exited the market or product line they competed in",
+    "the companies merged",
+]
