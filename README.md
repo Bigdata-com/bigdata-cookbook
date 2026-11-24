@@ -141,8 +141,9 @@ Many cookbooks include a static HTML export next to the notebook so you can **br
 - Extracts business relationships from SEC filings, earnings calls, press releases and news for any company
 - Every relationship is grounded: the quoted sentence, document, date, link and evidence code behind it
 - Relationship graph with status (active or inactive), record, document and source counts, and an explanation
+- A relationship seen only in news needs trusted publishers, by their Bigdata.com rank
 - Exports counterparty, relationship and evidence tables as CSV, plus a chart of the related companies
-- NVIDIA example over one year: 946 related companies found by name, with 176 suppliers, 369 customers, 675 partners and 52 competitors (a company can hold more than one role)
+- NVIDIA example over one year: 830 related companies found by name, with 158 suppliers, 309 customers, 594 partners and 43 competitors (a company can hold more than one role)
 
 ### 🗳️ [Election Monitor](./Election_Monitor/)
 **Automated Analysis of Corporate Perspectives on Electoral Outcomes**
