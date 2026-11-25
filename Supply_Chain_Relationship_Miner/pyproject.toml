@@ -1,0 +1,23 @@
+[project]
+name = "supply-chain-notebook"
+version = "0.1.0"
+description = "Supply-chain relationships of a company from Bigdata.com and OpenAI (notebook)"
+requires-python = ">=3.12"
+dependencies = [
+    "bigdata-smart-batching==1.4.1",
+    "ipykernel>=6.29",
+    "jupyterlab>=4.2",
+    "matplotlib>=3.11.2",
+    "openai>=3.42.1",
+    "pandas>=3.1.0",
+    "requests>=2.34.2",
+]
+
+[tool.uv]
+package = false
+# Team supply-chain rules (Python Dependency Management Security Guide):
+# 7-day cooldown on new releases and the avoid list as unsatisfiable constraints.
+exclude-newer = "7 days"
+constraint-dependencies = [
+    "litellm<0",  # avoid list: malicious releases 1.82.7, 1.82.8, 1.107.0
+]

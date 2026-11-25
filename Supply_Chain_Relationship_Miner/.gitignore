@@ -1,0 +1,7 @@
+.venv/
+.env
+cache/
+output/
+.ipynb_checkpoints/
+# the repository ignores *.csv: keep the configuration files
+!config/*.csv

@@ -135,6 +135,17 @@ Many cookbooks include a static HTML export next to the notebook so you can **br
 - Market positioning analysis with confidence scoring for investment decisions
 - Comprehensive ecosystem mapping for infrastructure investment intelligence
 
+### 🔗 [Supply Chain Relationship Miner](./Supply_Chain_Relationship_Miner/)
+**Find a company's suppliers from what filings, calls and news state**
+
+- Finds the suppliers of any company in SEC filings, earnings calls, press releases and news
+- The model tells a supply apart from a partnership, a sale or competition, and only the supplies are kept
+- Every supplier is grounded: the quoted sentence, document, date, link and evidence code behind it
+- Each supplier gets a status (active or inactive), record, document and source counts, and an explanation
+- A supplier seen only in news needs trusted publishers, by their Bigdata.com rank
+- Exports the suppliers and their evidence as CSV, plus a chart of the suppliers
+- NVIDIA example over one year: 158 suppliers found by name, led by TSMC, SK Hynix, Samsung Electronics, Samsung Electro-Mechanics and Amkor
+
 ### 🗳️ [Election Monitor](./Election_Monitor/)
 **Automated Analysis of Corporate Perspectives on Electoral Outcomes**
 
@@ -439,6 +450,12 @@ bigdata-cookbook/
 │   ├── Liquid_Cooling_Market_Watch.html
 │   ├── src/
 │   ├── requirements.txt
+│   └── README.md
+├── Supply_Chain_Relationship_Miner/                 # Suppliers of a company
+│   ├── supply_chain_relationships.ipynb
+│   ├── config/
+│   ├── pyproject.toml
+│   ├── uv.lock
 │   └── README.md
 ├── Election_Monitor/                                 # Election monitoring tool
 │   ├── Trump_Reelection_Impact_Analysis.ipynb
